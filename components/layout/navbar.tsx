@@ -1,0 +1,162 @@
+"use client";
+
+import { Bell, Menu, Search, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { useUIStore } from "@/lib/stores/ui-store";
+import { useAuthStore } from "@/lib/stores/auth-store";
+import { useRouter } from "next/navigation";
+
+export function Navbar() {
+  const { toggleSidebar, toggleSidebarCollapsed, notifications } = useUIStore();
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
+
+  const handleMenuClick = () => {
+    // On mobile, toggle sidebar open/close
+    // On desktop, toggle sidebar collapse
+    if (window.innerWidth < 768) {
+      toggleSidebar();
+    } else {
+      toggleSidebarCollapsed();
+    }
+  };
+
+  return (
+    <nav className="sticky top-0 z-50 glass border-b">
+      <div className="flex h-16 items-center gap-4 px-4 md:px-6">
+        {/* Left Section */}
+        <div className="flex items-center gap-2">
+          {/* Menu Toggle Button - Always Visible */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleMenuClick}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-xl font-semibold">
+              Dashboard
+            </span>
+          </div>
+        </div>
+
+        {/* Search Bar - Center */}
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search... (Cmd+K)"
+              className="pl-10 glass-subtle"
+              onFocus={() => useUIStore.getState().setCommandPaletteOpen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
+          {/* Notifications */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  No notifications
+                </div>
+              ) : (
+                notifications.slice(0, 5).map((notification) => (
+                  <DropdownMenuItem key={notification.id} className="p-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{notification.title}</span>
+                        {!notification.read && (
+                          <Badge variant="secondary" className="h-2 w-2 p-0" />
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {notification.message}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar>
+                  <AvatarImage src={user?.avatar} alt={user?.username} />
+                  <AvatarFallback className="bg-gradient-primary text-white">
+                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {user?.firstName} {user?.lastName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {user?.email}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+                <User className="mr-2 h-4 w-4" />
+                Profile Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </nav>
+  );
+}
