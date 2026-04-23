@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 
+interface UINotification {
+  id: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Date;
+}
+
 interface UIStore {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -13,19 +22,11 @@ interface UIStore {
   setCommandPaletteOpen: (open: boolean) => void;
   toggleCommandPalette: () => void;
 
-  notifications: Notification[];
-  addNotification: (notification: Notification) => void;
+  notifications: UINotification[];
+  addNotification: (notification: UINotification) => void;
   removeNotification: (id: string) => void;
+  markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
-}
-
-interface Notification {
-  id: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: Date;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -49,6 +50,12 @@ export const useUIStore = create<UIStore>((set) => ({
   removeNotification: (id) =>
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
+    })),
+  markNotificationRead: (id) =>
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ),
     })),
   clearNotifications: () => set({ notifications: [] }),
 }));

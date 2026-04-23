@@ -1,36 +1,211 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dairy-Logix Admin Panel
 
-## Getting Started
+A modern, multi-tenant dairy management system built with Next.js. This admin panel enables super admins to manage multiple dairy tenants on a subscription-based model.
 
-First, run the development server:
+## 🚀 Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Dairy-Logix is a comprehensive dairy management platform designed to help dairy businesses streamline their operations. The admin panel provides powerful tools for managing multiple tenants, subscriptions, and core dairy operations.
+
+## 👥 User Roles
+
+- **Super Admin**: Platform administrators who can manage all tenants, subscriptions, and system-wide settings
+- **Admin**: Tenant administrators who manage their specific dairy operations, products, users, and settings
+
+## ✨ Key Features
+
+### Multi-Tenancy
+- Tenant isolation with secure data separation
+- Subscription-based access control
+- Tenant onboarding and management
+- Usage tracking and billing
+
+### Dashboard & Analytics
+- Real-time operational metrics
+- Sales and revenue analytics
+- Inventory tracking
+- User activity monitoring
+
+### User Management
+- Role-based access control (RBAC)
+- User invitations and onboarding
+- Activity logs and audit trails
+
+### Product Management
+- Product catalog management
+- Inventory tracking
+- Price management
+- Category organization
+
+### Settings & Configuration
+- Tenant-specific settings
+- Subscription management
+- System configuration
+- Theme customization
+
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 4
+- **UI Components**: Radix UI + shadcn/ui
+- **State Management**: Zustand
+- **Data Fetching**: TanStack Query (React Query)
+- **Forms**: React Hook Form + Zod validation
+- **Charts**: Recharts
+- **HTTP Client**: Axios
+- **Animations**: Framer Motion
+
+## 📋 Prerequisites
+
+- Node.js 20 or higher
+- npm, yarn, pnpm, or bun
+- Docker (optional, for containerized development)
+
+## 🚀 Getting Started
+
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Update the `.env.local` file with your configuration.
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
+
+5. **Open your browser**
+
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Docker Development
+
+1. **Build and run with Docker**
+   ```bash
+   docker build --target development -t dairy-logix-frontend:dev .
+   docker run -p 3000:3000 -v $(pwd):/app dairy-logix-frontend:dev
+   ```
+
+2. **Or use Docker Compose** (if available)
+   ```bash
+   docker-compose up
+   ```
+
+## 🏗 Project Structure
+
+```
+frontend/
+├── app/                    # Next.js app router pages
+│   ├── auth/              # Authentication pages
+│   ├── dashboard/         # Dashboard pages
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── layout/           # Layout components
+│   ├── providers/        # Context providers
+│   └── ui/               # UI components (shadcn/ui)
+├── lib/                   # Utility functions and configurations
+│   ├── api/              # API client and hooks
+│   ├── constants/        # App constants
+│   ├── mock-data/        # Mock data for development
+│   ├── stores/           # Zustand stores
+│   ├── types/            # TypeScript types
+│   └── utils.ts          # Utility functions
+├── public/               # Static assets
+├── Dockerfile            # Multi-stage Docker configuration
+└── package.json          # Project dependencies
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Available Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🐳 Docker
 
-## Learn More
+### Development Build
+```bash
+docker build --target development -t dairy-logix-frontend:dev .
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Production Build
+```bash
+docker build --target production -t dairy-logix-frontend:prod .
+docker run -p 3000:3000 dairy-logix-frontend:prod
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🌐 Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See `.env.example` for all available environment variables.
 
-## Deploy on Vercel
+Key variables:
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+- `NEXT_PUBLIC_APP_URL` - Frontend application URL
+- `NEXT_PUBLIC_WS_URL` - WebSocket server URL (for real-time features)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔐 Authentication
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application uses JWT-based authentication with:
+- Access tokens for API requests
+- Refresh tokens for token renewal
+- Secure HTTP-only cookies (production)
+- Role-based access control
+
+## 📱 Mobile App Integration
+
+The platform is designed to integrate with mobile applications for:
+- Field staff operations
+- Delivery management
+- Customer portals
+- Real-time updates
+
+(Mobile app development details will be added in future updates)
+
+## 🚢 Deployment
+
+### Production Build
+```bash
+npm run build
+npm run start
+```
+
+### Docker Production
+```bash
+docker build --target production -t dairy-logix-frontend:latest .
+docker run -p 3000:3000 dairy-logix-frontend:latest
+```
+
+## 📄 License
+
+All rights reserved. This is proprietary software.
+
+## 🤝 Contributing
+
+This is a private project. For team members, please follow the established git workflow and coding standards.
+
+## 📞 Support
+
+For issues or questions, please contact the development team.

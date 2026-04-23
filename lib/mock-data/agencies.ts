@@ -1,0 +1,77 @@
+import type { Agency } from '@/lib/types';
+
+// ============================================================
+// Mock Agency Data for Tenant "Shree Krishna Dairy" (tenant-1)
+// ============================================================
+
+export const mockAgencies: Agency[] = [
+  {
+    id: 'agency-1',
+    tenantId: 'tenant-1',
+    name: 'Main Branch',
+    location: 'Ahmedabad',
+    agencyType: 'AM',
+    address: {
+      line1: '12, Industrial Estate, Naroda Road',
+      line2: 'Near GIDC Gate No. 3',
+      city: 'Ahmedabad',
+      state: 'Gujarat',
+      pincode: '382330',
+      country: 'India',
+    },
+    contactPerson: 'Rajesh Patel',
+    phone: '+91 98250 41230',
+    email: 'main@shreekrishnadairy.in',
+    isActive: true,
+    employeeCount: 5,
+    shopkeeperCount: 6,
+    createdAt: '2025-08-15T10:00:00.000Z',
+    updatedAt: '2026-01-20T14:45:00.000Z',
+  },
+  {
+    id: 'agency-2',
+    tenantId: 'tenant-1',
+    name: 'West Zone',
+    location: 'Rajkot',
+    agencyType: 'PM',
+    address: {
+      line1: '34, Kalawad Road',
+      line2: 'Near Aji Dam Circle',
+      city: 'Rajkot',
+      state: 'Gujarat',
+      pincode: '360005',
+      country: 'India',
+    },
+    contactPerson: 'Mehul Joshi',
+    phone: '+91 94260 78523',
+    email: 'westzone@shreekrishnadairy.in',
+    isActive: true,
+    employeeCount: 3,
+    shopkeeperCount: 5,
+    createdAt: '2025-09-10T08:30:00.000Z',
+    updatedAt: '2026-01-25T11:20:00.000Z',
+  },
+  {
+    id: 'agency-3',
+    tenantId: 'tenant-1',
+    name: 'South Branch',
+    location: 'Surat',
+    agencyType: 'AM',
+    address: {
+      line1: '56, Ring Road, Varachha',
+      line2: 'Opposite Sahara Darwaja',
+      city: 'Surat',
+      state: 'Gujarat',
+      pincode: '395006',
+      country: 'India',
+    },
+    contactPerson: 'Nilesh Desai',
+    phone: '+91 99784 31260',
+    email: 'south@shreekrishnadairy.in',
+    isActive: true,
+    employeeCount: 2,
+    shopkeeperCount: 4,
+    createdAt: '2025-10-05T09:15:00.000Z',
+    updatedAt: '2026-02-01T16:30:00.000Z',
+  },
+];

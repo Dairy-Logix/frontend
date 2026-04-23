@@ -1,17 +1,27 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, AuthState } from '@/lib/types';
+import type { User, UserRole, AuthState } from '@/lib/types';
 
 interface AuthStore extends AuthState {
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   setUser: (user: User) => void;
+  setTokens: (accessToken: string, refreshToken: string) => void;
   logout: () => void;
   setLoading: (isLoading: boolean) => void;
+
+  // Role helpers
+  isSuperAdmin: () => boolean;
+  isTenantAdmin: () => boolean;
+  isEmployee: () => boolean;
+  isShopkeeper: () => boolean;
+  hasRole: (role: UserRole) => boolean;
+  getTenantId: () => string | undefined;
+  getAgencyIds: () => string[];
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       isAuthenticated: false,
@@ -29,7 +39,13 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setUser: (user) => {
-        set({ user });
+        set({ user, isAuthenticated: true });
+      },
+
+      setTokens: (accessToken, refreshToken) => {
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        set({ accessToken, isAuthenticated: true });
       },
 
       logout: () => {
@@ -46,6 +62,14 @@ export const useAuthStore = create<AuthStore>()(
       setLoading: (isLoading) => {
         set({ isLoading });
       },
+
+      isSuperAdmin: () => get().user?.role === 'super_admin',
+      isTenantAdmin: () => get().user?.role === 'tenant_admin',
+      isEmployee: () => get().user?.role === 'employee',
+      isShopkeeper: () => get().user?.role === 'shopkeeper',
+      hasRole: (role) => get().user?.role === role,
+      getTenantId: () => get().user?.tenantId,
+      getAgencyIds: () => get().user?.agencyIds ?? [],
     }),
     {
       name: 'auth-storage',
@@ -53,6 +77,9 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setLoading(false);
+      },
     }
   )
 );

@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Zap, Shield, Code, Sparkles } from "lucide-react";
+import { ArrowRight, Truck, Store, CreditCard, BarChart3, Users, Milk } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 export default function Home() {
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-animated opacity-10" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_var(--gradient-primary-start)_0%,_transparent_50%)] opacity-20" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,_var(--gradient-secondary-start)_0%,_transparent_50%)] opacity-20" />
+      <div className="absolute inset-0 bg-gradient-animated opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_var(--gradient-primary-start)_0%,_transparent_50%)] opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,_var(--gradient-secondary-start)_0%,_transparent_50%)] opacity-20 pointer-events-none" />
 
       {/* Navigation */}
       <nav className="relative z-10 glass border-b">
@@ -19,17 +18,17 @@ export default function Home() {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <span className="text-white font-bold text-lg">B</span>
+                <Milk className="h-4 w-4 text-white" />
               </div>
               <span className="text-xl font-bold text-gradient-primary">
-                Base Template
+                Dairy Logix
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/login">
+              <Link href="/auth/login">
                 <Button variant="ghost">Login</Button>
               </Link>
-              <Link href="/register">
+              <Link href="/auth/register">
                 <Button className="bg-gradient-primary hover-glow-primary">
                   Get Started
                 </Button>
@@ -48,7 +47,6 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="space-y-6"
           >
-            {/* Badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -56,43 +54,40 @@ export default function Home() {
               className="inline-block"
             >
               <div className="glass-subtle rounded-full px-4 py-2 border inline-flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
+                <Milk className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">
-                  Production-Ready Full Stack Template
+                  Multi-Tenant Dairy Distribution Platform
                 </span>
               </div>
             </motion.div>
 
-            {/* Heading */}
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Build Modern Apps{" "}
-              <span className="text-gradient-primary">Lightning Fast</span>
+              Manage Your Dairy{" "}
+              <span className="text-gradient-primary">Distribution</span>
             </h1>
 
-            {/* Description */}
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              A comprehensive, production-ready base template with Next.js and
-              NestJS. Beautiful UI components, authentication, and everything
-              you need to start building.
+              Connect factories, distributors, employees, and stores on one
+              platform. Streamline orders, deliveries, invoicing, and payment
+              collection for your dairy business.
             </p>
 
-            {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/dashboard/overview">
+              <Link href="/auth/register">
                 <Button size="lg" className="bg-gradient-primary hover-glow-primary shine">
-                  View Dashboard
+                  Start Free Trial
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/dashboard/ui-showcase">
+              <Link href="/auth/login">
                 <Button size="lg" variant="outline" className="glass-subtle">
-                  Explore Components
+                  Sign In to Dashboard
                 </Button>
               </Link>
             </div>
           </motion.div>
 
-          {/* Hero Image/Glass Card */}
+          {/* Stats Grid */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -100,43 +95,35 @@ export default function Home() {
             className="mt-20"
           >
             <div className="glass gradient-border rounded-2xl p-2">
-              <div className="bg-card rounded-xl p-8 aspect-video flex items-center justify-center">
+              <div className="bg-card rounded-xl p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="flex flex-col items-center gap-2"
-                  >
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex flex-col items-center gap-2">
                     <div className="h-16 w-16 rounded-xl bg-gradient-primary flex items-center justify-center">
-                      <Zap className="h-8 w-8 text-white" />
+                      <Store className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-sm font-medium">Fast</span>
+                    <span className="text-2xl font-bold">1000+</span>
+                    <span className="text-sm text-muted-foreground">Stores</span>
                   </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: -5 }}
-                    className="flex flex-col items-center gap-2"
-                  >
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex flex-col items-center gap-2">
                     <div className="h-16 w-16 rounded-xl bg-gradient-secondary flex items-center justify-center">
-                      <Shield className="h-8 w-8 text-white" />
+                      <Truck className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-sm font-medium">Secure</span>
+                    <span className="text-2xl font-bold">500+</span>
+                    <span className="text-sm text-muted-foreground">Daily Deliveries</span>
                   </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="flex flex-col items-center gap-2"
-                  >
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex flex-col items-center gap-2">
                     <div className="h-16 w-16 rounded-xl bg-gradient-accent flex items-center justify-center">
-                      <Code className="h-8 w-8 text-white" />
+                      <CreditCard className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-sm font-medium">Modern</span>
+                    <span className="text-2xl font-bold">99%</span>
+                    <span className="text-sm text-muted-foreground">Collection Rate</span>
                   </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: -5 }}
-                    className="flex flex-col items-center gap-2"
-                  >
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex flex-col items-center gap-2">
                     <div className="h-16 w-16 rounded-xl bg-gradient-primary flex items-center justify-center pulse-glow">
-                      <Sparkles className="h-8 w-8 text-white" />
+                      <BarChart3 className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-sm font-medium">Beautiful</span>
+                    <span className="text-2xl font-bold">50+</span>
+                    <span className="text-sm text-muted-foreground">Distributors</span>
                   </motion.div>
                 </div>
               </div>
@@ -150,10 +137,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Everything You Need
+              Everything Your Dairy Business Needs
             </h2>
             <p className="text-lg text-muted-foreground">
-              Pre-built components and patterns for rapid development
+              From order management to payment collection, all in one place
             </p>
           </div>
 
@@ -183,36 +170,33 @@ export default function Home() {
 
 const features = [
   {
-    title: "Modern UI Components",
-    description:
-      "Beautiful, accessible components built with shadcn/ui and Tailwind CSS",
-    icon: Code,
+    title: "Order Management",
+    description: "Collect orders from stores, aggregate for factory ordering, and track status in real-time.",
+    icon: Store,
   },
   {
-    title: "Authentication Ready",
-    description:
-      "Complete auth system with JWT, social login, and password reset",
-    icon: Shield,
+    title: "Delivery Tracking",
+    description: "Plan delivery routes, track with GPS, and confirm deliveries with photo proof.",
+    icon: Truck,
   },
   {
-    title: "Real-time Updates",
-    description: "WebSocket integration for live notifications and updates",
-    icon: Zap,
+    title: "Payment Collection",
+    description: "Record online and offline payments, generate receipts, and track outstanding balances.",
+    icon: CreditCard,
   },
   {
-    title: "CRUD Examples",
-    description:
-      "Complete examples of listing, creating, editing, and deleting data",
-    icon: Code,
+    title: "Employee Management",
+    description: "Assign stores to collection agents, track performance, and manage field operations.",
+    icon: Users,
   },
   {
-    title: "File Management",
-    description: "Upload, preview, and manage files with drag-and-drop support",
-    icon: Code,
+    title: "Invoicing",
+    description: "Auto-generate invoices per delivery, download PDFs, and share via WhatsApp.",
+    icon: BarChart3,
   },
   {
-    title: "Charts & Visualizations",
-    description: "Beautiful charts and data visualization components",
-    icon: Code,
+    title: "Reports & Analytics",
+    description: "Sales, collection, delivery, and financial reports with PDF and Excel export.",
+    icon: BarChart3,
   },
 ];

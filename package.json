@@ -1,7 +1,9 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "dairy-logix-frontend",
+  "version": "1.0.0",
   "private": true,
+  "description": "Dairy-Logix Admin Panel - Multi-tenant dairy management system with subscription-based model",
+  "author": "Dairy-Logix Team",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

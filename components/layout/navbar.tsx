@@ -14,25 +14,30 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { AgencySwitcher } from "@/components/shared/agency-switcher";
 import { useUIStore } from "@/lib/stores/ui-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useTenantStore } from "@/lib/stores/tenant-store";
+import { useSettings } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const { toggleSidebar, toggleSidebarCollapsed, notifications } = useUIStore();
   const { user, logout } = useAuthStore();
+  const { context } = useTenantStore();
   const router = useRouter();
+  const { data: settings } = useSettings();
 
+  const appNotificationsEnabled = settings?.config?.features?.appNotifications ?? false;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleLogout = () => {
     logout();
-    router.push("/login");
+    router.push("/auth/login");
   };
 
   const handleMenuClick = () => {
-    // On mobile, toggle sidebar open/close
-    // On desktop, toggle sidebar collapse
     if (window.innerWidth < 768) {
       toggleSidebar();
     } else {
@@ -40,25 +45,26 @@ export function Navbar() {
     }
   };
 
+  const { tenant } = useTenantStore();
+  const panelLabel = context === "super_admin" ? "Super Admin" : (tenant?.name || "Dashboard");
+
   return (
     <nav className="sticky top-0 z-50 glass border-b">
       <div className="flex h-16 items-center gap-4 px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-2">
-          {/* Menu Toggle Button - Always Visible */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleMenuClick}
-          >
+          <Button variant="ghost" size="icon" onClick={handleMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
-
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xl font-semibold">
-              Dashboard
-            </span>
+            <span className="text-xl font-semibold">{panelLabel}</span>
           </div>
+          {/* Agency Switcher - only for tenant context */}
+          {context === "tenant" && (
+            <div className="hidden md:block ml-2">
+              <AgencySwitcher />
+            </div>
+          )}
         </div>
 
         {/* Search Bar - Center */}
@@ -76,57 +82,59 @@ export function Navbar() {
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Theme Toggle */}
+          <LanguageSwitcher />
           <ThemeToggle />
 
-          {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    {unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {notifications.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No notifications
-                </div>
-              ) : (
-                notifications.slice(0, 5).map((notification) => (
-                  <DropdownMenuItem key={notification.id} className="p-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{notification.title}</span>
-                        {!notification.read && (
-                          <Badge variant="secondary" className="h-2 w-2 p-0" />
-                        )}
+          {/* Notifications — only shown when App Notifications feature is enabled */}
+          {appNotificationsEnabled && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No notifications
+                  </div>
+                ) : (
+                  notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem key={notification.id} className="p-3">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{notification.title}</span>
+                          {!notification.read && (
+                            <Badge variant="secondary" className="h-2 w-2 p-0" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {notification.message}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {notification.message}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src={user?.avatar} alt={user?.username} />
+                  <AvatarImage src={user?.avatar} alt={user?.firstName} />
                   <AvatarFallback className="bg-gradient-primary text-white">
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </AvatarFallback>
@@ -145,7 +153,7 @@ export function Navbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+              <DropdownMenuItem onClick={() => router.push(context === "super_admin" ? "/admin/settings" : "/settings")}>
                 <User className="mr-2 h-4 w-4" />
                 Profile Settings
               </DropdownMenuItem>

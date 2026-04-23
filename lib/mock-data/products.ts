@@ -1,371 +1,327 @@
-import { Product, Category } from "@/lib/types";
+import type { Product } from '@/lib/types';
 
-export const mockCategories: Category[] = [
-  {
-    id: "1",
-    name: "Electronics",
-    slug: "electronics",
-    description: "Electronic devices and gadgets",
-    icon: "Laptop",
-    productsCount: 45,
-    createdAt: new Date(2024, 0, 1).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Clothing",
-    slug: "clothing",
-    description: "Fashion and apparel",
-    icon: "Shirt",
-    productsCount: 89,
-    createdAt: new Date(2024, 0, 1).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "Books",
-    slug: "books",
-    description: "Books and publications",
-    icon: "BookOpen",
-    productsCount: 124,
-    createdAt: new Date(2024, 0, 1).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    name: "Home & Garden",
-    slug: "home-garden",
-    description: "Home improvement and garden supplies",
-    icon: "Home",
-    productsCount: 67,
-    createdAt: new Date(2024, 0, 1).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    name: "Sports",
-    slug: "sports",
-    description: "Sports equipment and gear",
-    icon: "Dumbbell",
-    productsCount: 52,
-    createdAt: new Date(2024, 0, 1).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+// ============================================================
+// Mock Products
+// ============================================================
 
 export const mockProducts: Product[] = [
+  // --- Milk Products (Crates) ---
   {
-    id: "1",
-    name: "Wireless Headphones Pro",
-    description:
-      "Premium wireless headphones with active noise cancellation and 30-hour battery life. Crystal clear sound quality with deep bass.",
-    price: 299.99,
-    images: [
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
-      "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500",
-    ],
-    category: mockCategories[0],
-    categoryId: "1",
-    status: "published",
-    stock: 45,
-    sku: "WH-PRO-001",
-    tags: [
-      { id: "1", name: "Audio", slug: "audio", createdAt: "", updatedAt: "" },
-      { id: "2", name: "Wireless", slug: "wireless", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 0, 15).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-1',
+    productCode: 'MLK-FC-1L',
+    name: 'Full Cream Milk 1L',
+    shortName: 'Milk 1L',
+    category: 'Crate',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 672,
+    sellingPricePerUnit: 720,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Full cream milk 1L pouches, 12 per crate',
+    createdAt: '2025-08-20T08:00:00.000Z',
+    updatedAt: '2026-01-10T12:00:00.000Z',
   },
   {
-    id: "2",
-    name: "Smart Watch Series X",
-    description:
-      "Advanced fitness tracking, heart rate monitor, GPS, and smartphone notifications. Water-resistant up to 50m.",
-    price: 399.99,
-    images: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500",
-      "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500",
-    ],
-    category: mockCategories[0],
-    categoryId: "1",
-    status: "published",
-    stock: 32,
-    sku: "SW-SX-001",
-    tags: [
-      { id: "3", name: "Wearable", slug: "wearable", createdAt: "", updatedAt: "" },
-      { id: "4", name: "Fitness", slug: "fitness", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 1, 10).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-2',
+    productCode: 'MLK-FC-500',
+    name: 'Full Cream Milk 500ml',
+    shortName: 'Milk 500ml',
+    category: 'Crate',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 696,
+    sellingPricePerUnit: 744,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Full cream milk 500ml pouches, 24 per crate',
+    createdAt: '2025-08-20T08:15:00.000Z',
+    updatedAt: '2026-01-10T12:00:00.000Z',
   },
   {
-    id: "3",
-    name: "4K Ultra HD Camera",
-    description:
-      "Professional-grade camera with 4K video recording, image stabilization, and Wi-Fi connectivity. Perfect for content creators.",
-    price: 1299.99,
-    images: [
-      "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500",
-    ],
-    category: mockCategories[0],
-    categoryId: "1",
-    status: "published",
-    stock: 18,
-    sku: "CAM-4K-001",
-    tags: [
-      { id: "5", name: "Photography", slug: "photography", createdAt: "", updatedAt: "" },
-      { id: "6", name: "Professional", slug: "professional", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 2, 5).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-3',
+    productCode: 'MLK-TN-1L',
+    name: 'Toned Milk 1L',
+    shortName: 'Toned 1L',
+    category: 'Crate',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 540,
+    sellingPricePerUnit: 576,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Toned milk 1L pouches, 12 per crate',
+    createdAt: '2025-08-20T08:30:00.000Z',
+    updatedAt: '2026-01-10T12:00:00.000Z',
   },
   {
-    id: "4",
-    name: "Premium Cotton T-Shirt",
-    description:
-      "Ultra-soft 100% organic cotton t-shirt. Available in multiple colors. Perfect for everyday wear.",
-    price: 29.99,
-    images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500",
-    ],
-    category: mockCategories[1],
-    categoryId: "2",
-    status: "published",
-    stock: 156,
-    sku: "TS-COT-001",
-    tags: [
-      { id: "7", name: "Casual", slug: "casual", createdAt: "", updatedAt: "" },
-      { id: "8", name: "Organic", slug: "organic", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 2, 20).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-4',
+    productCode: 'MLK-DT-1L',
+    name: 'Double Toned Milk 1L',
+    shortName: 'DT Milk 1L',
+    category: 'Crate',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 456,
+    sellingPricePerUnit: 492,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Double toned milk 1L pouches, 12 per crate',
+    createdAt: '2025-08-20T08:45:00.000Z',
+    updatedAt: '2026-01-10T12:00:00.000Z',
+  },
+
+  // --- Curd Products (Box) ---
+  {
+    id: 'product-5',
+    productCode: 'CRD-500G',
+    name: 'Fresh Curd 500g',
+    shortName: 'Curd 500g',
+    category: 'Box',
+    quantityPerUnit: 20,
+    purchasePricePerUnit: 800,
+    sellingPricePerUnit: 880,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Fresh curd 500g cups, 20 per box',
+    createdAt: '2025-08-25T09:00:00.000Z',
+    updatedAt: '2026-01-12T10:00:00.000Z',
   },
   {
-    id: "5",
-    name: "Designer Jeans",
-    description:
-      "Slim-fit designer jeans with premium denim fabric. Comfortable and stylish for any occasion.",
-    price: 89.99,
-    images: [
-      "https://images.unsplash.com/photo-1542272604-787c3835535d?w=500",
-    ],
-    category: mockCategories[1],
-    categoryId: "2",
-    status: "published",
-    stock: 78,
-    sku: "JN-DES-001",
-    tags: [
-      { id: "7", name: "Casual", slug: "casual", createdAt: "", updatedAt: "" },
-      { id: "9", name: "Denim", slug: "denim", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 3, 8).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-6',
+    productCode: 'CRD-200G',
+    name: 'Fresh Curd 200g',
+    shortName: 'Curd 200g',
+    category: 'Box',
+    quantityPerUnit: 30,
+    purchasePricePerUnit: 600,
+    sellingPricePerUnit: 660,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Fresh curd 200g cups, 30 per box',
+    createdAt: '2025-08-25T09:15:00.000Z',
+    updatedAt: '2026-01-12T10:00:00.000Z',
+  },
+
+  // --- Butter Products (Box) ---
+  {
+    id: 'product-7',
+    productCode: 'BTR-250G',
+    name: 'Salted Butter 250g',
+    shortName: 'Butter 250g',
+    category: 'Box',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 5400,
+    sellingPricePerUnit: 5808,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Salted table butter 250g packs, 24 per box',
+    createdAt: '2025-08-22T10:00:00.000Z',
+    updatedAt: '2026-01-15T08:00:00.000Z',
   },
   {
-    id: "6",
-    name: "The Art of Programming",
-    description:
-      "Comprehensive guide to modern programming practices. Covers algorithms, design patterns, and best practices.",
-    price: 49.99,
-    images: [
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500",
-    ],
-    category: mockCategories[2],
-    categoryId: "3",
-    status: "published",
-    stock: 234,
-    sku: "BK-PROG-001",
-    tags: [
-      { id: "10", name: "Technology", slug: "technology", createdAt: "", updatedAt: "" },
-      { id: "11", name: "Education", slug: "education", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 4, 12).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-8',
+    productCode: 'BTR-100G',
+    name: 'Salted Butter 100g',
+    shortName: 'Butter 100g',
+    category: 'Box',
+    quantityPerUnit: 50,
+    purchasePricePerUnit: 2300,
+    sellingPricePerUnit: 2500,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Salted table butter 100g packs, 50 per box',
+    createdAt: '2025-08-22T10:15:00.000Z',
+    updatedAt: '2026-01-15T08:00:00.000Z',
+  },
+
+  // --- Ghee Products (Box) ---
+  {
+    id: 'product-9',
+    productCode: 'GHE-500ML',
+    name: 'Pure Cow Ghee 500ml',
+    shortName: 'Ghee 500ml',
+    category: 'Box',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 4260,
+    sellingPricePerUnit: 4620,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Pure cow ghee 500ml jars, 12 per box',
+    createdAt: '2025-08-25T11:00:00.000Z',
+    updatedAt: '2026-01-18T14:00:00.000Z',
   },
   {
-    id: "7",
-    name: "Wireless Keyboard & Mouse",
-    description:
-      "Ergonomic wireless keyboard and mouse combo. Silent keys, long battery life, and comfortable design.",
-    price: 79.99,
-    images: [
-      "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500",
-    ],
-    category: mockCategories[0],
-    categoryId: "1",
-    status: "published",
-    stock: 67,
-    sku: "KM-WLS-001",
-    tags: [
-      { id: "2", name: "Wireless", slug: "wireless", createdAt: "", updatedAt: "" },
-      { id: "12", name: "Accessories", slug: "accessories", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 5, 3).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-10',
+    productCode: 'GHE-1L',
+    name: 'Pure Cow Ghee 1L',
+    shortName: 'Ghee 1L',
+    category: 'Box',
+    quantityPerUnit: 6,
+    purchasePricePerUnit: 4080,
+    sellingPricePerUnit: 4410,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Pure cow ghee 1L tin, 6 per box',
+    createdAt: '2025-08-25T11:15:00.000Z',
+    updatedAt: '2026-01-18T14:00:00.000Z',
+  },
+
+  // --- Paneer Products (Box) ---
+  {
+    id: 'product-11',
+    productCode: 'PNR-200G',
+    name: 'Fresh Paneer 200g',
+    shortName: 'Paneer 200g',
+    category: 'Box',
+    quantityPerUnit: 25,
+    purchasePricePerUnit: 1850,
+    sellingPricePerUnit: 2000,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Fresh cottage paneer 200g blocks, 25 per box',
+    createdAt: '2025-08-28T08:00:00.000Z',
+    updatedAt: '2026-01-20T09:00:00.000Z',
   },
   {
-    id: "8",
-    name: "LED Desk Lamp",
-    description:
-      "Modern LED desk lamp with adjustable brightness and color temperature. USB charging port included.",
-    price: 45.99,
-    images: [
-      "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=500",
-    ],
-    category: mockCategories[3],
-    categoryId: "4",
-    status: "published",
-    stock: 92,
-    sku: "LP-LED-001",
-    tags: [
-      { id: "13", name: "Lighting", slug: "lighting", createdAt: "", updatedAt: "" },
-      { id: "14", name: "Office", slug: "office", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 6, 18).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-12',
+    productCode: 'PNR-500G',
+    name: 'Fresh Paneer 500g',
+    shortName: 'Paneer 500g',
+    category: 'Box',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 2064,
+    sellingPricePerUnit: 2256,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Fresh cottage paneer 500g blocks, 12 per box',
+    createdAt: '2025-08-28T08:15:00.000Z',
+    updatedAt: '2026-01-20T09:00:00.000Z',
+  },
+
+  // --- Cheese Products (Box) ---
+  {
+    id: 'product-13',
+    productCode: 'CHS-200G',
+    name: 'Cheese Slices 200g',
+    shortName: 'Cheese 200g',
+    category: 'Box',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 2760,
+    sellingPricePerUnit: 3000,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Processed cheese slices 200g (10 slices), 24 per box',
+    createdAt: '2025-09-15T09:00:00.000Z',
+    updatedAt: '2026-01-22T11:00:00.000Z',
   },
   {
-    id: "9",
-    name: "Yoga Mat Pro",
-    description:
-      "Extra thick yoga mat with superior grip and cushioning. Eco-friendly materials and carrying strap included.",
-    price: 34.99,
-    images: [
-      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=500",
-    ],
-    category: mockCategories[4],
-    categoryId: "5",
-    status: "published",
-    stock: 145,
-    sku: "YG-MAT-001",
-    tags: [
-      { id: "4", name: "Fitness", slug: "fitness", createdAt: "", updatedAt: "" },
-      { id: "15", name: "Yoga", slug: "yoga", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 7, 5).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-14',
+    productCode: 'CHS-400G',
+    name: 'Cheese Block 400g',
+    shortName: 'Cheese 400g',
+    category: 'Box',
+    quantityPerUnit: 12,
+    purchasePricePerUnit: 2592,
+    sellingPricePerUnit: 2808,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Processed cheese block 400g, 12 per box',
+    createdAt: '2025-09-15T09:15:00.000Z',
+    updatedAt: '2026-01-22T11:00:00.000Z',
+  },
+
+  // --- Buttermilk Products (Crate) ---
+  {
+    id: 'product-15',
+    productCode: 'BTM-500ML',
+    name: 'Plain Chaas 500ml',
+    shortName: 'Chaas 500ml',
+    category: 'Crate',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 576,
+    sellingPricePerUnit: 624,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Plain buttermilk 500ml bottles, 24 per crate',
+    createdAt: '2025-09-18T07:00:00.000Z',
+    updatedAt: '2026-01-25T10:00:00.000Z',
   },
   {
-    id: "10",
-    name: "Portable Bluetooth Speaker",
-    description:
-      "Compact waterproof speaker with 360-degree sound. 12-hour battery life and built-in microphone.",
-    price: 59.99,
-    images: [
-      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500",
-    ],
-    category: mockCategories[0],
-    categoryId: "1",
-    status: "draft",
-    stock: 0,
-    sku: "SPK-BT-001",
-    tags: [
-      { id: "1", name: "Audio", slug: "audio", createdAt: "", updatedAt: "" },
-      { id: "2", name: "Wireless", slug: "wireless", createdAt: "", updatedAt: "" },
-    ],
-    createdAt: new Date(2024, 8, 22).toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: 'product-16',
+    productCode: 'BTM-MAS-500',
+    name: 'Masala Chaas 500ml',
+    shortName: 'Masala Chaas',
+    category: 'Crate',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 672,
+    sellingPricePerUnit: 744,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Spiced buttermilk 500ml bottles, 24 per crate',
+    createdAt: '2025-09-18T07:15:00.000Z',
+    updatedAt: '2026-01-25T10:00:00.000Z',
+  },
+
+  // --- Lassi Products (Crate) ---
+  {
+    id: 'product-17',
+    productCode: 'LAS-200ML',
+    name: 'Sweet Lassi 200ml',
+    shortName: 'Lassi 200ml',
+    category: 'Crate',
+    quantityPerUnit: 30,
+    purchasePricePerUnit: 720,
+    sellingPricePerUnit: 780,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Sweet lassi 200ml bottles, 30 per crate',
+    createdAt: '2025-09-20T07:30:00.000Z',
+    updatedAt: '2026-01-25T10:00:00.000Z',
+  },
+
+  // --- Flavored Milk Products (Crate) ---
+  {
+    id: 'product-18',
+    productCode: 'FML-CHO-200',
+    name: 'Chocolate Milk 200ml',
+    shortName: 'Choco Milk',
+    category: 'Crate',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 840,
+    sellingPricePerUnit: 912,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Chocolate flavored milk 200ml, 24 per crate',
+    createdAt: '2025-09-22T08:00:00.000Z',
+    updatedAt: '2026-01-28T09:00:00.000Z',
+  },
+  {
+    id: 'product-19',
+    productCode: 'FML-STR-200',
+    name: 'Strawberry Milk 200ml',
+    shortName: 'Strawberry',
+    category: 'Crate',
+    quantityPerUnit: 24,
+    purchasePricePerUnit: 840,
+    sellingPricePerUnit: 912,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Strawberry flavored milk 200ml, 24 per crate',
+    createdAt: '2025-09-22T08:15:00.000Z',
+    updatedAt: '2026-01-28T09:00:00.000Z',
+  },
+
+  // --- Cream Products (Box) ---
+  {
+    id: 'product-20',
+    productCode: 'CRM-200ML',
+    name: 'Fresh Cream 200ml',
+    shortName: 'Cream 200ml',
+    category: 'Box',
+    quantityPerUnit: 20,
+    purchasePricePerUnit: 1400,
+    sellingPricePerUnit: 1520,
+    isActive: true,
+    tenantId: 'tenant-1',
+    description: 'Fresh cream 200ml tubs, 20 per box',
+    createdAt: '2025-09-25T09:00:00.000Z',
+    updatedAt: '2026-01-30T10:00:00.000Z',
   },
 ];
-
-// Simulated API functions
-export const getProductsPage = (
-  page: number = 1,
-  pageSize: number = 12,
-  search: string = "",
-  category?: string,
-  status?: string,
-  sortBy: string = "createdAt",
-  sortOrder: "asc" | "desc" = "desc"
-) => {
-  let filtered = [...mockProducts];
-
-  // Apply search filter
-  if (search) {
-    const searchLower = search.toLowerCase();
-    filtered = filtered.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchLower) ||
-        product.description.toLowerCase().includes(searchLower) ||
-        product.sku.toLowerCase().includes(searchLower)
-    );
-  }
-
-  // Apply category filter
-  if (category && category !== "all") {
-    filtered = filtered.filter((product) => product.categoryId === category);
-  }
-
-  // Apply status filter
-  if (status && status !== "all") {
-    filtered = filtered.filter((product) => product.status === status);
-  }
-
-  // Apply sorting
-  filtered.sort((a, b) => {
-    let aVal: any = a[sortBy as keyof Product];
-    let bVal: any = b[sortBy as keyof Product];
-
-    if (sortBy === "price") {
-      aVal = Number(aVal);
-      bVal = Number(bVal);
-    }
-
-    if (sortOrder === "asc") {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
-  });
-
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const data = filtered.slice(start, end);
-
-  return {
-    data,
-    total,
-    page,
-    pageSize,
-    totalPages,
-  };
-};
-
-export const getProductById = (id: string): Product | undefined => {
-  return mockProducts.find((product) => product.id === id);
-};
-
-export const createProduct = (product: Omit<Product, "id" | "createdAt" | "updatedAt">): Product => {
-  const category = mockCategories.find(c => c.id === product.categoryId);
-  const newProduct: Product = {
-    ...product,
-    category: category!,
-    id: Date.now().toString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  mockProducts.push(newProduct);
-  return newProduct;
-};
-
-export const updateProduct = (id: string, updates: Partial<Product>): Product | undefined => {
-  const index = mockProducts.findIndex((product) => product.id === id);
-  if (index === -1) return undefined;
-
-  mockProducts[index] = {
-    ...mockProducts[index],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-  return mockProducts[index];
-};
-
-export const deleteProduct = (id: string): boolean => {
-  const index = mockProducts.findIndex((product) => product.id === id);
-  if (index === -1) return false;
-
-  mockProducts.splice(index, 1);
-  return true;
-};
