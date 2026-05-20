@@ -37,6 +37,14 @@ COPY . .
 # Set environment to production
 ENV NODE_ENV=production
 
+# NEXT_PUBLIC_* values must be baked into the bundle at build time. They are
+# passed in via docker-compose `build.args` and re-exported as ENV so that
+# `npm run build` (Next.js) picks them up during compilation.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 # Build the application
 RUN npm run build
 
