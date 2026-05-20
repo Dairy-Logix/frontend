@@ -29,7 +29,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci
+# npm install (not npm ci) because package-lock.json is not committed to this repo.
+# Once a lockfile is committed, switch back to `npm ci` for reproducible builds.
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -60,7 +62,7 @@ ENV NODE_ENV=production
 
 # Copy package files and install only production dependencies
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built application from builder
 COPY --from=builder /app/.next ./.next
