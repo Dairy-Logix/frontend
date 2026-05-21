@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, Milk } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useLogin } from "@/lib/hooks";
 
@@ -43,9 +44,14 @@ export default function LoginPage() {
       >
         <Card className="glass gradient-border">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-primary">
-              <Milk className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/logo-transparent.png"
+              alt="BeatMitra"
+              width={64}
+              height={64}
+              priority
+              className="mx-auto h-16 w-16 object-contain"
+            />
             <div>
               <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
               <CardDescription>Sign in to your account</CardDescription>

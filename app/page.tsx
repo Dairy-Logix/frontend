@@ -1,7 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Truck, Store, CreditCard, BarChart3, Users, Milk } from "lucide-react";
+import Image from "next/image";
+import {
+  ArrowRight,
+  Truck,
+  Store,
+  CreditCard,
+  BarChart3,
+  Users,
+  Boxes,
+  Milk,
+  CupSoda,
+  ShoppingBasket,
+  Cookie,
+  Snowflake,
+  Apple,
+  Wheat,
+  Pill,
+  Sparkles,
+  Cpu,
+  Hammer,
+  Shirt,
+  Footprints,
+  Wrench,
+  Factory,
+  Warehouse,
+  Utensils,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { MarketingHeader } from "@/components/layout/marketing-header";
@@ -25,28 +51,47 @@ export default function Home() {
             className="space-y-6"
           >
             <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.05, duration: 0.5 }}
+              className="flex justify-center"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 -m-8 rounded-full bg-gradient-primary opacity-20 blur-3xl pointer-events-none" />
+                <Image
+                  src="/Full_log-transparent.png"
+                  alt="BeatMitra"
+                  width={240}
+                  height={240}
+                  priority
+                  className="relative h-36 w-36 sm:h-44 sm:w-44 object-contain"
+                />
+              </div>
+            </motion.div>
+
+            <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, duration: 0.5 }}
               className="inline-block"
             >
               <div className="glass-subtle rounded-full px-4 py-2 border inline-flex items-center gap-2">
-                <Milk className="h-4 w-4 text-primary" />
+                <Boxes className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">
-                  Multi-Tenant Dairy Distribution Platform
+                  Multi-Tenant Distribution Management Platform
                 </span>
               </div>
             </motion.div>
 
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Manage Your Dairy{" "}
-              <span className="text-gradient-primary">Distribution</span>
+              Run Your Distribution{" "}
+              <span className="text-gradient-primary">Business</span>
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Connect factories, distributors, employees, and stores on one
-              platform. Streamline orders, deliveries, invoicing, and payment
-              collection for your dairy business.
+              Connect warehouses, distributors, field staff, and retailers on
+              one platform. Streamline orders, deliveries, invoicing, and
+              payment collection — across any product category.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -118,7 +163,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Everything Your Dairy Business Needs
+              Everything Your Distribution Business Needs
             </h2>
             <p className="text-lg text-muted-foreground">
               From order management to payment collection, all in one place
@@ -146,6 +191,40 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Industries Section */}
+      <section className="relative z-10 container mx-auto px-4 py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Built for every distribution business
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Whatever you distribute, BeatMitra adapts. No category-specific
+              lock-in — the same platform powers dairy, FMCG, pharma, hardware,
+              and many more.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {industries.map((industry, index) => (
+              <motion.div
+                key={industry.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.03 * index, duration: 0.4 }}
+                whileHover={{ y: -3 }}
+                className="glass-subtle rounded-lg p-4 flex items-center gap-3 border"
+              >
+                <div className="h-9 w-9 rounded-md bg-gradient-primary flex items-center justify-center shrink-0">
+                  <industry.icon className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium truncate">{industry.label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="relative z-10 container mx-auto px-4 py-20">
         <div className="max-w-3xl mx-auto text-center">
@@ -159,7 +238,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/signup">
                 <Button size="lg" className="bg-gradient-primary hover-glow-primary shine">
-                  Become a Distributor
+                  Start Free Trial
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -207,4 +286,25 @@ const features = [
     description: "Sales, collection, delivery, and financial reports with PDF and Excel export.",
     icon: BarChart3,
   },
+];
+
+const industries = [
+  { label: "Dairy & Milk", icon: Milk },
+  { label: "Beverages", icon: CupSoda },
+  { label: "Food & Grocery", icon: ShoppingBasket },
+  { label: "FMCG", icon: Boxes },
+  { label: "Bakery", icon: Cookie },
+  { label: "Frozen Foods", icon: Snowflake },
+  { label: "Fruits & Veggies", icon: Apple },
+  { label: "Agriculture", icon: Wheat },
+  { label: "Pharma & Medical", icon: Pill },
+  { label: "Personal Care", icon: Sparkles },
+  { label: "Electronics", icon: Cpu },
+  { label: "Hardware", icon: Hammer },
+  { label: "Textiles & Apparel", icon: Shirt },
+  { label: "Footwear", icon: Footprints },
+  { label: "Auto Parts", icon: Wrench },
+  { label: "Industrial Goods", icon: Factory },
+  { label: "Wholesale", icon: Warehouse },
+  { label: "Restaurants", icon: Utensils },
 ];

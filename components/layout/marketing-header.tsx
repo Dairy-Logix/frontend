@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Milk } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,9 +16,14 @@ export function MarketingHeader() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Milk className="h-4 w-4 text-white" />
-            </div>
+            <Image
+              src="/logo-transparent.png"
+              alt="BeatMitra"
+              width={36}
+              height={36}
+              priority
+              className="h-9 w-9 object-contain"
+            />
             <span className="text-xl font-bold text-gradient-primary">
               BeatMitra
             </span>
@@ -39,7 +44,7 @@ export function MarketingHeader() {
             {!isSignup && (
               <Link href="/signup">
                 <Button className="bg-gradient-primary hover-glow-primary">
-                  Become a Distributor
+                  Start Free Trial
                 </Button>
               </Link>
             )}

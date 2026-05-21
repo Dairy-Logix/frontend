@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BeatMitra | Multi-Tenant Dairy Management System",
-  description: "Comprehensive dairy management platform with multi-tenant architecture for dairy product distribution management",
+  title: "BeatMitra | Multi-Tenant Distribution Management Platform",
+  description: "Multi-tenant distribution management platform for any product category — orders, deliveries, invoicing, and payment collection in one place.",
 };
 
 export default function RootLayout({

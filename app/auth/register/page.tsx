@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, Milk, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useRegister } from "@/lib/hooks";
@@ -69,12 +70,17 @@ export default function RegisterPage() {
       >
         <Card className="glass gradient-border">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <Milk className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/logo-transparent.png"
+              alt="BeatMitra"
+              width={64}
+              height={64}
+              priority
+              className="mx-auto h-16 w-16 object-contain"
+            />
             <div>
               <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-              <CardDescription>Start managing your dairy distribution</CardDescription>
+              <CardDescription>Start managing your distribution business</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">

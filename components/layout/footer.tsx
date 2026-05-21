@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Github, Twitter, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -13,11 +14,15 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Left Section */}
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">B</span>
-            </div>
+            <Image
+              src="/logo-transparent.png"
+              alt="BeatMitra"
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+            />
             <span className="text-sm text-muted-foreground">
-              © {currentYear} Base Template. All rights reserved.
+              © {currentYear} BeatMitra. All rights reserved.
             </span>
           </div>
 

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
-  Milk,
   ArrowRight,
   ArrowLeft,
   Check,
@@ -161,12 +161,17 @@ export default function SignupPage() {
       >
         <Card className="glass gradient-border">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-primary">
-              <Milk className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/logo-transparent.png"
+              alt="BeatMitra"
+              width={64}
+              height={64}
+              priority
+              className="mx-auto h-16 w-16 object-contain"
+            />
             <div>
               <CardTitle className="text-2xl font-bold">
-                {step === 4 ? "Check your email" : "Become a Distributor"}
+                {step === 4 ? "Check your email" : "Create your account"}
               </CardTitle>
               <CardDescription>
                 {step === 4
