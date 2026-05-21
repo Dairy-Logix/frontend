@@ -13,10 +13,18 @@ export interface ApiResponse<T = unknown> {
 
 export interface PaginatedResponse<T = unknown> {
   data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  // Flat shape (used by some services e.g. products, notifications)
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+  // Nested shape (used by agencies, shopkeepers, invoices, payments, etc.)
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
   totals?: Record<string, number>;
 }
 
