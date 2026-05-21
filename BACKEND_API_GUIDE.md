@@ -1,6 +1,6 @@
 # Backend API Implementation Guide
 
-This guide outlines the exact API endpoints and response formats needed to integrate with the Dairy-Logix frontend.
+This guide outlines the exact API endpoints and response formats needed to integrate with the BeatMitra frontend.
 
 ---
 
@@ -646,8 +646,8 @@ backend/
 1. **Create Project**:
 ```bash
 npm i -g @nestjs/cli
-nest new dairy-logix-backend
-cd dairy-logix-backend
+nest new beatmitra-backend
+cd beatmitra-backend
 npm install @nestjs/typeorm @nestjs/jwt @nestjs/passport passport-jwt typeorm pg bcrypt
 ```
 

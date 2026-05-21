@@ -1,5 +1,5 @@
 // ============================================================
-// Dairy Logix - Domain Types & Interfaces
+// BeatMitra - Domain Types & Interfaces
 // ============================================================
 
 // --- Common Types ---
@@ -129,11 +129,69 @@ export interface DecodedToken {
 // --- Tenant Types ---
 
 export type TenantStatus = 'active' | 'inactive' | 'suspended';
-export type SubscriptionPlan = 'basic' | 'standard' | 'premium' | 'enterprise';
+export type SubscriptionPlan = 'basic' | 'standard' | 'premium';
+export type SubscriptionStatus =
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'locked'
+  | 'cancelled';
+
+export interface SubscriptionFeatures {
+  employees: boolean;
+  deliveries: boolean;
+  gpsTracking: boolean;
+  photoProofDelivery: boolean;
+  bulkImport: boolean;
+  advancedAnalytics: boolean;
+  pushNotifications: boolean;
+  appNotifications: boolean;
+}
+
+export interface SubscriptionLimits {
+  maxAgencies: number;
+  maxShopkeepers: number;
+  maxProducts: number;
+  maxUsers: number;
+  maxOrdersPerMonth: number;
+}
+
+export interface SubscriptionHistoryEntry {
+  planSlug: SubscriptionPlan;
+  startedAt: string;
+  endedAt?: string;
+  amountPaid: number;
+  paymentReference?: string;
+  activatedBy?: string;
+  features?: SubscriptionFeatures;
+  limits?: SubscriptionLimits;
+  note?: string;
+}
+
+export interface PlanPreset {
+  slug: SubscriptionPlan;
+  label: string;
+  description: string;
+  price: number;
+  currency: 'INR';
+  durationDays: number | null;
+  dataRetentionMinutes: number | null;
+  features: SubscriptionFeatures;
+  limits: SubscriptionLimits;
+}
+
+export interface FeatureCatalogEntry {
+  key: keyof SubscriptionFeatures;
+  label: string;
+  description: string;
+  category: 'Operations' | 'Productivity' | 'Reporting' | 'Notifications';
+}
 
 export interface Tenant {
   id: string;
+  _id?: string;
   name: string;
+  companyName?: string;
   slug: string;
   contactPerson: string;
   email: string;
@@ -142,6 +200,15 @@ export interface Tenant {
   logo?: string;
   status: TenantStatus;
   plan: SubscriptionPlan;
+  subscriptionPlan?: SubscriptionPlan;
+  subscriptionStatus?: SubscriptionStatus;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string;
+  amountPaid?: number;
+  paymentReference?: string;
+  features?: SubscriptionFeatures;
+  limits?: SubscriptionLimits;
+  subscriptionHistory?: SubscriptionHistoryEntry[];
   config: TenantConfig;
   agencyCount: number;
   createdAt: string;
@@ -157,6 +224,33 @@ export interface TenantConfig {
   defaultLanguage: SupportedLocale;
   timezone: string;
   currencyFormat: string;
+  orderPrint?: OrderPrintConfig;
+  orderPrintTemplates?: OrderPrintTemplate[];
+}
+
+export interface OrderPrintConfig {
+  enabledProductIds: string[];
+  enabledStoresByAgency: Record<string, string[]>;
+}
+
+export type PrintOrientation = 'portrait' | 'landscape';
+
+export interface OrderPrintMargins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export interface OrderPrintTemplate {
+  id: string;
+  name: string;
+  orientation: PrintOrientation;
+  margins: OrderPrintMargins;
+  showTitle: boolean;
+  titleText: string;
+  enabledProductIds: string[];
+  enabledStoresByAgency: Record<string, string[]>;
 }
 
 export interface TenantFeatures {
@@ -181,8 +275,6 @@ export interface TenantBranding {
 }
 
 export interface InvoiceSettings {
-  taxEnabled: boolean;
-  taxPercentage: number;
   invoicePrefix: string;
   invoiceNumberFormat: string;
   termsAndConditions?: string;
@@ -227,6 +319,8 @@ export interface UpdateSettingsInput {
   defaultLanguage?: SupportedLocale;
   timezone?: string;
   currencyFormat?: string;
+  orderPrint?: Partial<OrderPrintConfig>;
+  orderPrintTemplates?: OrderPrintTemplate[];
 }
 
 // --- Agency Types ---
@@ -280,7 +374,7 @@ export interface QueryAgenciesParams extends PaginationParams {
 
 // --- Product Types ---
 
-export type ProductCategory = 'Crate' | 'Box';
+export type ProductCategory = 'Crate' | 'Piece';
 
 export interface Product {
   id: string;
@@ -489,7 +583,6 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   subtotal: number;
-  tax: number;
   total: number;
   notes?: string;
   placedAt: string;
@@ -539,7 +632,9 @@ export interface InvoiceItem {
   productId: string;
   product?: Product;
   quantity: number;
+  quantityPerUnit?: number;
   unitPrice: number;
+  pricePerUnit?: number;
   totalPrice: number;
 }
 
@@ -556,9 +651,10 @@ export interface Invoice {
   deliveryId?: string;
   invoiceNumber: string;
   items: InvoiceItem[];
+  adjustments?: InvoiceAdjustment[];
+  source?: 'order' | 'transfer';
   status: InvoiceStatus;
   subtotal: number;
-  taxAmount: number;
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;
@@ -568,6 +664,29 @@ export interface Invoice {
   paidAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InvoiceAdjustmentItem {
+  productName: string;
+  productCode: string;
+  quantity: number;
+  unit: string;
+  quantityPerUnit?: number;
+  unitPrice: number;
+  price: number;
+  subtotal: number;
+}
+
+export interface InvoiceAdjustment {
+  type: 'transfer_in' | 'transfer_out';
+  transferId: string;
+  transferNumber: string;
+  counterpartyShopkeeperId: string;
+  counterpartyShopkeeperName: string;
+  items: InvoiceAdjustmentItem[];
+  amount: number;
+  date: string;
+  notes?: string;
 }
 
 export interface CreateInvoiceInput {
@@ -751,83 +870,43 @@ export interface QueryDeliveriesParams extends PaginationParams {
   search?: string;
 }
 
-// --- Factory Types ---
+// --- Purchase Types ---
 
-export type FactoryOrderStatus = 'draft' | 'sent' | 'confirmed' | 'fulfilled' | 'cancelled';
-
-export interface FactoryProduct {
-  id: string;
-  tenantId: string;
-  factoryName: string;
-  productId: string;
-  product?: Product;
-  factoryPrice: number;
-  factorySku?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface FactoryOrder {
-  id: string;
-  tenantId: string;
-  agencyId?: string;
-  agency?: Agency;
-  poNumber: string;
-  factoryName: string;
-  items: FactoryOrderItem[];
-  status: FactoryOrderStatus;
-  totalAmount: number;
-  notes?: string;
-  orderedAt: string;
-  confirmedAt?: string;
-  fulfilledAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface FactoryOrderItem {
-  id: string;
-  factoryOrderId: string;
-  productId: string;
-  product?: Product;
+export interface PurchaseItem {
+  productId: string | { _id: string; name?: string; code?: string; price?: number; unit?: string };
   quantity: number;
-  factoryPrice: number;
-  totalPrice: number;
 }
 
-export interface FactoryPayment {
-  id: string;
+export interface Purchase {
+  _id: string;
+  purchaseNumber: string;
+  agencyId: string | { _id: string; name?: string; code?: string };
+  purchaseDate: string;
+  items: PurchaseItem[];
+  basicAmount: number;
+  taxAmount: number;
+  subsidy: number;
   tenantId: string;
-  factoryOrderId?: string;
-  factoryOrder?: FactoryOrder;
-  factoryName: string;
-  amount: number;
-  paymentDate: string;
-  referenceNumber?: string;
-  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateFactoryOrderInput {
-  agencyId?: string;
-  factoryName: string;
-  items: {
-    productId: string;
-    quantity: number;
-    factoryPrice: number;
-  }[];
-  notes?: string;
+export interface CreatePurchaseItemInput {
+  productId: string;
+  quantity: number;
 }
 
-export interface CreateFactoryPaymentInput {
-  factoryOrderId?: string;
-  factoryName: string;
-  amount: number;
-  paymentDate: string;
-  referenceNumber?: string;
-  notes?: string;
+export interface CreatePurchaseInput {
+  purchaseNumber?: string;
+  agencyId: string;
+  purchaseDate: string;
+  items: CreatePurchaseItemInput[];
+  taxAmount?: number;
+  subsidy?: number;
+}
+
+export interface BulkCreatePurchasesInput {
+  purchases: CreatePurchaseInput[];
 }
 
 // --- Notification Types ---
@@ -839,7 +918,10 @@ export type NotificationEventType =
   | 'delivery_dispatched'
   | 'invoice_generated'
   | 'payment_reminder'
-  | 'payment_received';
+  | 'payment_received'
+  | 'invoice_transfer_in'
+  | 'invoice_transfer_out'
+  | 'wallet_credit';
 
 export interface Notification {
   id: string;
@@ -853,6 +935,58 @@ export interface Notification {
   read: boolean;
   data?: Record<string, unknown>;
   createdAt: string;
+}
+
+// Raw notification record returned by GET /notifications/sent — uses the
+// backend wire shape (ObjectId as string `_id`, snake_case enum `type`,
+// `isRead` instead of `read`, optional populated `userId`).
+export type SentNotificationType =
+  | 'order_created'
+  | 'order_confirmed'
+  | 'order_delivered'
+  | 'payment_received'
+  | 'invoice_generated'
+  | 'invoice_overdue'
+  | 'delivery_scheduled'
+  | 'delivery_completed'
+  | 'stock_low'
+  | 'stock_out'
+  | 'production_completed'
+  | 'quality_check_failed'
+  | 'invoice_transfer_in'
+  | 'invoice_transfer_out'
+  | 'wallet_credit'
+  | 'system';
+
+export type SentNotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface SentNotification {
+  _id: string;
+  tenantId: string;
+  tenantSlug: string;
+  type: SentNotificationType;
+  title: string;
+  message: string;
+  priority?: SentNotificationPriority;
+  userId:
+    | string
+    | {
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        role?: string;
+      }
+    | null;
+  userName?: string;
+  isRead: boolean;
+  readAt?: string;
+  data?: Record<string, unknown>;
+  actionUrl?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface NotificationPreference {
@@ -935,15 +1069,107 @@ export interface SuperAdminDashboardStats {
 
 export interface TenantDashboardStats {
   ordersToday: number;
-  pendingDeliveries: number;
+  pendingPlacedOrders: number;
   pendingCollections: number;
-  totalShopkeepers: number;
+  activeShopkeepers: number;
   activeEmployees: number;
-  revenueThisMonth: number;
   outstandingPayments: number;
   dailyOrderTrend: AnalyticsData;
   productSales: AnalyticsData;
   collectionVsOutstanding: AnalyticsData;
+}
+
+// --- Analytics (dashboard charts) ---
+
+export type AnalyticsRange = 'day' | 'week' | 'month' | 'year' | 'custom';
+
+export interface AnalyticsQuery {
+  range: AnalyticsRange;
+  from?: string;
+  to?: string;
+  agencyId?: string;
+}
+
+export interface AnalyticsAgencyOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+export interface DailyOrdersPoint {
+  label: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface SalesPurchaseMarginPoint {
+  label: string;
+  sales: number;
+  purchase: number;
+  profit: number;
+  margin: number;
+  estimated: boolean;
+}
+
+export interface TopStorePoint {
+  shopkeeperId: string;
+  name: string;
+  revenue: number;
+}
+
+export interface ExpenseCategoryPoint {
+  category: string;
+  label: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface ExpenseBreakdown {
+  total: number;
+  categories: ExpenseCategoryPoint[];
+}
+
+export interface ReceivablesAgingPoint {
+  bucket: string;
+  Paid: number;
+  Partial: number;
+  Unpaid: number;
+  total: number;
+}
+
+export type TopProductsCriterion = 'revenue' | 'quantity' | 'profit' | 'margin';
+
+export interface TopProductPoint {
+  productId: string;
+  name: string;
+  code?: string;
+  revenue: number;
+  quantity: number;
+  profit: number;
+  margin: number;
+}
+
+export interface TopProductsQuery {
+  criterion: TopProductsCriterion;
+  days?: number;
+  limit?: number;
+  agencyId?: string;
+}
+
+export interface TopProductsResult {
+  criterion: TopProductsCriterion;
+  days: number;
+  products: TopProductPoint[];
+}
+
+export interface TenantAnalytics {
+  range: { type: AnalyticsRange; from: string; to: string };
+  agencies: AnalyticsAgencyOption[];
+  dailyOrders: DailyOrdersPoint[];
+  salesPurchaseMargin: SalesPurchaseMarginPoint[];
+  topStores: TopStorePoint[];
+  expenseBreakdown: ExpenseBreakdown;
+  receivablesAging: ReceivablesAgingPoint[];
 }
 
 export interface DashboardActivity {
@@ -1023,4 +1249,77 @@ export interface TableProps<T = unknown> {
     edit?: (row: T) => void;
     delete?: (row: T) => void;
   };
+}
+
+// --- Expense Types ---
+
+export type ExpenseCategory =
+  | 'vehicle_fuel'
+  | 'vehicle_maintenance'
+  | 'employee_salary'
+  | 'product_loss'
+  | 'rent'
+  | 'utilities'
+  | 'office'
+  | 'other';
+
+export type ExpensePaymentMode = 'cash' | 'bank' | 'upi' | 'cheque';
+
+export type ExpenseReferenceType = 'vehicle' | 'employee' | 'product';
+
+export interface Expense {
+  id: string;
+  _id?: string;
+  expenseNumber: string;
+  category: ExpenseCategory;
+  subcategory?: string;
+  amount: number;
+  date: string;
+  paymentMode: ExpensePaymentMode;
+  description?: string;
+  vendorName?: string;
+  agencyId?: string;
+  agencyName?: string;
+  referenceId?: string;
+  referenceType?: ExpenseReferenceType;
+  attachmentUrl?: string;
+  createdById?: string;
+  createdByName?: string;
+  isDeleted?: boolean;
+  tenantId: string;
+  tenantSlug: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseInput {
+  category: ExpenseCategory;
+  subcategory?: string;
+  amount: number;
+  date: string;
+  paymentMode?: ExpensePaymentMode;
+  description?: string;
+  vendorName?: string;
+  agencyId?: string;
+  agencyName?: string;
+  referenceId?: string;
+  referenceType?: ExpenseReferenceType;
+  attachmentUrl?: string;
+}
+
+export type UpdateExpenseInput = Partial<CreateExpenseInput>;
+
+export interface QueryExpensesParams extends PaginationParams {
+  category?: ExpenseCategory;
+  agencyId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ExpenseSummary {
+  totalAmount: number;
+  totalCount: number;
+  byCategory: Array<{ _id: ExpenseCategory; count: number; totalAmount: number }>;
+  byMonth: Array<{ _id: { year: number; month: number }; count: number; totalAmount: number }>;
+  byAgency: Array<{ _id: string; agencyName?: string; count: number; totalAmount: number }>;
 }

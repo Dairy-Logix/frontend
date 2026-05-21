@@ -459,33 +459,49 @@ export default function OrderDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {order.items.map((item, index) => (
-                  <motion.tr
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2, delay: 0.4 + index * 0.05 }}
-                    className="border-b border-border/20 last:border-0"
-                  >
-                    <td className="py-3 pr-4">
-                      <p className="font-medium">{getProductName(item.productId)}</p>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <p className="text-muted-foreground">
-                        {getProductDisplay(item.productId)}
-                      </p>
-                    </td>
-                    <td className="py-3 pr-4 text-center font-medium">
-                      {item.quantity}
-                    </td>
-                    <td className="py-3 pr-4 text-right text-muted-foreground">
-                      {formatINR(item.unitPrice)}
-                    </td>
-                    <td className="py-3 text-right font-semibold">
-                      {formatINR(item.totalPrice)}
-                    </td>
-                  </motion.tr>
-                ))}
+                {order.items.map((item, index) => {
+                  const qtyPerUnit = (item as any).quantityPerUnit ?? 1;
+                  const isPiece = qtyPerUnit <= 1;
+                  const piecePrice =
+                    qtyPerUnit > 1 && item.unitPrice
+                      ? item.unitPrice / qtyPerUnit
+                      : item.unitPrice;
+                  return (
+                    <motion.tr
+                      key={item.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2, delay: 0.4 + index * 0.05 }}
+                      className="border-b border-border/20 last:border-0"
+                    >
+                      <td className="py-3 pr-4">
+                        <p className="font-medium">{getProductName(item.productId)}</p>
+                        {!isPiece && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {qtyPerUnit} pcs × {formatINR(piecePrice)} = {formatINR(item.unitPrice)}/crate
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <p className="text-muted-foreground">
+                          {getProductDisplay(item.productId)}
+                        </p>
+                      </td>
+                      <td className="py-3 pr-4 text-center font-medium">
+                        {item.quantity}
+                      </td>
+                      <td className="py-3 pr-4 text-right text-muted-foreground">
+                        {formatINR(item.unitPrice)}
+                        {!isPiece && (
+                          <span className="block text-[11px]">/crate</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right font-semibold">
+                        {formatINR(item.totalPrice)}
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -496,10 +512,6 @@ export default function OrderDetailPage() {
               <div className="flex items-center justify-between w-full max-w-xs">
                 <span className="text-sm text-muted-foreground">Subtotal</span>
                 <span className="text-sm font-medium">{formatINR(order.subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between w-full max-w-xs">
-                <span className="text-sm text-muted-foreground">Tax</span>
-                <span className="text-sm font-medium">{formatINR(order.tax)}</span>
               </div>
               <div className="flex items-center justify-between w-full max-w-xs pt-2 border-t border-border/50">
                 <span className="text-base font-semibold">Total</span>

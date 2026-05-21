@@ -1,5 +1,5 @@
 // ============================================================
-// Dairy Logix - Zod Validation Schemas Barrel Exports
+// BeatMitra - Zod Validation Schemas Barrel Exports
 // ============================================================
 
 // Authentication schemas

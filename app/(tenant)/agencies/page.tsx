@@ -42,6 +42,7 @@ import {
   useDeleteAgency,
   useToggleAcceptingOrders,
 } from "@/lib/hooks";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const statusColorMap: Record<
   string,
@@ -60,6 +61,7 @@ const agencyTypeColorMap: Record<
 };
 
 export default function AgenciesPage() {
+  const tPage = useTranslations("pages.agencies");
   const router = useRouter();
 
   // Filter state
@@ -212,8 +214,8 @@ export default function AgenciesPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Agencies"
-          description="Manage your distribution agencies"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

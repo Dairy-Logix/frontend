@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useCreateTenant } from "@/lib/hooks";
 
 import type { SubscriptionPlan } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 function slugify(text: string): string {
   return text
@@ -85,6 +86,7 @@ const itemVariants = {
 };
 
 export default function CreateTenantPage() {
+  const tPage = useTranslations("pages.adminTenantCreate");
   const router = useRouter();
   const createTenant = useCreateTenant();
   const [form, setForm] = useState<FormState>(initialState);
@@ -323,48 +325,16 @@ export default function CreateTenantPage() {
                       <SelectValue placeholder="Select a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">Free - 5 users, 100 products, 500 orders</SelectItem>
-                      <SelectItem value="basic">Basic - 20 users, 500 products, 2K orders</SelectItem>
-                      <SelectItem value="premium">Premium - 50 users, 2K products, 10K orders</SelectItem>
-                      <SelectItem value="enterprise">Enterprise - Unlimited</SelectItem>
+                      <SelectItem value="basic">Basic — ₹399/mo</SelectItem>
+                      <SelectItem value="standard">Standard — ₹599/mo</SelectItem>
+                      <SelectItem value="premium">Premium — ₹899/mo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {form.plan && (
-                  <div className="p-4 rounded-lg bg-muted/50 border text-sm">
-                    <p className="font-medium mb-2">Plan Limits:</p>
-                    <ul className="space-y-1 text-muted-foreground">
-                      {form.plan === "free" && (
-                        <>
-                          <li>• Max Users: 5</li>
-                          <li>• Max Products: 100</li>
-                          <li>• Max Orders: 500</li>
-                        </>
-                      )}
-                      {form.plan === "basic" && (
-                        <>
-                          <li>• Max Users: 20</li>
-                          <li>• Max Products: 500</li>
-                          <li>• Max Orders: 2,000</li>
-                        </>
-                      )}
-                      {form.plan === "premium" && (
-                        <>
-                          <li>• Max Users: 50</li>
-                          <li>• Max Products: 2,000</li>
-                          <li>• Max Orders: 10,000</li>
-                        </>
-                      )}
-                      {form.plan === "enterprise" && (
-                        <>
-                          <li>• Max Users: Unlimited</li>
-                          <li>• Max Products: Unlimited</li>
-                          <li>• Max Orders: Unlimited</li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Manual creation skips Razorpay. Customers normally sign up via{" "}
+                  <code>/signup</code> with a 10-day trial.
+                </p>
               </CardContent>
             </Card>
           </motion.div>

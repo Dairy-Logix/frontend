@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Truck, Store, CreditCard, BarChart3, Users, Milk } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 
 export default function Home() {
   return (
@@ -12,31 +13,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_var(--gradient-primary-start)_0%,_transparent_50%)] opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,_var(--gradient-secondary-start)_0%,_transparent_50%)] opacity-20 pointer-events-none" />
 
-      {/* Navigation */}
-      <nav className="relative z-10 glass border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <Milk className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gradient-primary">
-                Dairy Logix
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/auth/login">
-                <Button variant="ghost">Login</Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button className="bg-gradient-primary hover-glow-primary">
-                  Get Started
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MarketingHeader />
 
       {/* Hero Section */}
       <section className="relative z-10 container mx-auto px-4 py-20 md:py-32">
@@ -73,18 +50,22 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/auth/register">
+              <Link href="/signup">
                 <Button size="lg" className="bg-gradient-primary hover-glow-primary shine">
-                  Start Free Trial
+                  Start 10-day Free Trial
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/auth/login">
+              <Link href="/pricing">
                 <Button size="lg" variant="outline" className="glass-subtle">
-                  Sign In to Dashboard
+                  See Pricing
                 </Button>
               </Link>
             </div>
+            <p className="text-sm text-muted-foreground pt-2">
+              No card needed. Try the demo:{" "}
+              <span className="font-mono">demo@beatmitra.com / Demo@123</span>
+            </p>
           </motion.div>
 
           {/* Stats Grid */}
@@ -161,6 +142,33 @@ export default function Home() {
                 <p className="text-muted-foreground">{feature.description}</p>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative z-10 container mx-auto px-4 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="glass gradient-border rounded-2xl p-10 md:p-14">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Ready to get started?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Sign up in two minutes. 10-day free trial on every plan, no card required.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/signup">
+                <Button size="lg" className="bg-gradient-primary hover-glow-primary shine">
+                  Become a Distributor
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/pricing">
+                <Button size="lg" variant="outline" className="glass-subtle">
+                  Compare Plans
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>

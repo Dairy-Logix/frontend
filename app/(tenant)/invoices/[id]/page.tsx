@@ -13,6 +13,8 @@ import {
   MessageCircle,
   Calendar,
   Package,
+  PlusCircle,
+  MinusCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -278,7 +280,8 @@ export default function InvoiceDetailPage() {
             </motion.div>
           )}
 
-          {/* Items Table */}
+          {/* Items Table — hide entirely when invoice was created from a transfer (no original items) */}
+          {invoice.items.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -312,52 +315,175 @@ export default function InvoiceDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.items.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
-                        No items on this invoice
-                      </td>
-                    </tr>
-                  ) : (
-                    invoice.items.map((item, index) => (
-                      <motion.tr
-                        key={item.id || index}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, delay: 0.3 + index * 0.05 }}
-                        className="border-b border-border/30 last:border-0"
-                      >
-                        <td className="py-3 px-6">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">
-                              {(item as any).productName || "Unknown Product"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
-                          {(item as any).productCode || "—"}
-                        </td>
-                        <td className="py-3 px-4 text-center">{item.quantity}</td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <IndianRupee className="h-3 w-3 text-muted-foreground" />
-                            {(item.unitPrice ?? 0).toLocaleString("en-IN")}
-                          </div>
-                        </td>
-                        <td className="py-3 px-6 text-right font-semibold">
-                          <div className="flex items-center justify-end gap-1">
-                            <IndianRupee className="h-3 w-3 text-muted-foreground" />
-                            {(item.totalPrice ?? 0).toLocaleString("en-IN")}
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))
-                  )}
+                  {invoice.items.map((item, index) => {
+                      const qtyPerUnit = item.quantityPerUnit ?? 1;
+                      const isPiece = qtyPerUnit <= 1;
+                      const piecePrice = item.unitPrice ?? 0;
+                      const linePrice = item.pricePerUnit ?? piecePrice * qtyPerUnit;
+                      return (
+                        <motion.tr
+                          key={item.id || index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: 0.3 + index * 0.05 }}
+                          className="border-b border-border/30 last:border-0"
+                        >
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">
+                                {(item as any).productName || "Unknown Product"}
+                              </span>
+                            </div>
+                            {!isPiece && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5 ml-6">
+                                {qtyPerUnit} pcs × ₹{piecePrice.toLocaleString("en-IN")} = ₹{linePrice.toLocaleString("en-IN")}/crate
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
+                            {(item as any).productCode || "—"}
+                          </td>
+                          <td className="py-3 px-4 text-center">{item.quantity}</td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <IndianRupee className="h-3 w-3 text-muted-foreground" />
+                              {(isPiece ? piecePrice : linePrice).toLocaleString("en-IN")}
+                            </div>
+                            {!isPiece && (
+                              <span className="block text-[11px] text-muted-foreground">/crate</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-6 text-right font-semibold">
+                            <div className="flex items-center justify-end gap-1">
+                              <IndianRupee className="h-3 w-3 text-muted-foreground" />
+                              {(item.totalPrice ?? 0).toLocaleString("en-IN")}
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
           </motion.div>
+          )}
+
+          {/* Adjustments (transfers in / out) */}
+          {(invoice as any).adjustments && (invoice as any).adjustments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.25 }}
+              className="glass rounded-xl overflow-hidden"
+            >
+              <div className="p-6 pb-3">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Adjustments
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Items added to or returned from this invoice after it was issued.
+                  Counterparty information is for internal admin reference only —
+                  it is not shown on the customer-facing invoice or PDF.
+                </p>
+              </div>
+              <div className="px-6 pb-6 space-y-4">
+                {(invoice as any).adjustments.map((adj: any, idx: number) => {
+                  const isIn = adj.type === "transfer_in";
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-lg border border-border/50 overflow-hidden"
+                    >
+                      <div
+                        className={`px-4 py-2.5 flex items-center justify-between text-sm ${
+                          isIn
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isIn ? (
+                            <PlusCircle className="h-4 w-4" />
+                          ) : (
+                            <MinusCircle className="h-4 w-4" />
+                          )}
+                          <div>
+                            <div className="font-medium">
+                              {isIn
+                                ? "Additional items added"
+                                : "Items removed"}
+                            </div>
+                            <div className="text-[11px] opacity-80 mt-0.5">
+                              {isIn ? "From" : "To"}:{" "}
+                              <span className="font-medium">
+                                {adj.counterpartyShopkeeperName || "—"}
+                              </span>
+                              {adj.transferNumber && (
+                                <span className="ml-2 font-mono">
+                                  ({adj.transferNumber})
+                                </span>
+                              )}
+                              <span className="ml-2">
+                                · {formatDate(adj.date)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 font-semibold">
+                          <IndianRupee className="h-3 w-3" />
+                          {Math.abs(adj.amount ?? 0).toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border/30 text-xs text-muted-foreground">
+                            <th className="text-left py-2 px-4 font-medium">Product</th>
+                            <th className="text-center py-2 px-3 font-medium">Qty</th>
+                            <th className="text-right py-2 px-3 font-medium">Unit Price</th>
+                            <th className="text-right py-2 px-4 font-medium">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(adj.items || []).map((item: any, i: number) => (
+                            <tr
+                              key={i}
+                              className="border-b border-border/20 last:border-0"
+                            >
+                              <td className="py-2 px-4">
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>{item.productName}</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 ml-5 font-mono">
+                                  {item.productCode}
+                                </p>
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                {item.quantity}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <IndianRupee className="h-3 w-3 text-muted-foreground" />
+                                  {(item.price ?? 0).toLocaleString("en-IN")}
+                                </div>
+                              </td>
+                              <td className="py-2 px-4 text-right font-medium">
+                                <div className="flex items-center justify-end gap-1">
+                                  <IndianRupee className="h-3 w-3 text-muted-foreground" />
+                                  {(item.subtotal ?? 0).toLocaleString("en-IN")}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Right Column: Summary */}

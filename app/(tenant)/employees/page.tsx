@@ -48,6 +48,7 @@ import {
   useUpdateEmployee,
   useDeleteEmployee,
 } from "@/lib/hooks";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const statusColorMap: Record<
   string,
@@ -67,6 +68,7 @@ const roleColorMap: Record<
 };
 
 export default function EmployeesPage() {
+  const tPage = useTranslations("pages.employees");
   const router = useRouter();
 
   // Filter state
@@ -393,8 +395,8 @@ export default function EmployeesPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Employees"
-          description="Manage your field employees"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

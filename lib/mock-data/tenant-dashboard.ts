@@ -6,11 +6,10 @@
 
 export const mockTenantDashboardStats = {
   ordersToday: 4,
-  pendingDeliveries: 5,
+  pendingPlacedOrders: 11,
   pendingCollections: 8,
-  totalShopkeepers: 15,
+  activeShopkeepers: 15,
   activeEmployees: 8,
-  revenueThisMonth: 285400,
   outstandingPayments: 37550,
 };
 

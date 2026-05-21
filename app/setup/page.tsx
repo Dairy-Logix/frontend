@@ -90,13 +90,10 @@ function SetupAccountContent() {
 
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
-        const tenantSlug = data.user.tenantSlug;
         if (data.user.role === "super_admin") {
           router.push("/admin/dashboard");
-        } else if (tenantSlug) {
-          router.push(`/${tenantSlug}/dashboard`);
         } else {
-          router.push("/");
+          router.push("/dashboard");
         }
       }, 2000);
     } catch (err: any) {
@@ -149,7 +146,7 @@ function SetupAccountContent() {
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold">
-              Welcome to Dairy Logix
+              Welcome to BeatMitra
             </CardTitle>
             <CardDescription>
               Set up your account to get started
@@ -222,8 +219,8 @@ function SetupAccountContent() {
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           Need help? Contact{" "}
-          <a href="mailto:support@dairylogix.com" className="underline">
-            support@dairylogix.com
+          <a href="mailto:support@beatmitra.com" className="underline">
+            support@beatmitra.com
           </a>
         </p>
       </motion.div>

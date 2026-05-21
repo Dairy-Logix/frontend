@@ -26,6 +26,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useCreateUser, useTenants } from "@/lib/hooks";
 
 import type { UserRole, UserStatus } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 interface FormState {
   firstName: string;
@@ -65,6 +66,7 @@ const itemVariants = {
 };
 
 export default function CreateUserPage() {
+  const tPage = useTranslations("pages.adminUserCreate");
   const router = useRouter();
   const createUser = useCreateUser();
   const [form, setForm] = useState<FormState>(initialState);

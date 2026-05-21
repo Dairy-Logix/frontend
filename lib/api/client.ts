@@ -10,32 +10,13 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor
+// Request interceptor — JWT is the only tenant/auth signal
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Add auth token if available
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('accessToken');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
-      }
-
-      // Add tenant ID header from tenant store
-      try {
-        const tenantStorage = localStorage.getItem('tenant-storage');
-        if (tenantStorage) {
-          const parsed = JSON.parse(tenantStorage);
-          const slug = parsed?.state?.slug;
-          if (slug && config.headers) {
-            config.headers['X-Tenant-Slug'] = slug;
-          }
-          const tenantId = parsed?.state?.tenant?.id;
-          if (tenantId && config.headers) {
-            config.headers['X-Tenant-ID'] = tenantId;
-          }
-        }
-      } catch {
-        // Ignore parse errors
       }
     }
     return config;

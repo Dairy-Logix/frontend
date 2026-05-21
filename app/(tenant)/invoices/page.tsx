@@ -47,6 +47,7 @@ import {
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useOrders } from "@/lib/hooks/use-orders";
 import { todayIST } from "@/lib/utils";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Invoice Status Color Map ---
 
@@ -76,6 +77,7 @@ function formatDate(dateStr: string): string {
 // --- Main Page ---
 
 export default function InvoicesPage() {
+  const tPage = useTranslations("pages.invoices");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -217,8 +219,8 @@ export default function InvoicesPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Invoices"
-          description="Manage and track invoices"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -6,7 +6,6 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { IntlProvider } from "@/components/providers/intl-provider";
 import { TenantProvider } from "@/components/providers/tenant-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,19 +18,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dairy Logix | Multi-Tenant Dairy Management System",
+  title: "BeatMitra | Multi-Tenant Dairy Management System",
   description: "Comprehensive dairy management platform with multi-tenant architecture for dairy product distribution management",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersList = await headers();
-  const context = (headersList.get("x-tenant-context") as "super_admin" | "tenant" | "marketing") || "marketing";
-  const slug = headersList.get("x-tenant-slug") || null;
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -40,7 +35,7 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <QueryProvider>
-            <TenantProvider context={context} slug={slug}>
+            <TenantProvider>
               <IntlProvider>
                 {children}
                 <Toaster />

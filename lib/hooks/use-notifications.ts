@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { notificationService } from '@/lib/api/services/notification.service';
+import {
+  notificationService,
+  type SentNotificationsParams,
+} from '@/lib/api/services/notification.service';
 import { handleApiError } from '@/lib/api/client';
 import type { PaginationParams } from '@/lib/types';
 
@@ -9,8 +12,28 @@ export const notificationKeys = {
   all: ['notifications'] as const,
   lists: () => [...notificationKeys.all, 'list'] as const,
   list: (params?: Record<string, unknown>) => [...notificationKeys.lists(), params] as const,
+  sent: (params?: Record<string, unknown>) => [...notificationKeys.all, 'sent', params] as const,
   preferences: () => [...notificationKeys.all, 'preferences'] as const,
 };
+
+/**
+ * Hook to fetch all notifications sent within the current tenant
+ * (admin / tenant-wide history view of mobile pushes).
+ */
+export function useSentNotifications(params?: SentNotificationsParams) {
+  return useQuery({
+    queryKey: notificationKeys.sent(params as Record<string, unknown>),
+    queryFn: async () => {
+      const response = await notificationService.getSentNotifications(params);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch sent notifications');
+      }
+      return response.data;
+    },
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
 
 /**
  * Hook to fetch notifications with auto-refetch

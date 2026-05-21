@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { SupportedLocale } from "@/lib/types";
-import { DEFAULT_LOCALE } from "@/lib/constants";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/constants";
 
-type Messages = Record<string, Record<string, string>>;
+type MessageNode = string | { [key: string]: MessageNode };
+type Messages = Record<string, MessageNode>;
 
 interface IntlContextValue {
   locale: SupportedLocale;
@@ -16,17 +17,30 @@ const IntlContext = createContext<IntlContextValue>({
   messages: {},
 });
 
+function lookup(messages: Messages, path: string): string | undefined {
+  const parts = path.split(".");
+  let node: MessageNode | undefined = messages;
+  for (const part of parts) {
+    if (node && typeof node === "object" && part in node) {
+      node = (node as Record<string, MessageNode>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return typeof node === "string" ? node : undefined;
+}
+
 export function useIntl() {
   return useContext(IntlContext);
 }
 
 export function useTranslations(namespace?: string) {
   const { messages } = useContext(IntlContext);
-  return (key: string) => {
-    if (namespace) {
-      return (messages[namespace] as Record<string, string>)?.[key] ?? key;
-    }
-    return key;
+  return (key: string, fallback?: string): string => {
+    const fullKey = namespace ? `${namespace}.${key}` : key;
+    const value = lookup(messages, fullKey);
+    if (value !== undefined) return value;
+    return fallback ?? key;
   };
 }
 
@@ -34,11 +48,14 @@ interface IntlProviderProps {
   children: ReactNode;
 }
 
+function isSupported(value: string | null): value is SupportedLocale {
+  return !!value && (SUPPORTED_LOCALES as readonly string[]).includes(value);
+}
+
 function getSavedLocale(): SupportedLocale {
   if (typeof window === "undefined") return DEFAULT_LOCALE;
-  const saved = localStorage.getItem("preferred-locale") as SupportedLocale | null;
-  if (saved && ["en", "hi", "gu"].includes(saved)) return saved;
-  return DEFAULT_LOCALE;
+  const saved = localStorage.getItem("preferred-locale");
+  return isSupported(saved) ? saved : DEFAULT_LOCALE;
 }
 
 async function loadMessages(locale: string): Promise<Messages> {
@@ -50,26 +67,45 @@ async function loadMessages(locale: string): Promise<Messages> {
 }
 
 export function IntlProvider({ children }: IntlProviderProps) {
-  const [locale, setLocale] = useState<SupportedLocale>(getSavedLocale);
+  const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
   const [messages, setMessages] = useState<Messages | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    loadMessages(locale).then(setMessages);
-  }, [locale]);
+    setLocale(getSavedLocale());
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
-    function handleLocaleChange(e: CustomEvent<{ locale: SupportedLocale }>) {
-      const newLocale = e.detail.locale;
-      setLocale(newLocale);
-      localStorage.setItem("preferred-locale", newLocale);
+    if (!hydrated) return;
+    let cancelled = false;
+    loadMessages(locale).then((m) => {
+      if (!cancelled) setMessages(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, hydrated]);
+
+  useEffect(() => {
+    function handleLocaleChange(e: Event) {
+      const detail = (e as CustomEvent<{ locale: SupportedLocale }>).detail;
+      if (detail?.locale && isSupported(detail.locale)) {
+        setLocale(detail.locale);
+        try {
+          localStorage.setItem("preferred-locale", detail.locale);
+        } catch {
+          // ignore quota / privacy mode errors
+        }
+      }
     }
 
-    window.addEventListener("locale-change", handleLocaleChange as EventListener);
-    return () => window.removeEventListener("locale-change", handleLocaleChange as EventListener);
+    window.addEventListener("locale-change", handleLocaleChange);
+    return () => window.removeEventListener("locale-change", handleLocaleChange);
   }, []);
 
   if (!messages) {
-    return null;
+    return <>{children}</>;
   }
 
   return (
@@ -80,8 +116,10 @@ export function IntlProvider({ children }: IntlProviderProps) {
 }
 
 export function changeLocale(locale: SupportedLocale) {
-  localStorage.setItem("preferred-locale", locale);
-  window.dispatchEvent(
-    new CustomEvent("locale-change", { detail: { locale } })
-  );
+  try {
+    localStorage.setItem("preferred-locale", locale);
+  } catch {
+    // ignore
+  }
+  window.dispatchEvent(new CustomEvent("locale-change", { detail: { locale } }));
 }

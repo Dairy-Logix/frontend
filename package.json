@@ -1,9 +1,9 @@
 {
-  "name": "dairy-logix-frontend",
+  "name": "beatmitra-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "Dairy-Logix Admin Panel - Multi-tenant dairy management system with subscription-based model",
-  "author": "Dairy-Logix Team",
+  "description": "BeatMitra Admin Panel - Multi-tenant dairy management system with subscription-based model",
+  "author": "BeatMitra Team",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

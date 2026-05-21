@@ -62,14 +62,10 @@ export function useLogin() {
       // Store user
       setUser(data.user);
 
-      // Set tenant store context for API calls
-      if (data.user.role === 'super_admin') {
-        useTenantStore.getState().setContext('super_admin');
-        useTenantStore.getState().setSlug(null);
-      } else if (data.user.tenantSlug) {
-        useTenantStore.getState().setContext('tenant');
-        useTenantStore.getState().setSlug(data.user.tenantSlug);
-      }
+      // Derive tenant store context from JWT role
+      useTenantStore
+        .getState()
+        .setContext(data.user.role === 'super_admin' ? 'super_admin' : 'tenant');
 
       // Update query cache
       queryClient.setQueryData(authKeys.currentUser, data.user);
@@ -113,14 +109,10 @@ export function useRegister() {
       // Store user
       setUser(data.user);
 
-      // Set tenant store context for API calls
-      if (data.user.role === 'super_admin') {
-        useTenantStore.getState().setContext('super_admin');
-        useTenantStore.getState().setSlug(null);
-      } else if (data.user.tenantSlug) {
-        useTenantStore.getState().setContext('tenant');
-        useTenantStore.getState().setSlug(data.user.tenantSlug);
-      }
+      // Derive tenant store context from JWT role
+      useTenantStore
+        .getState()
+        .setContext(data.user.role === 'super_admin' ? 'super_admin' : 'tenant');
 
       // Update query cache
       queryClient.setQueryData(authKeys.currentUser, data.user);

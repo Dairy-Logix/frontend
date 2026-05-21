@@ -12,11 +12,15 @@ import {
   FileText,
   CreditCard,
   Truck,
-  Factory,
+  Receipt,
+  Wallet,
   BarChart3,
   Bell,
   Settings,
   Milk,
+  Calculator,
+  ArrowRightLeft,
+  Wallet2,
 } from "lucide-react";
 import { cn, getLogoUrl } from "@/lib/utils";
 import {
@@ -28,21 +32,34 @@ import {
 import { useUIStore } from "@/lib/stores/ui-store";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenantStore } from "@/lib/stores/tenant-store";
+import { useTranslations } from "@/components/providers/intl-provider";
+import { useTenantFeatures, type FeatureKey } from "@/lib/hooks/use-feature";
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Agencies", href: "/agencies", icon: Building2 },
-  { name: "Products", href: "/products", icon: Package },
-  { name: "Stores", href: "/shopkeepers", icon: Store },
-  { name: "Employees", href: "/employees", icon: Users },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Invoices", href: "/invoices", icon: FileText },
-  { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "Deliveries", href: "/deliveries", icon: Truck },
-  { name: "Factory", href: "/factory/orders", icon: Factory },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Settings", href: "/settings", icon: Settings },
+type NavItem = {
+  key: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  feature?: FeatureKey;
+};
+
+const allNavItems: NavItem[] = [
+  { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "agencies", href: "/agencies", icon: Building2 },
+  { key: "products", href: "/products", icon: Package },
+  { key: "stores", href: "/shopkeepers", icon: Store },
+  { key: "employees", href: "/employees", icon: Users, feature: "employees" },
+  { key: "orders", href: "/orders", icon: ShoppingCart },
+  { key: "invoices", href: "/invoices", icon: FileText },
+  { key: "transfers", href: "/invoice-transfers", icon: ArrowRightLeft },
+  { key: "payments", href: "/payments", icon: CreditCard },
+  { key: "deliveries", href: "/deliveries", icon: Truck, feature: "deliveries" },
+  { key: "purchases", href: "/purchases", icon: Receipt },
+  { key: "expenses", href: "/expenses", icon: Wallet },
+  { key: "planningStudio", href: "/planning-studio", icon: Calculator },
+  { key: "reports", href: "/reports", icon: BarChart3 },
+  { key: "notifications", href: "/notifications", icon: Bell, feature: "appNotifications" },
+  { key: "billing", href: "/billing", icon: Wallet2 },
+  { key: "settings", href: "/settings", icon: Settings },
 ];
 
 function BrandLogo({ logo, name, size = "sm" }: { logo?: string; name: string; size?: "sm" | "md" }) {
@@ -75,8 +92,14 @@ export function TenantSidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed } = useUIStore();
   const { tenant } = useTenantStore();
+  const tNav = useTranslations("nav");
+  const features = useTenantFeatures();
 
-  const businessName = tenant?.name || "Dairy Logix";
+  const navigation = allNavItems.filter(
+    (item) => !item.feature || features[item.feature],
+  );
+
+  const businessName = tenant?.name || "BeatMitra";
   const logo = tenant?.logo;
 
   const sidebarWidth = sidebarCollapsed ? 80 : 280;
@@ -133,9 +156,10 @@ export function TenantSidebar() {
                 {navigation.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
+                  const label = tNav(item.key);
 
                   const NavItem = (
-                    <Link key={item.name} href={item.href}>
+                    <Link key={item.key} href={item.href}>
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -156,7 +180,7 @@ export function TenantSidebar() {
                               exit={{ opacity: 0, width: 0, transition: { duration: 0.2 } }}
                               className="whitespace-nowrap"
                             >
-                              {item.name}
+                              {label}
                             </motion.span>
                           )}
                         </AnimatePresence>
@@ -166,9 +190,9 @@ export function TenantSidebar() {
 
                   if (sidebarCollapsed) {
                     return (
-                      <Tooltip key={item.name}>
+                      <Tooltip key={item.key}>
                         <TooltipTrigger asChild>{NavItem}</TooltipTrigger>
-                        <TooltipContent side="right"><p>{item.name}</p></TooltipContent>
+                        <TooltipContent side="right"><p>{label}</p></TooltipContent>
                       </Tooltip>
                     );
                   }
@@ -191,7 +215,7 @@ export function TenantSidebar() {
                       <BrandLogo logo={logo} name={businessName} size="md" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{businessName}</p>
-                        <p className="text-xs text-muted-foreground truncate">Tenant Admin Panel</p>
+                        <p className="text-xs text-muted-foreground truncate">{tNav("tenantAdminPanel")}</p>
                       </div>
                     </div>
                   </div>

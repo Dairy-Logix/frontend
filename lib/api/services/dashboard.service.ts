@@ -3,6 +3,10 @@ import type {
   ApiResponse,
   SuperAdminDashboardStats,
   TenantDashboardStats,
+  TenantAnalytics,
+  AnalyticsQuery,
+  TopProductsQuery,
+  TopProductsResult,
 } from '@/lib/types';
 
 export const dashboardService = {
@@ -32,5 +36,39 @@ export const dashboardService = {
       data,
       message: 'Dashboard stats fetched successfully',
     };
+  },
+
+  /**
+   * Get tenant analytics (5 charts) filtered by range/agency.
+   */
+  async getTenantAnalytics(
+    query: AnalyticsQuery,
+  ): Promise<ApiResponse<TenantAnalytics>> {
+    const params: Record<string, string> = { range: query.range };
+    if (query.from) params.from = query.from;
+    if (query.to) params.to = query.to;
+    if (query.agencyId) params.agencyId = query.agencyId;
+    const { data } = await apiClient.get<TenantAnalytics>(
+      '/dashboard/tenant/analytics',
+      { params },
+    );
+    return { success: true, data };
+  },
+
+  /**
+   * Get top products ranked by chosen criterion.
+   */
+  async getTopProducts(
+    query: TopProductsQuery,
+  ): Promise<ApiResponse<TopProductsResult>> {
+    const params: Record<string, string> = { criterion: query.criterion };
+    if (query.days) params.days = String(query.days);
+    if (query.limit) params.limit = String(query.limit);
+    if (query.agencyId) params.agencyId = query.agencyId;
+    const { data } = await apiClient.get<TopProductsResult>(
+      '/dashboard/tenant/top-products',
+      { params },
+    );
+    return { success: true, data };
   },
 };

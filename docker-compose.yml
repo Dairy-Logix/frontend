@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: dairy-logix-frontend
+    container_name: beatmitra-frontend
     ports:
       - "3002:3002"
     volumes:
@@ -23,19 +23,19 @@ services:
     depends_on:
       - backend
     networks:
-      - dairy-logix-network
+      - beatmitra-network
     restart: unless-stopped
 
   # Backend API (placeholder - to be configured when backend is set up)
   backend:
     image: node:20-alpine
-    container_name: dairy-logix-backend
+    container_name: beatmitra-backend
     working_dir: /app
     command: echo "Backend service placeholder - Configure when backend is ready"
     ports:
       - "3001:3001"
     networks:
-      - dairy-logix-network
+      - beatmitra-network
     # Uncomment when backend is ready
     # volumes:
     #   - ../backend:/app
@@ -52,7 +52,7 @@ services:
   # PostgreSQL Database (uncomment when needed)
   # postgres:
   #   image: postgres:16-alpine
-  #   container_name: dairy-logix-postgres
+  #   container_name: beatmitra-postgres
   #   ports:
   #     - "5432:5432"
   #   environment:
@@ -62,41 +62,41 @@ services:
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
   #   networks:
-  #     - dairy-logix-network
+  #     - beatmitra-network
   #   restart: unless-stopped
 
   # Redis Cache (uncomment when needed)
   # redis:
   #   image: redis:7-alpine
-  #   container_name: dairy-logix-redis
+  #   container_name: beatmitra-redis
   #   ports:
   #     - "6379:6379"
   #   volumes:
   #     - redis_data:/data
   #   networks:
-  #     - dairy-logix-network
+  #     - beatmitra-network
   #   restart: unless-stopped
 
   # Adminer - Database Management Tool (uncomment when needed)
   # adminer:
   #   image: adminer:latest
-  #   container_name: dairy-logix-adminer
+  #   container_name: beatmitra-adminer
   #   ports:
   #     - "8080:8080"
   #   networks:
-  #     - dairy-logix-network
+  #     - beatmitra-network
   #   depends_on:
   #     - postgres
   #   restart: unless-stopped
 
 networks:
-  dairy-logix-network:
+  beatmitra-network:
     driver: bridge
-    name: dairy-logix-network
+    name: beatmitra-network
 
 # Volumes (uncomment when database is added)
 # volumes:
 #   postgres_data:
-#     name: dairy-logix-postgres-data
+#     name: beatmitra-postgres-data
 #   redis_data:
-#     name: dairy-logix-redis-data
+#     name: beatmitra-redis-data

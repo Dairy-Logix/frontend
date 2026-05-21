@@ -14,7 +14,6 @@ import {
   ShieldOff,
   ShieldCheck,
   Trash2,
-  Clock,
   MapPin,
   Mail,
   Phone,
@@ -27,7 +26,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -44,6 +42,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FormModal } from "@/components/shared/form-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTenant, useUpdateTenant, useDeleteTenant, useTenantStats } from "@/lib/hooks";
+import { AdminSubscriptionTab } from "./subscription-tab";
 import { toast } from "sonner";
 
 
@@ -60,18 +59,6 @@ const planLabels: Record<string, string> = {
   basic: "Basic",
   standard: "Standard",
   premium: "Premium",
-  enterprise: "Enterprise",
-};
-
-const activityTypeIcons: Record<string, string> = {
-  tenant_signup: "New Registration",
-  order_placed: "Order Placed",
-  payment_collected: "Payment Collected",
-  delivery_completed: "Delivery Completed",
-  plan_upgrade: "Plan Upgrade",
-  tenant_suspended: "Account Suspended",
-  employee_added: "Employee Added",
-  invoice_generated: "Invoice Generated",
 };
 
 const containerVariants = {
@@ -100,9 +87,6 @@ export default function TenantDetailsPage() {
 
   // Derive tenantName early (before useEffect)
   const tenantName = tenant?.companyName || tenant?.name || "Unknown";
-
-  // Activities - TODO: Implement activities endpoint in backend
-  const activities = tenant?.activities || [];
 
   // Edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -267,8 +251,8 @@ export default function TenantDetailsPage() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="subscription">Subscription</TabsTrigger>
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
         {/* ==================== Overview Tab ==================== */}
@@ -448,6 +432,11 @@ export default function TenantDetailsPage() {
           </motion.div>
         </TabsContent>
 
+        {/* ==================== Subscription Tab ==================== */}
+        <TabsContent value="subscription" className="space-y-6">
+          <AdminSubscriptionTab tenantId={tenantId} />
+        </TabsContent>
+
         {/* ==================== Configuration Tab ==================== */}
         <TabsContent value="configuration" className="space-y-6">
           <motion.div
@@ -456,57 +445,32 @@ export default function TenantDetailsPage() {
             initial="hidden"
             animate="visible"
           >
-            {/* Feature Toggles */}
+            {/* Feature Toggles - moved to Subscription tab */}
             <motion.div variants={itemVariants}>
               <Card className="glass">
                 <CardHeader>
-                  <CardTitle>Feature Toggles</CardTitle>
+                  <CardTitle>Enabled Features</CardTitle>
                   <CardDescription>
-                    Manage which features are enabled for this tenant.
+                    Read-only summary. Manage features in the Subscription tab.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>GPS Tracking</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Real-time GPS tracking for delivery employees.
+                  <div className="flex flex-wrap gap-2">
+                    {tenant.features &&
+                    typeof tenant.features === "object" &&
+                    Object.entries(tenant.features).filter(([, v]) => v).length > 0 ? (
+                      Object.entries(tenant.features)
+                        .filter(([, v]) => v)
+                        .map(([k]) => (
+                          <Badge key={k} variant="secondary">
+                            {k}
+                          </Badge>
+                        ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No features enabled. Apply a plan from the Subscription tab.
                       </p>
-                    </div>
-                    <Switch
-                      checked={tenant.features?.includes("gpsTracking")}
-                      onCheckedChange={() =>
-                        toast.info("Feature toggle updated (demo mode).")
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Push Notifications</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Push notifications for mobile app users.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={tenant.features?.includes("pushNotifications")}
-                      onCheckedChange={() =>
-                        toast.info("Feature toggle updated (demo mode).")
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>In-App Notifications</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Show notifications within the application.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={tenant.notificationChannels?.includes("in_app")}
-                      onCheckedChange={() =>
-                        toast.info("Feature toggle updated (demo mode).")
-                      }
-                    />
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -518,19 +482,19 @@ export default function TenantDetailsPage() {
                 <CardHeader>
                   <CardTitle>Resource Limits</CardTitle>
                   <CardDescription>
-                    Current usage against configured limits.
+                    Current usage against configured limits. Edit limits in the Subscription tab.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6 sm:grid-cols-3">
                     {(() => {
-                      const limits = tenant.limits || tenant.config?.limits;
+                      const limits: any = tenant.limits || {};
                       const agencyCount = tenantStats?.totalAgencies ?? tenant.agencyCount ?? 0;
-                      const employeeCount = tenantStats?.totalEmployees ?? 0;
                       const storeCount = tenantStats?.totalShopkeepers ?? 0;
+                      const productCount = tenantStats?.totalProducts ?? 0;
                       const maxAgencies = limits?.maxAgencies ?? 0;
-                      const maxEmployees = limits?.maxEmployees ?? 0;
                       const maxStores = limits?.maxShopkeepers ?? 0;
+                      const maxProducts = limits?.maxProducts ?? 0;
                       return (
                         <>
                           <div className="space-y-2">
@@ -551,24 +515,7 @@ export default function TenantDetailsPage() {
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label>Max Employees</Label>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold">{employeeCount}</span>
-                              <span className="text-sm text-muted-foreground">
-                                / {maxEmployees}
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-gradient-primary transition-all"
-                                style={{
-                                  width: `${maxEmployees > 0 ? Math.min(100, (employeeCount / maxEmployees) * 100) : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Max Stores</Label>
+                            <Label>Max Shopkeepers</Label>
                             <div className="flex items-baseline gap-2">
                               <span className="text-2xl font-bold">{storeCount}</span>
                               <span className="text-sm text-muted-foreground">
@@ -584,6 +531,23 @@ export default function TenantDetailsPage() {
                               />
                             </div>
                           </div>
+                          <div className="space-y-2">
+                            <Label>Max Products</Label>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl font-bold">{productCount}</span>
+                              <span className="text-sm text-muted-foreground">
+                                / {maxProducts}
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-primary transition-all"
+                                style={{
+                                  width: `${maxProducts > 0 ? Math.min(100, (productCount / maxProducts) * 100) : 0}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
                         </>
                       );
                     })()}
@@ -592,109 +556,9 @@ export default function TenantDetailsPage() {
               </Card>
             </motion.div>
 
-            {/* Invoice Settings */}
-            <motion.div variants={itemVariants}>
-              <Card className="glass">
-                <CardHeader>
-                  <CardTitle>Invoice Settings</CardTitle>
-                  <CardDescription>
-                    Tax and invoice configuration for this tenant.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Tax Percentage</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {tenant.invoiceSettings?.taxEnabled
-                          ? `${tenant.invoiceSettings?.taxPercentage}%`
-                          : "Tax disabled"}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Invoice Prefix</Label>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {tenant.invoiceSettings?.invoicePrefix}
-                      </p>
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label>Invoice Number Format</Label>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {tenant.invoiceSettings?.invoiceNumberFormat}
-                      </p>
-                    </div>
-                    {tenant.invoiceSettings?.termsAndConditions && (
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label>Terms and Conditions</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {tenant.invoiceSettings?.termsAndConditions}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </motion.div>
         </TabsContent>
 
-        {/* ==================== Activity Tab ==================== */}
-        <TabsContent value="activity" className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>
-                  Latest events and actions for {tenantName}.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {activities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No recent activity found for this tenant.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {activities.map((activity, index) => (
-                      <motion.div
-                        key={activity.id}
-                        className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1, duration: 0.4 }}
-                      >
-                        <div className="mt-0.5 rounded-full bg-muted p-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              {activityTypeIcons[activity.type] || activity.type}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(activity.timestamp).toLocaleDateString("en-IN", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm mt-1">{activity.message}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </TabsContent>
       </Tabs>
 
       {/* ==================== Edit Modal ==================== */}

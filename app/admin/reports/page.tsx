@@ -44,6 +44,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { subDays, subMonths, isAfter } from "date-fns";
 import { useSuperAdminDashboard, useTenants } from "@/lib/hooks";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
@@ -84,6 +85,7 @@ const itemVariants = {
 };
 
 export default function ReportsPage() {
+  const tPage = useTranslations("pages.adminReports");
   const [period, setPeriod] = useState("6months");
   const { data: dashboardData, isLoading, error, refetch } = useSuperAdminDashboard();
   const { data: tenantsData } = useTenants({ page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' });
@@ -197,7 +199,7 @@ export default function ReportsPage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Platform Reports" description="Analytics and insights across all tenants" />
+        <PageHeader title={tPage("title")} description={tPage("description")} />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">

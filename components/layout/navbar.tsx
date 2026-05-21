@@ -21,6 +21,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { useTenantStore } from "@/lib/stores/tenant-store";
 import { useSettings } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 export function Navbar() {
   const { toggleSidebar, toggleSidebarCollapsed, notifications } = useUIStore();
@@ -28,6 +29,8 @@ export function Navbar() {
   const { context } = useTenantStore();
   const router = useRouter();
   const { data: settings } = useSettings();
+  const t = useTranslations("navbar");
+  const tNav = useTranslations("nav");
 
   const appNotificationsEnabled = settings?.config?.features?.appNotifications ?? false;
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -46,7 +49,7 @@ export function Navbar() {
   };
 
   const { tenant } = useTenantStore();
-  const panelLabel = context === "super_admin" ? "Super Admin" : (tenant?.name || "Dashboard");
+  const panelLabel = context === "super_admin" ? tNav("superAdmin") : (tenant?.name || tNav("dashboard"));
 
   return (
     <nav className="sticky top-0 z-50 glass border-b">
@@ -73,7 +76,7 @@ export function Navbar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search... (Cmd+K)"
+              placeholder={t("searchPlaceholder")}
               className="pl-10 glass-subtle"
               onFocus={() => useUIStore.getState().setCommandPaletteOpen(true)}
             />
@@ -102,11 +105,11 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("notifications")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {notifications.length === 0 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
-                    No notifications
+                    {t("noNotifications")}
                   </div>
                 ) : (
                   notifications.slice(0, 5).map((notification) => (
@@ -155,11 +158,11 @@ export function Navbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push(context === "super_admin" ? "/admin/settings" : "/settings")}>
                 <User className="mr-2 h-4 w-4" />
-                Profile Settings
+                {t("profileSettings")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                Logout
+                {t("logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

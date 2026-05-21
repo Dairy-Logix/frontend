@@ -46,6 +46,7 @@ import {
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { Loader2 as LoaderIcon, AlertCircle, Eye, EyeOff, Copy, Check, KeyRound } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Status Color Map ---
 
@@ -66,6 +67,7 @@ function formatINR(value: number): string {
 // --- Main Page ---
 
 export default function ShopkeepersPage() {
+  const tPage = useTranslations("pages.stores");
   const router = useRouter();
 
   // Filter state
@@ -387,8 +389,8 @@ export default function ShopkeepersPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Stores"
-          description="Manage store accounts"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

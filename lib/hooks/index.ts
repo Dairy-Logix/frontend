@@ -1,5 +1,5 @@
 // ============================================================
-// Dairy Logix - React Query Hooks Barrel Exports
+// BeatMitra - React Query Hooks Barrel Exports
 // ============================================================
 
 // Authentication hooks
@@ -57,8 +57,8 @@ export * from './use-payments';
 // Delivery hooks
 export * from './use-deliveries';
 
-// Factory hooks
-export * from './use-factory';
+// Purchase hooks
+export * from './use-purchases';
 
 // Report hooks
 export * from './use-reports';
@@ -72,6 +72,12 @@ export * from './use-notifications';
 // Dashboard hooks
 export * from './use-dashboard';
 
+// Planning Studio hooks
+export * from './use-planning-studio';
+
+// Feature flag hooks
+export * from './use-feature';
+
 // Re-export all query key factories for easy access
 export { orderKeys } from './use-orders';
 export { tenantKeys } from './use-tenants';
@@ -81,8 +87,9 @@ export { employeeKeys } from './use-employees';
 export { invoiceKeys } from './use-invoices';
 export { paymentKeys } from './use-payments';
 export { deliveryKeys } from './use-deliveries';
-export { factoryKeys } from './use-factory';
+export { purchaseKeys } from './use-purchases';
 export { reportKeys } from './use-reports';
 export { settingsKeys } from './use-settings';
 export { notificationKeys } from './use-notifications';
 export { dashboardKeys } from './use-dashboard';
+export { planningStudioKeys } from './use-planning-studio';

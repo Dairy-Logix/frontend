@@ -9,11 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, Milk } from "lucide-react";
 import { motion } from "framer-motion";
-import { useTenantStore } from "@/lib/stores/tenant-store";
 import { useLogin } from "@/lib/hooks";
 
 export default function LoginPage() {
-  const { context, slug } = useTenantStore();
   const loginMutation = useLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -22,15 +20,12 @@ export default function LoginPage() {
     remember: false,
   });
 
-  const isSuperAdmin = context === "super_admin";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     loginMutation.mutate({
       email: formData.email,
       password: formData.password,
-      tenantSlug: isSuperAdmin ? undefined : slug ?? undefined,
     });
   };
 
@@ -48,22 +43,12 @@ export default function LoginPage() {
       >
         <Card className="glass gradient-border">
           <CardHeader className="space-y-4 text-center">
-            <div className={`mx-auto h-12 w-12 rounded-xl flex items-center justify-center ${
-              isSuperAdmin ? "bg-gradient-to-br from-red-500 to-orange-500" : "bg-gradient-primary"
-            }`}>
+            <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-primary">
               <Milk className="h-6 w-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold">
-                {isSuperAdmin ? "Super Admin Login" : "Welcome Back"}
-              </CardTitle>
-              <CardDescription>
-                {isSuperAdmin
-                  ? "Sign in to the platform admin panel"
-                  : slug
-                  ? `Sign in to ${slug} dashboard`
-                  : "Sign in to your account"}
-              </CardDescription>
+              <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+              <CardDescription>Sign in to your account</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -121,11 +106,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className={`w-full shine ${
-                  isSuperAdmin
-                    ? "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
-                    : "bg-gradient-primary hover-glow-primary"
-                }`}
+                className="w-full shine bg-gradient-primary hover-glow-primary"
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? (
@@ -138,15 +119,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            {!isSuperAdmin && (
-              <div className="text-center text-sm">
-                <span className="text-muted-foreground">Don&apos;t have an account? </span>
-                <Link href="/auth/register" className="text-primary font-medium hover:underline">
-                  Sign up
-                </Link>
-              </div>
-            )}
           </CardContent>
         </Card>
 

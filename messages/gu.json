@@ -263,5 +263,176 @@
     "history": "ઇતિહાસ",
     "markAllRead": "બધાને વાંચેલ તરીકે ચિહ્નિત કરો",
     "noNotifications": "કોઈ સૂચના નથી"
+  },
+  "nav": {
+    "dashboard": "ડેશબોર્ડ",
+    "agencies": "એજન્સીઓ",
+    "products": "ઉત્પાદનો",
+    "stores": "દુકાનો",
+    "employees": "કર્મચારીઓ",
+    "orders": "ઓર્ડર",
+    "invoices": "ઇન્વોઇસ",
+    "transfers": "ટ્રાન્સફર",
+    "payments": "ચુકવણી",
+    "deliveries": "ડિલિવરી",
+    "purchases": "ખરીદી",
+    "expenses": "ખર્ચ",
+    "planningStudio": "પ્લાનિંગ સ્ટુડિયો",
+    "reports": "રિપોર્ટ",
+    "notifications": "સૂચનાઓ",
+    "settings": "સેટિંગ્સ",
+    "tenants": "ભાડૂતો",
+    "users": "વપરાશકર્તાઓ",
+    "configurations": "કોન્ફિગરેશન",
+    "superAdmin": "સુપર એડમિન",
+    "platformAdmin": "પ્લેટફોર્મ એડમિન",
+    "tenantAdminPanel": "ભાડૂત એડમિન પેનલ"
+  },
+  "navbar": {
+    "searchPlaceholder": "શોધો... (Cmd+K)",
+    "profileSettings": "પ્રોફાઇલ સેટિંગ્સ",
+    "logout": "લૉગઆઉટ",
+    "notifications": "સૂચનાઓ",
+    "noNotifications": "કોઈ સૂચના નથી",
+    "changeLanguage": "ભાષા બદલો",
+    "toggleTheme": "થીમ બદલો"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "ડેશબોર્ડ",
+      "description": "ઓર્ડર, ડિલિવરી અને કલેક્શનનું વિહંગાવલોકન",
+      "loadingData": "ડેશબોર્ડ ડેટા લોડ થઈ રહ્યો છે...",
+      "loadFailed": "ડેશબોર્ડ ડેટા લોડ કરવામાં નિષ્ફળ.",
+      "retry": "ફરી પ્રયાસ કરો",
+      "recentActivity": "તાજેતરની પ્રવૃત્તિ",
+      "noRecentActivity": "કોઈ તાજેતરની પ્રવૃત્તિ નથી",
+      "activityHint": "ઓર્ડર આવતાં અહીં પ્રવૃત્તિ દેખાશે"
+    },
+    "agencies": {
+      "title": "એજન્સીઓ",
+      "description": "તમારી વિતરણ એજન્સીઓ સંચાલિત કરો"
+    },
+    "products": {
+      "title": "ઉત્પાદનો",
+      "description": "તમારો ઉત્પાદન કેટલોગ સંચાલિત કરો"
+    },
+    "stores": {
+      "title": "દુકાનો",
+      "description": "દુકાન ખાતાઓ સંચાલિત કરો"
+    },
+    "employees": {
+      "title": "કર્મચારીઓ",
+      "description": "તમારા ફિલ્ડ કર્મચારીઓને સંચાલિત કરો"
+    },
+    "orders": {
+      "title": "ઓર્ડર મેટ્રિક્સ",
+      "description": "બધી દુકાનો માટેના ઓર્ડર જુઓ અને સંચાલિત કરો"
+    },
+    "invoices": {
+      "title": "ઇન્વોઇસ",
+      "description": "ઇન્વોઇસ સંચાલિત અને ટ્રેક કરો"
+    },
+    "transfers": {
+      "title": "ઇન્વોઇસ ટ્રાન્સફર",
+      "description": "દુકાનો વચ્ચે ખસેડેલી વસ્તુઓનો આંતરિક રેકોર્ડ. દરેક ટ્રાન્સફર આપનાર અને મેળવનારના ઇન્વોઇસને સમાયોજિત કરે છે."
+    },
+    "payments": {
+      "title": "ચુકવણી",
+      "description": "બાકી બેલેન્સ ટ્રેક કરો અને દુકાન દીઠ ચુકવણી એકત્રિત કરો"
+    },
+    "collections": {
+      "title": "કલેક્શન ડેશબોર્ડ",
+      "description": "દૈનિક કલેક્શન પ્રદર્શન અને કર્મચારી લક્ષ્યોનું નિરીક્ષણ કરો"
+    },
+    "deliveries": {
+      "title": "ડિલિવરી",
+      "description": "બધી ડિલિવરી સંચાલિત અને ટ્રેક કરો"
+    },
+    "deliveryTracking": {
+      "title": "ડિલિવરી ટ્રેકિંગ",
+      "description": "સક્રિય ડિલિવરીનું રીઅલ-ટાઇમ ટ્રેકિંગ"
+    },
+    "purchases": {
+      "title": "ખરીદી",
+      "description": "બધી એજન્સીઓમાં ડેરીમાંથી દૈનિક ખરીદી રેકોર્ડ કરો"
+    },
+    "expenses": {
+      "title": "ખર્ચ",
+      "description": "બળતણ, પગાર, જાળવણી, નુકસાન અને વધુ — બધા વ્યવસાયિક ખર્ચને ટ્રેક અને સંચાલિત કરો"
+    },
+    "planningStudio": {
+      "title": "પ્લાનિંગ સ્ટુડિયો",
+      "description": "વિઝ્યુઅલ કેલ્ક્યુલેટર જે આજના એજન્સી ઓર્ડરને સ્પષ્ટ ખરીદી નિર્ણયોમાં ફેરવે છે."
+    },
+    "agencyFormula": {
+      "title": "ઓર્ડર ફાઇનલ કેલ્ક્યુલેટર",
+      "description": "દરેક ઉત્પાદન માટે, આજનો સંયુક્ત ઓર્ડર બે એજન્સીમાંથી એકને સોંપો."
+    },
+    "reports": {
+      "title": "રિપોર્ટ અને વિશ્લેષણ",
+      "description": "વ્યાપક વેચાણ, કલેક્શન, ડિલિવરી અને નાણાકીય રિપોર્ટ"
+    },
+    "tenantNotifications": {
+      "title": "સૂચનાઓ",
+      "description": "સૂચના ટેમ્પલેટ, ચેનલ અને ઇતિહાસ સંચાલિત કરો"
+    },
+    "settings": {
+      "title": "સેટિંગ્સ",
+      "description": "તમારું ટેનન્ટ કોન્ફિગરેશન અને પસંદગીઓ સંચાલિત કરો"
+    },
+    "adminDashboard": {
+      "title": "પ્લેટફોર્મ ડેશબોર્ડ",
+      "description": "બધા ટેનન્ટ અને પ્લેટફોર્મ મેટ્રિક્સનું વિહંગાવલોકન"
+    },
+    "adminTenants": {
+      "title": "ટેનન્ટ સંચાલન",
+      "description": "પ્લેટફોર્મ પરના બધા ટેનન્ટ સંગઠનોને જુઓ, સંચાલિત કરો અને કોન્ફિગર કરો."
+    },
+    "adminTenantCreate": {
+      "title": "નવો ટેનન્ટ બનાવો",
+      "description": "પ્લેટફોર્મ પર નવું ટેનન્ટ સંગઠન રજિસ્ટર કરો."
+    },
+    "adminTenantNotFound": {
+      "title": "ટેનન્ટ મળ્યો નથી",
+      "description": "વિનંતી કરેલ ટેનન્ટ મળી શક્યો નથી."
+    },
+    "adminUsers": {
+      "title": "વપરાશકર્તા સંચાલન",
+      "description": "બધા ટેનન્ટના વપરાશકર્તાઓને સંચાલિત કરો"
+    },
+    "adminUserCreate": {
+      "title": "નવો વપરાશકર્તા બનાવો",
+      "description": "સિસ્ટમમાં નવો વપરાશકર્તા ઉમેરો"
+    },
+    "adminConfigurations": {
+      "title": "કોન્ફિગરેશન",
+      "description": "પ્લેટફોર્મ-વ્યાપી સેટિંગ્સ અને કોન્ફિગરેશન"
+    },
+    "adminNotifications": {
+      "title": "સૂચના સંચાલન",
+      "description": "સૂચના ટેમ્પલેટ, ચેનલ કોન્ફિગર કરો અને ઇતિહાસ જુઓ"
+    },
+    "adminReports": {
+      "title": "પ્લેટફોર્મ રિપોર્ટ",
+      "description": "બધા ટેનન્ટમાં વિશ્લેષણ અને આંતરદૃષ્ટિ"
+    },
+    "adminSettings": {
+      "title": "સેટિંગ્સ",
+      "description": "તમારું ખાતું અને પ્લેટફોર્મ પસંદગીઓ સંચાલિત કરો"
+    }
+  },
+  "stats": {
+    "todaysOrders": "આજના ઓર્ડર",
+    "todaysOrdersHint": "આજે મૂકાયેલા ઓર્ડર",
+    "pendingPlacedOrders": "બાકી મૂકાયેલા ઓર્ડર",
+    "pendingPlacedOrdersHint": "હજુ ઓર્ડર ન કર્યો હોય તેવી દુકાનો",
+    "outstanding": "બાકી",
+    "outstandingHint": "બાકી ચુકવણી",
+    "totalActiveStores": "કુલ સક્રિય દુકાનો",
+    "totalActiveStoresHint": "સક્રિય દુકાનો",
+    "activeEmployees": "સક્રિય કર્મચારીઓ",
+    "activeEmployeesHint": "ફિલ્ડ એજન્ટ",
+    "pendingCollections": "બાકી કલેક્શન",
+    "pendingCollectionsHint": "એકત્રિત કરવાની ચુકવણી"
   }
 }

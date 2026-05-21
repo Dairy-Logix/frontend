@@ -30,6 +30,7 @@ import { useOrders } from "@/lib/hooks/use-orders";
 import { useShopkeepers } from "@/lib/hooks/use-shopkeepers";
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { Loader2 as LoaderIcon } from "lucide-react";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Delivery Status Color Map ---
 
@@ -83,6 +84,7 @@ function formatDateTime(dateStr: string): string {
 // --- Main Page ---
 
 export default function DeliveryTrackingPage() {
+  const tPage = useTranslations("pages.deliveryTracking");
   // Fetch data from API
   const { data: deliveriesData, isLoading: deliveriesLoading } = useDeliveries({ pageSize: 200 });
   const { data: ordersData } = useOrders({ pageSize: 200 });
@@ -212,8 +214,8 @@ export default function DeliveryTrackingPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Delivery Tracking"
-        description="Real-time tracking of active deliveries"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       {activeDeliveries.length === 0 && !selectedDelivery ? (

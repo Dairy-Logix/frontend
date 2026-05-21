@@ -5,7 +5,24 @@ import type {
   PaginationParams,
   Notification,
   NotificationPreference,
+  SentNotification,
 } from '@/lib/types';
+
+export interface SentNotificationsParams extends PaginationParams {
+  isRead?: boolean;
+  type?: string;
+  search?: string;
+}
+
+interface RawSentNotificationsResponse {
+  notifications: unknown[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 export const notificationService = {
   async getNotifications(
@@ -22,9 +39,29 @@ export const notificationService = {
     };
   },
 
+  async getSentNotifications(
+    params?: SentNotificationsParams
+  ): Promise<ApiResponse<{ data: SentNotification[]; total: number; page: number; pageSize: number; totalPages: number }>> {
+    const { data } = await apiClient.get<RawSentNotificationsResponse>(
+      '/notifications/sent',
+      { params }
+    );
+    return {
+      success: true,
+      data: {
+        data: (data.notifications ?? []) as SentNotification[],
+        total: data.pagination?.total ?? 0,
+        page: data.pagination?.page ?? 1,
+        pageSize: data.pagination?.limit ?? 0,
+        totalPages: data.pagination?.totalPages ?? 0,
+      },
+      message: 'Sent notifications fetched successfully',
+    };
+  },
+
   async markAsRead(id: string): Promise<ApiResponse<Notification>> {
     const { data } = await apiClient.patch<Notification>(
-      `/notifications/${id}/read`
+      `/notifications/${id}/mark-read`
     );
     return {
       success: true,
@@ -35,7 +72,7 @@ export const notificationService = {
 
   async markAllAsRead(): Promise<ApiResponse<void>> {
     await apiClient.patch(
-      '/notifications/read-all'
+      '/notifications/mark-all-read'
     );
     return {
       success: true,

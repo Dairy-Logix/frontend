@@ -12,8 +12,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Save, Bell, Globe, CreditCard, Info } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslations } from "@/components/providers/intl-provider";
 
-const STORAGE_KEY = "dairy-logix-platform-config";
+const STORAGE_KEY = "beatmitra-platform-config";
 
 const defaultConfig = {
   pushEnabled: true,
@@ -46,6 +47,7 @@ function loadConfig() {
 }
 
 export default function ConfigurationsPage() {
+  const tPage = useTranslations("pages.adminConfigurations");
   const [isSaving, setIsSaving] = useState(false);
   const [config, setConfig] = useState(defaultConfig);
 

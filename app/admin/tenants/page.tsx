@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTenants, useSuperAdminDashboard } from "@/lib/hooks";
 import type { Tenant } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const tenantStatusColorMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "error" | "info" }> = {
   active: { label: "Active", variant: "success" },
@@ -106,6 +107,7 @@ const itemVariants = {
 };
 
 export default function TenantsPage() {
+  const tPage = useTranslations("pages.adminTenants");
   const router = useRouter();
 
   // Fetch real data from backend
@@ -138,8 +140,8 @@ export default function TenantsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Tenant Management"
-          description="View, manage, and configure all tenant organizations on the platform."
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

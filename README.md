@@ -1,10 +1,10 @@
-# Dairy-Logix Admin Panel
+# BeatMitra Admin Panel
 
 A modern, multi-tenant dairy management system built with Next.js. This admin panel enables super admins to manage multiple dairy tenants on a subscription-based model.
 
 ## 🚀 Overview
 
-Dairy-Logix is a comprehensive dairy management platform designed to help dairy businesses streamline their operations. The admin panel provides powerful tools for managing multiple tenants, subscriptions, and core dairy operations.
+BeatMitra is a comprehensive dairy management platform designed to help dairy businesses streamline their operations. The admin panel provides powerful tools for managing multiple tenants, subscriptions, and core dairy operations.
 
 ## 👥 User Roles
 
@@ -104,8 +104,8 @@ Dairy-Logix is a comprehensive dairy management platform designed to help dairy 
 
 1. **Build and run with Docker**
    ```bash
-   docker build --target development -t dairy-logix-frontend:dev .
-   docker run -p 3000:3000 -v $(pwd):/app dairy-logix-frontend:dev
+   docker build --target development -t beatmitra-frontend:dev .
+   docker run -p 3000:3000 -v $(pwd):/app beatmitra-frontend:dev
    ```
 
 2. **Or use Docker Compose** (if available)
@@ -148,13 +148,13 @@ frontend/
 
 ### Development Build
 ```bash
-docker build --target development -t dairy-logix-frontend:dev .
+docker build --target development -t beatmitra-frontend:dev .
 ```
 
 ### Production Build
 ```bash
-docker build --target production -t dairy-logix-frontend:prod .
-docker run -p 3000:3000 dairy-logix-frontend:prod
+docker build --target production -t beatmitra-frontend:prod .
+docker run -p 3000:3000 beatmitra-frontend:prod
 ```
 
 ## 🌐 Environment Variables
@@ -194,8 +194,8 @@ npm run start
 
 ### Docker Production
 ```bash
-docker build --target production -t dairy-logix-frontend:latest .
-docker run -p 3000:3000 dairy-logix-frontend:latest
+docker build --target production -t beatmitra-frontend:latest .
+docker run -p 3000:3000 beatmitra-frontend:latest
 ```
 
 ## 📄 License

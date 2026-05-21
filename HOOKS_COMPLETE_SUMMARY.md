@@ -288,8 +288,8 @@ All endpoints should return:
 
 ### 1. Create NestJS Project
 ```bash
-nest new dairy-logix-backend
-cd dairy-logix-backend
+nest new beatmitra-backend
+cd beatmitra-backend
 ```
 
 ### 2. Install Dependencies
@@ -346,7 +346,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost/dairy-logix'),
+    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost/beatmitra'),
     // ... other modules
   ],
 })
@@ -375,7 +375,7 @@ bootstrap();
 
 ### 7. Environment Variables (.env)
 ```
-MONGODB_URI=mongodb://localhost:27017/dairy-logix
+MONGODB_URI=mongodb://localhost:27017/beatmitra
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_SECRET=your-super-secret-refresh-key

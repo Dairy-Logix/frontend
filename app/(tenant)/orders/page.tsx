@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
   ShoppingCart,
@@ -17,16 +18,28 @@ import {
   Check,
   X,
   CheckSquare,
+  ArrowRightLeft,
+  Printer,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { TransferWizard } from "@/components/transfers/transfer-wizard";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { OrderPrintTemplate } from "@/lib/types";
 
 import {
   useAgencies,
@@ -37,9 +50,12 @@ import {
   useUpdateOrder,
   useUpdateOrderStatus,
   useDeleteOrder,
+  useSettings,
 } from "@/lib/hooks";
 
+import { useTenantStore } from "@/lib/stores/tenant-store";
 import { todayIST, isTodayIST } from "@/lib/utils";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Types ---
 
@@ -55,6 +71,7 @@ interface MatrixCell {
 // --- Main Page ---
 
 export default function OrdersPage() {
+  const tPage = useTranslations("pages.orders");
   // State
   const [selectedAgencyId, setSelectedAgencyId] = useState<string>("");
   const [isEditMode, setIsEditMode] = useState(false);
@@ -62,6 +79,8 @@ export default function OrdersPage() {
   const [editedQuantities, setEditedQuantities] = useState<Record<string, Record<string, number>>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayIST());
+  const [transferWizardOpen, setTransferWizardOpen] = useState(false);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
 
   // Fetch data from all 4 sources
   const { data: agenciesData, isLoading: loadingAgencies, error: agenciesError } = useAgencies({ page: 1, pageSize: 50 });
@@ -84,6 +103,10 @@ export default function OrdersPage() {
   const updateOrder = useUpdateOrder();
   const updateOrderStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
+
+  // Print config + tenant for the print sheet
+  const { data: settings } = useSettings();
+  const tenantName = useTenantStore((s) => s.tenant?.name ?? "");
 
   // Extract data arrays
   const agencies = agenciesData?.data || [];
@@ -181,6 +204,31 @@ export default function OrdersPage() {
 
   // --- Edit handlers ---
 
+  function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const cell = input.closest("td") as HTMLElement | null;
+    const row = input.closest("tr") as HTMLElement | null;
+    const scrollContainer = input.closest(".overflow-x-auto") as HTMLElement | null;
+    if (!cell || !row || !scrollContainer) return;
+
+    const rowCells = row.querySelectorAll("td");
+    const stickyLeftWidth = (rowCells[0] as HTMLElement | undefined)?.offsetWidth ?? 0;
+    const stickyRightWidth =
+      (rowCells[rowCells.length - 1] as HTMLElement | undefined)?.offsetWidth ?? 0;
+
+    const PADDING = 8;
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    const visibleLeft = containerRect.left + stickyLeftWidth;
+    const visibleRight = containerRect.right - stickyRightWidth;
+
+    if (cellRect.left < visibleLeft) {
+      scrollContainer.scrollLeft -= visibleLeft - cellRect.left + PADDING;
+    } else if (cellRect.right > visibleRight) {
+      scrollContainer.scrollLeft += cellRect.right - visibleRight + PADDING;
+    }
+  }
+
   function handleQuantityChange(shopId: string, productId: string, value: string) {
     const quantity = parseInt(value) || 0;
     setEditedQuantities((prev) => ({
@@ -269,12 +317,17 @@ export default function OrdersPage() {
 
   function handleToggleEditMode() {
     if (isEditMode && hasChanges) {
-      const confirm = window.confirm("You have unsaved changes. Discard them?");
-      if (!confirm) return;
-      setEditedQuantities({});
-      setHasChanges(false);
+      setDiscardConfirmOpen(true);
+      return;
     }
     setIsEditMode(!isEditMode);
+  }
+
+  function handleConfirmDiscard() {
+    setEditedQuantities({});
+    setHasChanges(false);
+    setIsEditMode(false);
+    setDiscardConfirmOpen(false);
   }
 
   async function handleConfirmOrder(orderId: string) {
@@ -319,6 +372,98 @@ export default function OrdersPage() {
     return total;
   }
 
+  // --- Print templates ---
+  const printTemplates: OrderPrintTemplate[] = settings?.config?.orderPrintTemplates ?? [];
+
+  // The template currently chosen for the print render. Set immediately before
+  // window.print() and cleared after so the print block only renders when needed.
+  const [activePrintTemplateId, setActivePrintTemplateId] = useState<string | null>(null);
+
+  // Portal target for the print sheet (rendered as a direct child of <body>
+  // so it escapes the layout's overflow:hidden ancestors). Only available
+  // client-side, so guard with a mounted flag.
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+  const activeTemplate =
+    printTemplates.find((t) => t.id === activePrintTemplateId) ?? null;
+
+  // Derive the actual products + cells + totals to render for the active template.
+  const printData = useMemo(() => {
+    if (!activeTemplate) {
+      return { printProducts: [], printCells: [], productTotals: {} as Record<string, number>, grandTotal: 0 };
+    }
+
+    const enabledProductIds = activeTemplate.enabledProductIds ?? [];
+    const enabledStoresForAgency =
+      activeTemplate.enabledStoresByAgency?.[selectedAgencyId];
+
+    const printProducts =
+      enabledProductIds.length > 0
+        ? matrixData.products.filter((p) => enabledProductIds.includes(p.id))
+        : matrixData.products;
+
+    const printCells =
+      enabledStoresForAgency && enabledStoresForAgency.length > 0
+        ? matrixData.cells.filter((c) => enabledStoresForAgency.includes(c.shopId))
+        : matrixData.cells;
+
+    const productTotals: Record<string, number> = {};
+    printProducts.forEach((p) => {
+      productTotals[p.id] = printCells.reduce(
+        (sum, cell) => sum + getCellValue(cell.shopId, p.id),
+        0,
+      );
+    });
+    const grandTotal = printCells.reduce(
+      (sum, cell) => sum + getRowTotal(cell.shopId),
+      0,
+    );
+
+    return { printProducts, printCells, productTotals, grandTotal };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matrixData, activeTemplate, selectedAgencyId, editedQuantities]);
+
+  const selectedAgency = agencies.find((a) => a.id === selectedAgencyId);
+
+  // Inject per-template @page + .print-sheet CSS so orientation and margins
+  // are dynamic per click. Margins live on the @page rule so the print
+  // engine handles them natively across pages; the .print-sheet flows
+  // naturally inside that printable area.
+  function applyTemplatePrintStyle(template: OrderPrintTemplate) {
+    const styleId = "orders-print-template-style";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    const { top, right, bottom, left } = template.margins;
+    // Font size + cell padding come from the static print CSS in globals.css.
+    // The table sizes itself automatically based on column count, so no
+    // per-template scaling is needed here.
+    styleEl.textContent = `
+      @media print {
+        @page {
+          size: A4 ${template.orientation};
+          margin: ${Math.max(0, top)}mm ${Math.max(0, right)}mm ${Math.max(0, bottom)}mm ${Math.max(0, left)}mm;
+        }
+      }
+    `;
+  }
+
+  function handlePrintWithTemplate(template: OrderPrintTemplate) {
+    applyTemplatePrintStyle(template);
+    setActivePrintTemplateId(template.id);
+    // Wait one paint so React renders the print block before window.print().
+    requestAnimationFrame(() => {
+      window.print();
+      // Clear the active template so the print block goes back to display:none.
+      setTimeout(() => setActivePrintTemplateId(null), 100);
+    });
+  }
+
   // --- Loading State ---
 
   if (isLoading || loadingAgencies || loadingProducts || loadingShopkeepers || loadingOrders) {
@@ -339,8 +484,8 @@ export default function OrdersPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Orders Matrix"
-          description="View and manage orders across all stores"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -358,13 +503,58 @@ export default function OrdersPage() {
   // --- Render ---
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="space-y-6 print:hidden">
       {/* Page Header */}
       <PageHeader
         title="Orders Matrix"
         description="View and manage orders across all stores"
         action={
           <div className="flex items-center gap-2">
+            {!isEditMode && (
+              <Button
+                variant="outline"
+                onClick={() => setTransferWizardOpen(true)}
+              >
+                <ArrowRightLeft className="h-4 w-4" />
+                Transfer Items
+              </Button>
+            )}
+            {!isEditMode && (
+              printTemplates.length === 0 ? (
+                <Button
+                  variant="outline"
+                  onClick={() => toast.info("Create a print template in Settings → Print Templates first.")}
+                >
+                  <Printer className="h-4 w-4" />
+                  Print
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Printer className="h-4 w-4" />
+                      Print
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[200px]">
+                    {printTemplates.map((template) => (
+                      <DropdownMenuItem
+                        key={template.id}
+                        onSelect={() => handlePrintWithTemplate(template)}
+                      >
+                        <Printer className="h-4 w-4 mr-2 opacity-60" />
+                        <span className="flex-1">{template.name}</span>
+                        <span className="text-[10px] text-muted-foreground ml-2 uppercase">
+                          {template.orientation === "landscape" ? "L" : "P"}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            )}
             {isEditMode && hasChanges && (
               <Button
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600"
@@ -402,6 +592,20 @@ export default function OrdersPage() {
             </Button>
           </div>
         }
+      />
+      <TransferWizard
+        open={transferWizardOpen}
+        onOpenChange={setTransferWizardOpen}
+      />
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onOpenChange={setDiscardConfirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved order quantity changes. Discarding will lose them and exit edit mode."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        variant="destructive"
+        onConfirm={handleConfirmDiscard}
       />
 
       {/* Stat Cards */}
@@ -527,16 +731,14 @@ export default function OrdersPage() {
                 {matrixData.products.map((product) => (
                   <th
                     key={product.id}
-                    className="text-center py-3 px-4 font-medium min-w-[100px] border-r border-border/50"
+                    className={`text-center py-3 font-medium border-r border-border/50 ${
+                      isEditMode ? "px-0 min-w-[56px]" : "px-1 min-w-0"
+                    }`}
+                    title={product.category}
                   >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-foreground text-sm">
-                        {product.shortName}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                        {product.category}
-                      </span>
-                    </div>
+                    <span className="font-semibold text-foreground text-sm">
+                      {product.shortName}
+                    </span>
                   </th>
                 ))}
                 <th className="text-center py-3 px-4 font-semibold text-foreground min-w-[130px] border-r border-border/50">
@@ -585,7 +787,9 @@ export default function OrdersPage() {
                       return (
                         <td
                           key={product.id}
-                          className="py-2 px-4 text-center border-r border-border/50"
+                          className={`text-center border-r border-border/50 ${
+                            isEditMode ? "p-0" : "py-2 px-1"
+                          }`}
                         >
                           {isEditMode ? (
                             <Input
@@ -599,7 +803,8 @@ export default function OrdersPage() {
                                   e.target.value
                                 )
                               }
-                              className="w-20 h-8 text-center bg-white/5 border-white/20 focus:bg-white/10 focus:border-orange-500"
+                              onFocus={handleInputFocus}
+                              className="w-14 h-7 px-1 text-xs text-center bg-white/5 border-white/20 focus:bg-white/10 focus:border-orange-500"
                             />
                           ) : (
                             <span className={value > 0 ? "font-semibold" : "text-muted-foreground"}>
@@ -666,5 +871,84 @@ export default function OrdersPage() {
         </div>
       </motion.div>
     </div>
+
+    {/* ===================== PRINT-ONLY SHEET (portaled to <body>) ===================== */}
+    {portalReady &&
+      createPortal(
+        <div className="print-sheet">
+          {activeTemplate?.showTitle !== false && (
+            <div className="print-sheet-header">
+              <div>
+                <div className="print-sheet-title">
+                  {activeTemplate?.titleText?.trim() || tenantName || "Order Sheet"}
+                </div>
+                <div className="print-sheet-subtitle">
+                  {selectedAgency ? `${selectedAgency.name} — ` : ""}Order Sheet
+                </div>
+              </div>
+              <div className="print-sheet-meta">
+                <div>Date: {selectedDate}</div>
+                <div>
+                  Generated:{" "}
+                  {new Date().toLocaleString("en-IN", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <table className="print-sheet-table">
+            <thead>
+              <tr>
+                <th className="print-col-store">Dealer</th>
+                {printData.printProducts.map((product) => (
+                  <th key={product.id} className="print-col-product">
+                    {product.shortName}
+                  </th>
+                ))}
+                <th className="print-col-total">Total Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printData.printCells.map((cell) => (
+                <tr key={cell.shopId}>
+                  <td className="print-col-store">{cell.shopName}</td>
+                  {printData.printProducts.map((product) => {
+                    const qty = getCellValue(cell.shopId, product.id);
+                    return (
+                      <td key={product.id} className="print-col-product">
+                        {qty > 0 ? qty : ""}
+                      </td>
+                    );
+                  })}
+                  <td className="print-col-total">
+                    ₹{getRowTotal(cell.shopId).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="print-totals-row">
+                <td className="print-col-store">Total</td>
+                {printData.printProducts.map((product) => {
+                  const total = printData.productTotals[product.id] ?? 0;
+                  return (
+                    <td key={product.id} className="print-col-product">
+                      {total > 0 ? total : ""}
+                    </td>
+                  );
+                })}
+                <td className="print-col-total">
+                  ₹{printData.grandTotal.toLocaleString("en-IN")}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

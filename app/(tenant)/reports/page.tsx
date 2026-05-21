@@ -50,6 +50,7 @@ import {
   useFinancialReport,
 } from "@/lib/hooks";
 import type { ReportFilter } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Helpers ---
 
@@ -924,6 +925,7 @@ function FinancialTab({
 // --- Main Reports Page ---
 
 export default function ReportsPage() {
+  const tPage = useTranslations("pages.reports");
   // Default to last 30 days
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -934,8 +936,8 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Reports & Analytics"
-        description="Comprehensive sales, collection, delivery, and financial reports"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       {/* Date Range & Export Controls */}

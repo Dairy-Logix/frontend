@@ -18,9 +18,9 @@ export const productSchema = z.object({
     .string()
     .min(1, 'Short name is required')
     .max(100, 'Short name must not exceed 100 characters'),
-  category: z.enum(['Crate', 'Box'], {
+  category: z.enum(['Crate', 'Piece'], {
     required_error: 'Category is required',
-    invalid_type_error: 'Category must be either Crate or Box',
+    invalid_type_error: 'Category must be either Crate or Piece',
   }),
   quantityPerUnit: z
     .number({

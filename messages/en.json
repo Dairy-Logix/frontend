@@ -263,5 +263,176 @@
     "history": "History",
     "markAllRead": "Mark All as Read",
     "noNotifications": "No notifications"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agencies": "Agencies",
+    "products": "Products",
+    "stores": "Stores",
+    "employees": "Employees",
+    "orders": "Orders",
+    "invoices": "Invoices",
+    "transfers": "Transfers",
+    "payments": "Payments",
+    "deliveries": "Deliveries",
+    "purchases": "Purchases",
+    "expenses": "Expenses",
+    "planningStudio": "Planning Studio",
+    "reports": "Reports",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "tenants": "Tenants",
+    "users": "Users",
+    "configurations": "Configurations",
+    "superAdmin": "Super Admin",
+    "platformAdmin": "Platform Admin",
+    "tenantAdminPanel": "Tenant Admin Panel"
+  },
+  "navbar": {
+    "searchPlaceholder": "Search... (Cmd+K)",
+    "profileSettings": "Profile Settings",
+    "logout": "Logout",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications",
+    "changeLanguage": "Change Language",
+    "toggleTheme": "Toggle Theme"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "Overview of orders, deliveries, and collections",
+      "loadingData": "Loading dashboard data...",
+      "loadFailed": "Failed to load dashboard data.",
+      "retry": "Retry",
+      "recentActivity": "Recent Activity",
+      "noRecentActivity": "No recent activity",
+      "activityHint": "Activity will appear here as orders come in"
+    },
+    "agencies": {
+      "title": "Agencies",
+      "description": "Manage your distribution agencies"
+    },
+    "products": {
+      "title": "Products",
+      "description": "Manage your product catalog"
+    },
+    "stores": {
+      "title": "Stores",
+      "description": "Manage store accounts"
+    },
+    "employees": {
+      "title": "Employees",
+      "description": "Manage your field employees"
+    },
+    "orders": {
+      "title": "Orders Matrix",
+      "description": "View and manage orders across all stores"
+    },
+    "invoices": {
+      "title": "Invoices",
+      "description": "Manage and track invoices"
+    },
+    "transfers": {
+      "title": "Invoice Transfers",
+      "description": "Internal record of items moved between stores. Each transfer adjusts the giver and receiver invoices."
+    },
+    "payments": {
+      "title": "Payments",
+      "description": "Track outstanding balances and collect payments by store"
+    },
+    "collections": {
+      "title": "Collections Dashboard",
+      "description": "Monitor daily collection performance and employee targets"
+    },
+    "deliveries": {
+      "title": "Deliveries",
+      "description": "Manage and track all deliveries"
+    },
+    "deliveryTracking": {
+      "title": "Delivery Tracking",
+      "description": "Real-time tracking of active deliveries"
+    },
+    "purchases": {
+      "title": "Purchases",
+      "description": "Record daily purchases from the dairy across all agencies"
+    },
+    "expenses": {
+      "title": "Expenses",
+      "description": "Track and manage all business expenses — fuel, salaries, maintenance, losses and more"
+    },
+    "planningStudio": {
+      "title": "Planning Studio",
+      "description": "Visual calculators that turn today's agency orders into clear procurement decisions."
+    },
+    "agencyFormula": {
+      "title": "Order Final Calculator",
+      "description": "For each product, assign today's combined order to one of the two agencies."
+    },
+    "reports": {
+      "title": "Reports & Analytics",
+      "description": "Comprehensive sales, collection, delivery, and financial reports"
+    },
+    "tenantNotifications": {
+      "title": "Notifications",
+      "description": "Manage notification templates, channels, and history"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Manage your tenant configuration and preferences"
+    },
+    "adminDashboard": {
+      "title": "Platform Dashboard",
+      "description": "Overview of all tenants and platform metrics"
+    },
+    "adminTenants": {
+      "title": "Tenant Management",
+      "description": "View, manage, and configure all tenant organizations on the platform."
+    },
+    "adminTenantCreate": {
+      "title": "Create New Tenant",
+      "description": "Register a new tenant organization on the platform."
+    },
+    "adminTenantNotFound": {
+      "title": "Tenant Not Found",
+      "description": "The requested tenant could not be found."
+    },
+    "adminUsers": {
+      "title": "User Management",
+      "description": "Manage users across all tenants"
+    },
+    "adminUserCreate": {
+      "title": "Create New User",
+      "description": "Add a new user to the system"
+    },
+    "adminConfigurations": {
+      "title": "Configurations",
+      "description": "Platform-wide settings and configurations"
+    },
+    "adminNotifications": {
+      "title": "Notification Management",
+      "description": "Configure notification templates, channels, and view history"
+    },
+    "adminReports": {
+      "title": "Platform Reports",
+      "description": "Analytics and insights across all tenants"
+    },
+    "adminSettings": {
+      "title": "Settings",
+      "description": "Manage your account and platform preferences"
+    }
+  },
+  "stats": {
+    "todaysOrders": "Today's Orders",
+    "todaysOrdersHint": "orders placed today",
+    "pendingPlacedOrders": "Pending Placed Orders",
+    "pendingPlacedOrdersHint": "stores yet to order today",
+    "outstanding": "Outstanding",
+    "outstandingHint": "pending payments",
+    "totalActiveStores": "Total Active Stores",
+    "totalActiveStoresHint": "active shops",
+    "activeEmployees": "Active Employees",
+    "activeEmployeesHint": "field agents",
+    "pendingCollections": "Pending Collections",
+    "pendingCollectionsHint": "payments to collect"
   }
 }

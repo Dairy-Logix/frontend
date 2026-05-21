@@ -1,5 +1,5 @@
 // ============================================================
-// Dairy Logix - Mock Data Barrel Exports
+// BeatMitra - Mock Data Barrel Exports
 // ============================================================
 
 export { mockTenants, mockTenantConfigs } from './tenants';
@@ -39,12 +39,6 @@ export {
   mockPaymentCollections,
   mockCollectionTrendData,
 } from './payments';
-
-export {
-  mockFactoryProducts,
-  mockFactoryOrders,
-  mockFactoryPayments,
-} from './factory';
 
 export {
   mockSalesReportData,

@@ -68,9 +68,7 @@ export const TENANT_ROUTES = {
   PAYMENT_COLLECTIONS: '/payments/collections',
   DELIVERIES: '/deliveries',
   DELIVERY_TRACKING: '/deliveries/tracking',
-  FACTORY_ORDERS: '/factory/orders',
-  FACTORY_PAYMENTS: '/factory/payments',
-  FACTORY_PRODUCTS: '/factory/products',
+  PURCHASES: '/purchases',
   REPORTS: '/reports',
   NOTIFICATIONS: '/notifications',
   SETTINGS: '/settings',
@@ -215,15 +213,6 @@ export const SUBSCRIPTION_PLAN_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
 };
 
-// Factory Order Status
-export const FACTORY_ORDER_STATUS = {
-  DRAFT: 'draft',
-  SENT: 'sent',
-  CONFIRMED: 'confirmed',
-  FULFILLED: 'fulfilled',
-  CANCELLED: 'cancelled',
-} as const;
-
 // Toast Duration
 export const TOAST_DURATION = 3000;
 export const TOAST_ERROR_DURATION = 5000;
@@ -240,8 +229,8 @@ export const WS_EVENTS = {
 } as const;
 
 // Product Categories
-export const PRODUCT_CATEGORIES = ['Crate', 'Box'] as const;
+export const PRODUCT_CATEGORIES = ['Crate', 'Piece'] as const;
 export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
   Crate: 'Crate',
-  Box: 'Box',
+  Piece: 'Piece',
 };

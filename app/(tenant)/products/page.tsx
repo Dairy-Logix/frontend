@@ -10,8 +10,8 @@ import {
   IndianRupee,
   LayoutGrid,
   Table as TableIcon,
-  Box,
   Archive,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +49,7 @@ import {
 } from "@/lib/hooks";
 import { Loader2 as LoaderIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Status Color Map ---
 
@@ -89,6 +90,7 @@ function getMarginBgColor(margin: number): string {
 type ViewMode = "card" | "table";
 
 export default function ProductsPage() {
+  const tPage = useTranslations("pages.products");
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
@@ -203,7 +205,7 @@ export default function ProductsPage() {
       toast.error("Short name is required");
       return;
     }
-    if (!formQuantityPerUnit || Number(formQuantityPerUnit) <= 0) {
+    if (formCategory !== "Piece" && (!formQuantityPerUnit || Number(formQuantityPerUnit) <= 0)) {
       toast.error("Valid quantity per unit is required");
       return;
     }
@@ -223,7 +225,8 @@ export default function ProductsPage() {
       name: formName,
       shortName: formShortName,
       category: formCategory,
-      quantityPerUnit: Number(formQuantityPerUnit),
+      quantityPerUnit:
+        formCategory === "Piece" ? 1 : Number(formQuantityPerUnit),
       purchasePricePerUnit: Number(formPurchasePrice),
       sellingPricePerUnit: Number(formSellingPrice),
       description: formDescription || undefined,
@@ -308,7 +311,7 @@ export default function ProductsPage() {
           {row.category === "Crate" ? (
             <Archive className="h-3 w-3 mr-1" />
           ) : (
-            <Box className="h-3 w-3 mr-1" />
+            <Tag className="h-3 w-3 mr-1" />
           )}
           {row.category}
         </Badge>
@@ -318,9 +321,12 @@ export default function ProductsPage() {
       key: "quantityPerUnit",
       header: "Qty/Unit",
       sortable: true,
-      cell: (row) => (
-        <span className="text-sm">{row.quantityPerUnit}</span>
-      ),
+      cell: (row) =>
+        row.category === "Piece" ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : (
+          <span className="text-sm">{row.quantityPerUnit}</span>
+        ),
     },
     {
       key: "purchasePricePerUnit",
@@ -431,8 +437,8 @@ export default function ProductsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Products"
-          description="Manage your product catalog"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -643,21 +649,24 @@ export default function ProductsPage() {
                           {product.category === "Crate" ? (
                             <Archive className="h-3 w-3 mr-1" />
                           ) : (
-                            <Box className="h-3 w-3 mr-1" />
+                            <Tag className="h-3 w-3 mr-1" />
                           )}
+
                           {product.category}
                         </Badge>
                       </div>
 
-                      {/* Quantity */}
-                      <div className="mb-3">
-                        <p className="text-xs text-muted-foreground">
-                          Quantity per unit
-                        </p>
-                        <p className="text-sm font-medium">
-                          {product.quantityPerUnit} pcs
-                        </p>
-                      </div>
+                      {/* Quantity (only relevant for Crate) */}
+                      {product.category !== "Piece" && (
+                        <div className="mb-3">
+                          <p className="text-xs text-muted-foreground">
+                            Quantity per unit
+                          </p>
+                          <p className="text-sm font-medium">
+                            {product.quantityPerUnit} pcs
+                          </p>
+                        </div>
+                      )}
 
                       {/* Prices */}
                       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -790,7 +799,7 @@ export default function ProductsPage() {
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
-                        <Box className="h-4 w-4" />
+                        <Tag className="h-4 w-4" />
                         {PRODUCT_CATEGORY_LABELS[cat]}
                       </span>
                     )}
@@ -798,20 +807,27 @@ export default function ProductsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {formCategory === "Piece" && (
+              <p className="text-xs text-muted-foreground">
+                Piece products are sold individually — orders are charged per piece.
+              </p>
+            )}
           </div>
 
-          {/* Quantity Per Unit */}
-          <div className="space-y-1.5">
-            <Label htmlFor="product-quantity">Quantity Per Unit</Label>
-            <Input
-              id="product-quantity"
-              type="number"
-              placeholder="e.g. 12"
-              value={formQuantityPerUnit}
-              onChange={(e) => setFormQuantityPerUnit(e.target.value)}
-              min={1}
-            />
-          </div>
+          {/* Quantity Per Unit (Crate only) */}
+          {formCategory !== "Piece" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="product-quantity">Quantity Per Unit</Label>
+              <Input
+                id="product-quantity"
+                type="number"
+                placeholder="e.g. 12"
+                value={formQuantityPerUnit}
+                onChange={(e) => setFormQuantityPerUnit(e.target.value)}
+                min={1}
+              />
+            </div>
+          )}
 
           {/* Prices */}
           <div className="grid grid-cols-2 gap-4">

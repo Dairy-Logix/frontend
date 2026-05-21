@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { useSuperAdminDashboard, useTenants } from "@/lib/hooks";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
@@ -103,6 +104,7 @@ const itemVariants = {
 };
 
 export default function PlatformDashboardPage() {
+  const tPage = useTranslations("pages.adminDashboard");
   const router = useRouter();
   const { data: dashboardData, isLoading, error, refetch } = useSuperAdminDashboard();
   const { data: tenantsData } = useTenants({ page: 1, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' });
@@ -162,8 +164,8 @@ export default function PlatformDashboardPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Platform Dashboard"
-          description="Overview of all tenants and platform metrics"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -186,8 +188,8 @@ export default function PlatformDashboardPage() {
       animate="visible"
     >
       <PageHeader
-        title="Platform Dashboard"
-        description="Overview of all tenants and platform metrics"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       {/* Stat Cards with Sparklines */}

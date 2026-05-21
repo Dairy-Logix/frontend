@@ -14,6 +14,11 @@ import {
   Loader2,
   AlertCircle,
   X,
+  Printer,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -36,9 +41,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useSettings, useUpdateSettings, useTenant, useUpdateTenant } from "@/lib/hooks";
+import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers } from "@/lib/hooks";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { OrderPrintTemplate, PrintOrientation } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
+
+// --- Helpers ---
+
+function makeId(): string {
+  return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
 
 // --- Profile Data Types ---
 
@@ -90,6 +104,7 @@ const featureList: FeatureMeta[] = [
 // --- Main Page ---
 
 export default function SettingsPage() {
+  const tPage = useTranslations("pages.settings");
   // Fetch settings from backend
   const { data: settings, isLoading, error, refetch } = useSettings();
   const updateSettings = useUpdateSettings();
@@ -132,6 +147,22 @@ export default function SettingsPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Order Print config state ---
+  const { data: agenciesData } = useAgencies({ page: 1, pageSize: 50 });
+  const { data: productsData } = useProducts({ page: 1, pageSize: 200 });
+  const { data: shopkeepersData } = useShopkeepers({ page: 1, pageSize: 1000 });
+  const printAgencies = (agenciesData?.data ?? []).filter((a) => a.isActive);
+  const printProducts = (productsData?.data ?? []).filter((p) => p.isActive);
+  const printShopkeepers = (shopkeepersData?.data ?? []).filter((s) => s.isActive);
+
+  // Templates list (per-template name, orientation, margins, products, stores)
+  const [printTemplates, setPrintTemplates] = useState<OrderPrintTemplate[]>([]);
+  const [printConfigInitialized, setPrintConfigInitialized] = useState(false);
+  // active inner agency-tab id, keyed by template id
+  const [activeStoreTabByTemplate, setActiveStoreTabByTemplate] = useState<Record<string, string>>({});
+  // collapse/expand per template id
+  const [expandedTemplateIds, setExpandedTemplateIds] = useState<Set<string>>(new Set());
 
 
   // Sync tenant profile data into form
@@ -184,6 +215,48 @@ export default function SettingsPage() {
       }
     }
   }, [settings]);
+
+  // Seed print templates once settings are loaded.
+  // - If templates exist on the server, use them as-is.
+  // - Otherwise, if legacy single-config orderPrint exists, migrate it into
+  //   one "Default Sheet" template (preserving the user's prior selections).
+  // - Otherwise, leave the list empty — user adds their first template manually.
+  useEffect(() => {
+    if (printConfigInitialized) return;
+    if (!settings) return;
+
+    const saved = settings.config.orderPrintTemplates;
+    if (Array.isArray(saved) && saved.length > 0) {
+      // Backfill any fields that may be missing on older saved templates.
+      setPrintTemplates(
+        saved.map((t) => ({
+          ...t,
+          showTitle: t.showTitle ?? true,
+          titleText: t.titleText ?? "",
+        })),
+      );
+    } else {
+      const legacy = settings.config.orderPrint;
+      if (legacy && (
+        (legacy.enabledProductIds && legacy.enabledProductIds.length > 0) ||
+        (legacy.enabledStoresByAgency && Object.keys(legacy.enabledStoresByAgency).length > 0)
+      )) {
+        setPrintTemplates([
+          {
+            id: makeId(),
+            name: "Default Sheet",
+            orientation: "portrait",
+            margins: { top: 0, right: 0, bottom: 0, left: 0 },
+            showTitle: true,
+            titleText: "",
+            enabledProductIds: legacy.enabledProductIds ?? [],
+            enabledStoresByAgency: legacy.enabledStoresByAgency ?? {},
+          },
+        ]);
+      }
+    }
+    setPrintConfigInitialized(true);
+  }, [settings, printConfigInitialized]);
 
   // --- Profile handlers ---
   function updateProfile(field: keyof ProfileData, value: string) {
@@ -318,6 +391,123 @@ export default function SettingsPage() {
     });
   }
 
+  // --- Print template handlers ---
+  function updateTemplate(id: string, patch: Partial<OrderPrintTemplate>) {
+    setPrintTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }
+
+  function updateTemplateMargin(id: string, side: keyof OrderPrintTemplate["margins"], value: number) {
+    setPrintTemplates((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, margins: { ...t.margins, [side]: value } } : t,
+      ),
+    );
+  }
+
+  function addTemplate() {
+    const id = makeId();
+    const newTemplate: OrderPrintTemplate = {
+      id,
+      name: `Sheet ${printTemplates.length + 1}`,
+      orientation: "portrait",
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      showTitle: true,
+      titleText: "",
+      enabledProductIds: printProducts.map((p) => p.id),
+      enabledStoresByAgency: Object.fromEntries(
+        printAgencies.map((a) => [
+          a.id,
+          printShopkeepers
+            .filter((s) => s.amAgencyId === a.id || s.pmAgencyId === a.id)
+            .map((s) => s.id),
+        ]),
+      ),
+    };
+    setPrintTemplates((prev) => [...prev, newTemplate]);
+    setExpandedTemplateIds((prev) => new Set(prev).add(id));
+    if (printAgencies[0]) {
+      setActiveStoreTabByTemplate((prev) => ({ ...prev, [id]: printAgencies[0].id }));
+    }
+  }
+
+  function deleteTemplate(id: string) {
+    if (!window.confirm("Delete this print template? This cannot be undone.")) return;
+    setPrintTemplates((prev) => prev.filter((t) => t.id !== id));
+    setExpandedTemplateIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleTemplateExpanded(id: string) {
+    setExpandedTemplateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleProductInTemplate(templateId: string, productId: string) {
+    setPrintTemplates((prev) =>
+      prev.map((t) => {
+        if (t.id !== templateId) return t;
+        const set = new Set(t.enabledProductIds);
+        if (set.has(productId)) set.delete(productId);
+        else set.add(productId);
+        return { ...t, enabledProductIds: Array.from(set) };
+      }),
+    );
+  }
+
+  function setAllProductsInTemplate(templateId: string, checked: boolean) {
+    updateTemplate(templateId, {
+      enabledProductIds: checked ? printProducts.map((p) => p.id) : [],
+    });
+  }
+
+  function toggleStoreInTemplate(templateId: string, agencyId: string, storeId: string) {
+    setPrintTemplates((prev) =>
+      prev.map((t) => {
+        if (t.id !== templateId) return t;
+        const current = new Set(t.enabledStoresByAgency[agencyId] ?? []);
+        if (current.has(storeId)) current.delete(storeId);
+        else current.add(storeId);
+        return {
+          ...t,
+          enabledStoresByAgency: {
+            ...t.enabledStoresByAgency,
+            [agencyId]: Array.from(current),
+          },
+        };
+      }),
+    );
+  }
+
+  function setAllStoresInTemplate(templateId: string, agencyId: string, checked: boolean) {
+    const stores = printShopkeepers.filter(
+      (s) => s.amAgencyId === agencyId || s.pmAgencyId === agencyId,
+    );
+    setPrintTemplates((prev) =>
+      prev.map((t) =>
+        t.id === templateId
+          ? {
+              ...t,
+              enabledStoresByAgency: {
+                ...t.enabledStoresByAgency,
+                [agencyId]: checked ? stores.map((s) => s.id) : [],
+              },
+            }
+          : t,
+      ),
+    );
+  }
+
+  function handleSavePrintTemplates() {
+    updateSettings.mutate({ orderPrintTemplates: printTemplates });
+  }
+
   // --- Loading State ---
   if (isLoading || isLoadingTenant) {
     return (
@@ -335,8 +525,8 @@ export default function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Settings"
-          description="Manage your tenant configuration and preferences"
+          title={tPage("title")}
+          description={tPage("description")}
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -356,8 +546,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        description="Manage your tenant configuration and preferences"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       <Tabs defaultValue="profile">
@@ -377,6 +567,10 @@ export default function SettingsPage() {
           <TabsTrigger value="features">
             <ToggleLeft className="h-4 w-4" />
             Features
+          </TabsTrigger>
+          <TabsTrigger value="order-print">
+            <Printer className="h-4 w-4" />
+            Print Templates
           </TabsTrigger>
         </TabsList>
 
@@ -794,6 +988,376 @@ export default function SettingsPage() {
                 disabled={updateSettings.isPending}
               >
                 {updateSettings.isPending ? "Saving..." : "Save Feature Settings"}
+              </Button>
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        {/* ===================== PRINT TEMPLATES TAB ===================== */}
+        <TabsContent value="order-print">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="glass rounded-xl p-6 mt-4 space-y-6"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold">Print Templates</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create one template per kind of sheet (e.g. &quot;Order Data Sheet&quot;,
+                  &quot;Root Sheet&quot;). Each template carries its own products, stores, page
+                  orientation and margins. The Print button on the orders page lets the
+                  user pick which template to print.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addTemplate}>
+                <Plus className="h-4 w-4" />
+                Add Template
+              </Button>
+            </div>
+
+            {printTemplates.length === 0 ? (
+              <div className="glass-subtle rounded-lg p-8 text-center">
+                <Printer className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No print templates yet. Click <strong>Add Template</strong> to create one.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {printTemplates.map((template) => {
+                  const expanded = expandedTemplateIds.has(template.id);
+                  const activeStoreTab =
+                    activeStoreTabByTemplate[template.id] ?? printAgencies[0]?.id ?? "";
+
+                  return (
+                    <div
+                      key={template.id}
+                      className="glass-subtle rounded-lg border border-border/50"
+                    >
+                      {/* Header: name, expand/collapse, delete */}
+                      <div className="flex items-center gap-2 p-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleTemplateExpanded(template.id)}
+                          className="p-1 rounded hover:bg-white/5 shrink-0"
+                          aria-label={expanded ? "Collapse" : "Expand"}
+                        >
+                          {expanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </button>
+                        <Input
+                          value={template.name}
+                          onChange={(e) =>
+                            updateTemplate(template.id, { name: e.target.value })
+                          }
+                          placeholder="Template name"
+                          className="flex-1 h-8"
+                        />
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {template.enabledProductIds.length} products ·{" "}
+                          {Object.values(template.enabledStoresByAgency).reduce(
+                            (sum, list) => sum + list.length,
+                            0,
+                          )}{" "}
+                          stores
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteTemplate(template.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Body */}
+                      {expanded && (
+                        <div className="p-4 pt-4 space-y-4 border-t border-border/30">
+                          {/* Orientation + margins + title toggle */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 items-end">
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Orientation
+                              </Label>
+                              <Select
+                                value={template.orientation}
+                                onValueChange={(v) =>
+                                  updateTemplate(template.id, {
+                                    orientation: v as PrintOrientation,
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="portrait">Portrait</SelectItem>
+                                  <SelectItem value="landscape">Landscape</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {(["top", "right", "bottom", "left"] as const).map((side) => (
+                              <div key={side} className="space-y-1">
+                                <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                  {side} margin (mm)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={template.margins[side]}
+                                  onChange={(e) =>
+                                    updateTemplateMargin(
+                                      template.id,
+                                      side,
+                                      Math.max(0, Number(e.target.value) || 0),
+                                    )
+                                  }
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            ))}
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Title bar
+                              </Label>
+                              <div className="h-8 flex items-center gap-2">
+                                <Switch
+                                  checked={template.showTitle}
+                                  onCheckedChange={(v) =>
+                                    updateTemplate(template.id, { showTitle: v })
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {template.showTitle ? "Shown" : "Hidden"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Custom title text — only when title bar is enabled */}
+                          {template.showTitle && (
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Custom title
+                              </Label>
+                              <Input
+                                value={template.titleText}
+                                onChange={(e) =>
+                                  updateTemplate(template.id, {
+                                    titleText: e.target.value,
+                                  })
+                                }
+                                placeholder="Leave blank to use business name"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          )}
+
+                          {/* Products */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Products
+                              </h5>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() =>
+                                    setAllProductsInTemplate(template.id, true)
+                                  }
+                                >
+                                  All
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() =>
+                                    setAllProductsInTemplate(template.id, false)
+                                  }
+                                >
+                                  None
+                                </Button>
+                              </div>
+                            </div>
+                            {printProducts.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                No active products yet.
+                              </p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 glass rounded-md p-2 max-h-[240px] overflow-y-auto">
+                                {printProducts.map((product) => {
+                                  const checked = template.enabledProductIds.includes(
+                                    product.id,
+                                  );
+                                  return (
+                                    <label
+                                      key={product.id}
+                                      className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
+                                    >
+                                      <Checkbox
+                                        checked={checked}
+                                        onCheckedChange={() =>
+                                          toggleProductInTemplate(template.id, product.id)
+                                        }
+                                      />
+                                      <span className="text-xs truncate">
+                                        <span className="font-medium">
+                                          {product.shortName}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                          {" "}
+                                          — {product.name}
+                                        </span>
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Stores per agency */}
+                          <div className="space-y-2">
+                            <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Stores by agency
+                            </h5>
+                            {printAgencies.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                No active agencies yet.
+                              </p>
+                            ) : (
+                              <Tabs
+                                value={activeStoreTab}
+                                onValueChange={(v) =>
+                                  setActiveStoreTabByTemplate((prev) => ({
+                                    ...prev,
+                                    [template.id]: v,
+                                  }))
+                                }
+                              >
+                                <TabsList className="w-full bg-muted/30 justify-start p-1 flex-wrap h-auto">
+                                  {printAgencies.map((agency) => (
+                                    <TabsTrigger
+                                      key={agency.id}
+                                      value={agency.id}
+                                      className="text-xs"
+                                    >
+                                      {agency.name}
+                                    </TabsTrigger>
+                                  ))}
+                                </TabsList>
+
+                                {printAgencies.map((agency) => {
+                                  const stores = printShopkeepers.filter(
+                                    (s) =>
+                                      s.amAgencyId === agency.id ||
+                                      s.pmAgencyId === agency.id,
+                                  );
+                                  const enabledStores =
+                                    template.enabledStoresByAgency[agency.id] ?? [];
+
+                                  return (
+                                    <TabsContent
+                                      key={agency.id}
+                                      value={agency.id}
+                                      className="mt-2"
+                                    >
+                                      <div className="flex items-center justify-end gap-1 mb-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-xs"
+                                          onClick={() =>
+                                            setAllStoresInTemplate(
+                                              template.id,
+                                              agency.id,
+                                              true,
+                                            )
+                                          }
+                                        >
+                                          All
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-xs"
+                                          onClick={() =>
+                                            setAllStoresInTemplate(
+                                              template.id,
+                                              agency.id,
+                                              false,
+                                            )
+                                          }
+                                        >
+                                          None
+                                        </Button>
+                                      </div>
+                                      {stores.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground">
+                                          No stores for this agency.
+                                        </p>
+                                      ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 glass rounded-md p-2 max-h-[240px] overflow-y-auto">
+                                          {stores.map((store) => {
+                                            const checked = enabledStores.includes(
+                                              store.id,
+                                            );
+                                            return (
+                                              <label
+                                                key={store.id}
+                                                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
+                                              >
+                                                <Checkbox
+                                                  checked={checked}
+                                                  onCheckedChange={() =>
+                                                    toggleStoreInTemplate(
+                                                      template.id,
+                                                      agency.id,
+                                                      store.id,
+                                                    )
+                                                  }
+                                                />
+                                                <span className="text-xs truncate">
+                                                  {store.shopName}
+                                                </span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </TabsContent>
+                                  );
+                                })}
+                              </Tabs>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Save */}
+            <div className="flex justify-end pt-2">
+              <Button
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                onClick={handleSavePrintTemplates}
+                disabled={updateSettings.isPending || !printConfigInitialized}
+              >
+                {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {updateSettings.isPending ? "Saving..." : "Save Templates"}
               </Button>
             </div>
           </motion.div>

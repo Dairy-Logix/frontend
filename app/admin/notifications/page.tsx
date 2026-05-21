@@ -16,14 +16,18 @@ import { toast } from "sonner";
 import { Bell, Send, Settings, Clock, MessageSquare, Info, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSuperAdminDashboard } from "@/lib/hooks";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const notificationEvents = [
-  { key: "new_order", label: "New Order Placed", channels: { inApp: true, push: true } },
-  { key: "order_confirmed", label: "Order Confirmed", channels: { inApp: true, push: true } },
-  { key: "delivery_dispatched", label: "Delivery Dispatched", channels: { inApp: true, push: true } },
-  { key: "invoice_generated", label: "Invoice Generated", channels: { inApp: true, push: false } },
-  { key: "payment_reminder", label: "Payment Reminder", channels: { inApp: true, push: true } },
-  { key: "payment_received", label: "Payment Received", channels: { inApp: true, push: true } },
+  { key: "new_order", label: "New Order Placed", channels: { push: true } },
+  { key: "order_confirmed", label: "Order Confirmed", channels: { push: true } },
+  { key: "delivery_dispatched", label: "Delivery Dispatched", channels: { push: true } },
+  { key: "invoice_generated", label: "Invoice Generated", channels: { push: true } },
+  { key: "payment_reminder", label: "Payment Reminder", channels: { push: true } },
+  { key: "payment_received", label: "Payment Received", channels: { push: true } },
+  { key: "invoice_transfer_in", label: "Items Added (Transfer In)", channels: { push: true } },
+  { key: "invoice_transfer_out", label: "Items Removed (Transfer Out)", channels: { push: true } },
+  { key: "wallet_credit", label: "Wallet Credited", channels: { push: true } },
 ];
 
 const typeColorMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "error" | "info" }> = {
@@ -38,11 +42,12 @@ const typeColorMap: Record<string, { label: string; variant: "default" | "succes
 };
 
 export default function NotificationsPage() {
+  const tPage = useTranslations("pages.adminNotifications");
   const { data: dashboardData, isLoading: isLoadingActivity } = useSuperAdminDashboard();
   const recentActivity = dashboardData?.recentActivity || [];
   const [events, setEvents] = useState(notificationEvents);
 
-  const toggleChannel = (eventKey: string, channel: "inApp" | "push") => {
+  const toggleChannel = (eventKey: string, channel: "push") => {
     setEvents((prev) =>
       prev.map((e) =>
         e.key === eventKey
@@ -92,9 +97,8 @@ export default function NotificationsPage() {
             <CardContent>
               <div className="space-y-1">
                 {/* Header */}
-                <div className="grid grid-cols-3 gap-4 pb-3 border-b text-sm text-muted-foreground font-medium">
+                <div className="grid grid-cols-2 gap-4 pb-3 border-b text-sm text-muted-foreground font-medium">
                   <span>Event</span>
-                  <span className="text-center">In-App</span>
                   <span className="text-center">Push</span>
                 </div>
                 {/* Rows */}
@@ -102,15 +106,9 @@ export default function NotificationsPage() {
                   <motion.div
                     key={event.key}
                     whileHover={{ backgroundColor: "hsl(var(--muted) / 0.3)" }}
-                    className="grid grid-cols-3 gap-4 py-3 border-b last:border-0 items-center rounded"
+                    className="grid grid-cols-2 gap-4 py-3 border-b last:border-0 items-center rounded"
                   >
                     <span className="text-sm font-medium">{event.label}</span>
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={event.channels.inApp}
-                        onCheckedChange={() => toggleChannel(event.key, "inApp")}
-                      />
-                    </div>
                     <div className="flex justify-center">
                       <Switch
                         checked={event.channels.push}

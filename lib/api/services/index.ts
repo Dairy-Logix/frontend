@@ -8,7 +8,7 @@ export { orderService } from './order.service';
 export { invoiceService } from './invoice.service';
 export { paymentService } from './payment.service';
 export { deliveryService } from './delivery.service';
-export { factoryService } from './factory.service';
+export { purchaseService } from './purchase.service';
 export { reportService } from './report.service';
 export { notificationService } from './notification.service';
 
@@ -17,7 +17,7 @@ export type { AggregateOrderQuantities, OrderFilterParams } from './order.servic
 export type { InvoiceFilterParams, UpdateInvoiceInput } from './invoice.service';
 export type { PaymentFilterParams, CollectionSummary, OutstandingReport } from './payment.service';
 export type { DeliveryFilterParams } from './delivery.service';
-export type { FactoryOrderFilterParams, ProfitMargin } from './factory.service';
+export type { PurchaseFilterParams } from './purchase.service';
 export type {
   SalesReportData,
   CollectionReportData,

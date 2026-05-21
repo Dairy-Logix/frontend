@@ -13,8 +13,10 @@ import { Save, Shield, Key, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useUpdateUser, useResetUserPassword } from "@/lib/hooks";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 export default function SettingsPage() {
+  const tPage = useTranslations("pages.adminSettings");
   const { user } = useAuthStore();
   const updateUser = useUpdateUser();
   const resetPassword = useResetUserPassword();
@@ -80,8 +82,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        description="Manage your account and platform preferences"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       <Tabs defaultValue="profile" className="space-y-4">

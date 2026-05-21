@@ -50,6 +50,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { paymentService } from "@/lib/api/services/payment.service";
 import { todayIST } from "@/lib/utils";
 import type { PendingStoreBalance } from "@/lib/api/services/invoice.service";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Color maps ---
 const paymentTypeColorMap: Record<
@@ -101,6 +102,7 @@ function isOverdueDate(dateStr?: string): boolean {
 
 // --- Main Page ---
 export default function PaymentsPage() {
+  const tPage = useTranslations("pages.payments");
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
   const queryClient = useQueryClient();
 
@@ -274,8 +276,8 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payments"
-        description="Track outstanding balances and collect payments by store"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       {/* Stat Cards */}

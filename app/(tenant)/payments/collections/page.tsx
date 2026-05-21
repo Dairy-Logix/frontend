@@ -34,6 +34,7 @@ import { todayIST, dateToIST } from "@/lib/utils";
 import { useShopkeepers } from "@/lib/hooks/use-shopkeepers";
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { Loader2 as LoaderIcon } from "lucide-react";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Type Color Map ---
 
@@ -61,6 +62,7 @@ function formatTime(dateStr: string): string {
 // --- Main Page ---
 
 export default function CollectionsDashboardPage() {
+  const tPage = useTranslations("pages.collections");
   // Fetch data from API
   const { data: paymentsData, isLoading: paymentsLoading } = usePayments({ pageSize: 200 });
   const { data: shopkeepersData } = useShopkeepers({ pageSize: 200 });
@@ -173,8 +175,8 @@ export default function CollectionsDashboardPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Collections Dashboard"
-        description="Monitor daily collection performance and employee targets"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       {/* Today's Summary Card */}

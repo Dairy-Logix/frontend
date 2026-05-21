@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUsers } from "@/lib/hooks";
 import type { User, UserRole } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const userStatusColorMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "error" | "info" }> = {
   active: { label: "Active", variant: "success" },
@@ -127,6 +128,7 @@ const itemVariants = {
 };
 
 export default function UsersPage() {
+  const tPage = useTranslations("pages.adminUsers");
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");

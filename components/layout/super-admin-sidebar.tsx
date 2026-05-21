@@ -21,20 +21,22 @@ import {
 } from "@/components/ui/tooltip";
 import { useUIStore } from "@/lib/stores/ui-store";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 const navigation = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Tenants", href: "/admin/tenants", icon: Building2 },
-  { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Configurations", href: "/admin/configurations", icon: Cog },
-  { name: "Notifications", href: "/admin/notifications", icon: Bell },
-  { name: "Reports", href: "/admin/reports", icon: BarChart3 },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+  { key: "dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { key: "tenants", href: "/admin/tenants", icon: Building2 },
+  { key: "users", href: "/admin/users", icon: Users },
+  { key: "configurations", href: "/admin/configurations", icon: Cog },
+  { key: "notifications", href: "/admin/notifications", icon: Bell },
+  { key: "reports", href: "/admin/reports", icon: BarChart3 },
+  { key: "settings", href: "/admin/settings", icon: Settings },
 ];
 
 export function SuperAdminSidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed } = useUIStore();
+  const tNav = useTranslations("nav");
 
   const sidebarWidth = sidebarCollapsed ? 80 : 280;
 
@@ -79,7 +81,7 @@ export function SuperAdminSidebar() {
                       exit={{ opacity: 0, width: 0, transition: { duration: 0.2 } }}
                       className="font-bold text-lg whitespace-nowrap overflow-hidden"
                     >
-                      Super Admin
+                      {tNav("superAdmin")}
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -91,9 +93,10 @@ export function SuperAdminSidebar() {
                 {navigation.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
+                  const label = tNav(item.key);
 
                   const NavItem = (
-                    <Link key={item.name} href={item.href}>
+                    <Link key={item.key} href={item.href}>
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -114,7 +117,7 @@ export function SuperAdminSidebar() {
                               exit={{ opacity: 0, width: 0, transition: { duration: 0.2 } }}
                               className="whitespace-nowrap"
                             >
-                              {item.name}
+                              {label}
                             </motion.span>
                           )}
                         </AnimatePresence>
@@ -124,9 +127,9 @@ export function SuperAdminSidebar() {
 
                   if (sidebarCollapsed) {
                     return (
-                      <Tooltip key={item.name}>
+                      <Tooltip key={item.key}>
                         <TooltipTrigger asChild>{NavItem}</TooltipTrigger>
-                        <TooltipContent side="right"><p>{item.name}</p></TooltipContent>
+                        <TooltipContent side="right"><p>{label}</p></TooltipContent>
                       </Tooltip>
                     );
                   }
@@ -149,8 +152,8 @@ export function SuperAdminSidebar() {
                         <Shield className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">Dairy Logix</p>
-                        <p className="text-xs text-muted-foreground truncate">Platform Admin</p>
+                        <p className="text-sm font-medium truncate">BeatMitra</p>
+                        <p className="text-xs text-muted-foreground truncate">{tNav("platformAdmin")}</p>
                       </div>
                     </div>
                   </div>

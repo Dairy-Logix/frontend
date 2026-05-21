@@ -43,8 +43,6 @@ export const mockTenants: Tenant[] = [
         logo: '/logos/shree-krishna.png',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 5,
         invoicePrefix: 'SKD',
         invoiceNumberFormat: 'SKD-{YYYY}-{SEQ}',
         termsAndConditions: 'Payment due within 15 days of invoice date.',
@@ -93,8 +91,6 @@ export const mockTenants: Tenant[] = [
         logo: '/logos/gujarat-milk.png',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 5,
         invoicePrefix: 'GMC',
         invoiceNumberFormat: 'GMC-{YYYY}-{SEQ}',
         termsAndConditions: 'Payment due within 30 days of invoice date.',
@@ -144,8 +140,6 @@ export const mockTenants: Tenant[] = [
         secondaryColor: '#3B82F6',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 12,
         invoicePrefix: 'AFD',
         invoiceNumberFormat: 'AFD-{YYYY}-{SEQ}',
       },
@@ -193,8 +187,6 @@ export const mockTenants: Tenant[] = [
         logo: '/logos/nandini.png',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 5,
         invoicePrefix: 'NDP',
         invoiceNumberFormat: 'NDP-{YYYY}-{SEQ}',
         termsAndConditions: 'Payment due within 7 days.',
@@ -242,8 +234,6 @@ export const mockTenants: Tenant[] = [
         primaryColor: '#059669',
       },
       invoiceSettings: {
-        taxEnabled: false,
-        taxPercentage: 0,
         invoicePrefix: 'MDE',
         invoiceNumberFormat: 'MDE-{YYYY}-{SEQ}',
       },
@@ -292,8 +282,6 @@ export const mockTenants: Tenant[] = [
         logo: '/logos/verka-punjab.png',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 5,
         invoicePrefix: 'VPD',
         invoiceNumberFormat: 'VPD-{YYYY}-{SEQ}',
       },
@@ -341,8 +329,6 @@ export const mockTenants: Tenant[] = [
         secondaryColor: '#F97316',
       },
       invoiceSettings: {
-        taxEnabled: true,
-        taxPercentage: 12,
         invoicePrefix: 'PMF',
         invoiceNumberFormat: 'PMF-{YYYY}-{SEQ}',
         termsAndConditions: 'Net 15 days from date of invoice.',

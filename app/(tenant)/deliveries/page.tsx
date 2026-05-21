@@ -57,6 +57,7 @@ import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useShopkeepers } from "@/lib/hooks/use-shopkeepers";
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { useOrders } from "@/lib/hooks/use-orders";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Delivery Status Color Map ---
 
@@ -239,6 +240,7 @@ function AreaShopPicker({
 // --- Main Page ---
 
 export default function DeliveriesPage() {
+  const tPage = useTranslations("pages.deliveries");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("today");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -497,7 +499,7 @@ export default function DeliveriesPage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Deliveries" description="Manage and track all deliveries" />
+        <PageHeader title={tPage("title")} description={tPage("description")} />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">

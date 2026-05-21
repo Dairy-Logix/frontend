@@ -4,12 +4,9 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
-  BellRing,
   Smartphone,
-  Monitor,
   Pencil,
   Check,
-  CheckCheck,
   ShoppingCart,
   Truck,
   FileText,
@@ -19,6 +16,11 @@ import {
   Info,
   CheckCircle2,
   XCircle,
+  Wallet,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Loader2,
+  User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,12 +48,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { useSentNotifications } from "@/lib/hooks/use-notifications";
+import { useSettings, useUpdateSettings } from "@/lib/hooks/use-settings";
 import type {
   NotificationChannel,
   NotificationEventType,
-  Notification,
   NotificationPreference,
+  SentNotification,
+  SentNotificationType,
 } from "@/lib/types";
+import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Event Type Metadata ---
 
@@ -92,6 +98,21 @@ const eventTypeMeta: Record<NotificationEventType, EventMeta> = {
     description: "Triggered when a payment is collected from a shopkeeper",
     icon: CreditCard,
   },
+  invoice_transfer_in: {
+    label: "Items Added (Transfer In)",
+    description: "Sent to a shopkeeper when items are added to their invoice via a transfer",
+    icon: ArrowDownToLine,
+  },
+  invoice_transfer_out: {
+    label: "Items Removed (Transfer Out)",
+    description: "Sent to a shopkeeper when items are removed from their invoice via a transfer",
+    icon: ArrowUpFromLine,
+  },
+  wallet_credit: {
+    label: "Wallet Credited",
+    description: "Sent to a shopkeeper when their wallet receives a credit (e.g. transfer with no open invoice)",
+    icon: Wallet,
+  },
 };
 
 // --- Channel Metadata ---
@@ -102,15 +123,13 @@ interface ChannelMeta {
   icon: React.ElementType;
 }
 
-const channelMeta: Record<NotificationChannel, ChannelMeta> = {
-  in_app: {
-    label: "In-App",
-    description: "Show notifications within the application dashboard and bell icon",
-    icon: Monitor,
-  },
+// Push is the only customer-facing channel — the mobile app shows push
+// notifications directly. The legacy in_app channel is kept in the type for
+// historical Notification records but is no longer surfaced in this UI.
+const channelMeta: Partial<Record<NotificationChannel, ChannelMeta>> = {
   push: {
     label: "Push",
-    description: "Send browser and mobile push notifications to users",
+    description: "Send mobile push notifications via FCM",
     icon: Smartphone,
   },
 };
@@ -131,7 +150,6 @@ const channelColorMap: Record<
   string,
   { label: string; variant: "default" | "success" | "warning" | "error" | "info" }
 > = {
-  in_app: { label: "In-App", variant: "info" },
   push: { label: "Push", variant: "warning" },
 };
 
@@ -142,7 +160,7 @@ const initialPreferences: NotificationPreference[] = [
     id: "pref-1",
     tenantId: "tenant-1",
     eventType: "order_placed",
-    channels: ["in_app", "push"],
+    channels: ["push"],
     templateSubject: "New Order #{orderNumber}",
     templateBody: "A new order #{orderNumber} has been placed by {shopName} for {itemCount} items totaling INR {total}.",
     isActive: true,
@@ -151,7 +169,7 @@ const initialPreferences: NotificationPreference[] = [
     id: "pref-2",
     tenantId: "tenant-1",
     eventType: "order_confirmed",
-    channels: ["in_app"],
+    channels: ["push"],
     templateSubject: "Order #{orderNumber} Confirmed",
     templateBody: "Your order #{orderNumber} has been confirmed and is being prepared for dispatch.",
     isActive: true,
@@ -160,7 +178,7 @@ const initialPreferences: NotificationPreference[] = [
     id: "pref-3",
     tenantId: "tenant-1",
     eventType: "delivery_dispatched",
-    channels: ["in_app", "push"],
+    channels: ["push"],
     templateSubject: "Delivery Dispatched - #{orderNumber}",
     templateBody: "Your order #{orderNumber} has been dispatched. Delivery person: {employeeName}. Expected delivery: {scheduledDate}.",
     isActive: true,
@@ -169,7 +187,7 @@ const initialPreferences: NotificationPreference[] = [
     id: "pref-4",
     tenantId: "tenant-1",
     eventType: "invoice_generated",
-    channels: ["in_app"],
+    channels: ["push"],
     templateSubject: "Invoice #{invoiceNumber} Generated",
     templateBody: "Invoice #{invoiceNumber} has been generated for INR {totalAmount}. Due date: {dueDate}.",
     isActive: true,
@@ -187,172 +205,123 @@ const initialPreferences: NotificationPreference[] = [
     id: "pref-6",
     tenantId: "tenant-1",
     eventType: "payment_received",
-    channels: ["in_app"],
+    channels: ["push"],
     templateSubject: "Payment Received - INR {amount}",
     templateBody: "Payment of INR {amount} received from {shopName}. Reference: {referenceNumber}. Collected by: {collectedBy}.",
     isActive: false,
   },
+  {
+    id: "pref-7",
+    tenantId: "tenant-1",
+    eventType: "invoice_transfer_in",
+    channels: ["push"],
+    templateSubject: "Items added to invoice",
+    templateBody: "INR {amount} of additional items added to your invoice {invoiceNumber} (transfer {transferNumber}).",
+    isActive: true,
+  },
+  {
+    id: "pref-8",
+    tenantId: "tenant-1",
+    eventType: "invoice_transfer_out",
+    channels: ["push"],
+    templateSubject: "Invoice updated",
+    templateBody: "INR {amount} reduced from your invoice {invoiceNumber} (transfer {transferNumber}).",
+    isActive: true,
+  },
+  {
+    id: "pref-9",
+    tenantId: "tenant-1",
+    eventType: "wallet_credit",
+    channels: ["push"],
+    templateSubject: "Wallet credited",
+    templateBody: "INR {amount} added to your wallet (transfer {transferNumber}). New wallet balance: INR {walletBalanceAfter}.",
+    isActive: true,
+  },
 ];
 
-// --- Mock Channel State ---
+// --- Backend → UI mapping for the History tab ---
 
-interface ChannelState {
-  enabled: boolean;
-  apiKey?: string;
+interface DisplayNotification {
+  id: string;
+  type: "info" | "success" | "warning" | "error";
+  title: string;
+  message: string;
+  eventType?: NotificationEventType;
+  read: boolean;
+  createdAt: string;
+  recipient?: string;
 }
 
-const initialChannelState: Record<NotificationChannel, ChannelState> = {
-  in_app: { enabled: true },
-  push: { enabled: true },
+// Maps backend NotificationType (snake_case) → UI NotificationEventType used
+// by the filter dropdown and badge metadata. Some backend values fall back to
+// 'system' (no row in eventTypeMeta) and render with the generic Info icon.
+const backendTypeToEventType: Partial<Record<SentNotificationType, NotificationEventType>> = {
+  order_created: "order_placed",
+  order_confirmed: "order_confirmed",
+  order_delivered: "delivery_dispatched",
+  delivery_scheduled: "delivery_dispatched",
+  delivery_completed: "delivery_dispatched",
+  payment_received: "payment_received",
+  invoice_generated: "invoice_generated",
+  invoice_overdue: "payment_reminder",
+  invoice_transfer_in: "invoice_transfer_in",
+  invoice_transfer_out: "invoice_transfer_out",
+  wallet_credit: "wallet_credit",
 };
 
-// --- Mock Notification History ---
+function mapBackendType(type: SentNotificationType): {
+  uiType: DisplayNotification["type"];
+  eventType?: NotificationEventType;
+} {
+  let uiType: DisplayNotification["type"] = "info";
+  switch (type) {
+    case "order_confirmed":
+    case "order_delivered":
+    case "delivery_completed":
+    case "payment_received":
+    case "production_completed":
+    case "wallet_credit":
+    case "invoice_transfer_in":
+      uiType = "success";
+      break;
+    case "invoice_overdue":
+    case "stock_low":
+      uiType = "warning";
+      break;
+    case "stock_out":
+    case "quality_check_failed":
+    case "invoice_transfer_out":
+      uiType = "error";
+      break;
+    default:
+      uiType = "info";
+  }
+  return { uiType, eventType: backendTypeToEventType[type] };
+}
 
-const mockNotifications: Notification[] = [
-  {
-    id: "notif-1",
-    userId: "user-1",
-    type: "info",
-    title: "New Order #ORD-2024-0156",
-    message: "Annapurna Dairy placed a new order for 12 items totaling INR 4,580.",
-    channel: "in_app",
-    eventType: "order_placed",
-    read: false,
-    createdAt: "2025-01-15T09:30:00Z",
-  },
-  {
-    id: "notif-2",
-    userId: "user-1",
-    type: "success",
-    title: "Order #ORD-2024-0155 Confirmed",
-    message: "Order has been confirmed and is being prepared for dispatch.",
-    channel: "in_app",
-    eventType: "order_confirmed",
-    read: false,
-    createdAt: "2025-01-15T09:15:00Z",
-  },
-  {
-    id: "notif-3",
-    userId: "user-1",
-    type: "info",
-    title: "Delivery Dispatched",
-    message: "Order #ORD-2024-0153 dispatched. Driver: Ramesh Kumar. ETA: 2 hours.",
-    channel: "push",
-    eventType: "delivery_dispatched",
-    read: false,
-    createdAt: "2025-01-15T08:45:00Z",
-  },
-  {
-    id: "notif-4",
-    userId: "user-1",
-    type: "success",
-    title: "Payment Received - INR 12,500",
-    message: "Payment received from Krishna Milk Centre. Ref: PAY-2024-0089.",
-    channel: "in_app",
-    eventType: "payment_received",
-    read: true,
-    createdAt: "2025-01-15T08:30:00Z",
-  },
-  {
-    id: "notif-6",
-    userId: "user-1",
-    type: "info",
-    title: "Invoice #INV-2024-0234 Generated",
-    message: "Invoice generated for Gupta Store. Amount: INR 3,200. Due: 25 Jan 2025.",
-    channel: "in_app",
-    eventType: "invoice_generated",
-    read: true,
-    createdAt: "2025-01-14T17:30:00Z",
-  },
-  {
-    id: "notif-7",
-    userId: "user-1",
-    type: "info",
-    title: "New Order #ORD-2024-0154",
-    message: "Patel Milk Distributors placed a new order for 8 items totaling INR 6,320.",
-    channel: "push",
-    eventType: "order_placed",
-    read: false,
-    createdAt: "2025-01-14T16:45:00Z",
-  },
-  {
-    id: "notif-8",
-    userId: "user-1",
-    type: "success",
-    title: "Delivery Completed",
-    message: "Order #ORD-2024-0150 delivered successfully. Photo proof attached.",
-    channel: "in_app",
-    eventType: "delivery_dispatched",
-    read: true,
-    createdAt: "2025-01-14T15:20:00Z",
-  },
-  {
-    id: "notif-9",
-    userId: "user-1",
-    type: "error",
-    title: "Delivery Failed",
-    message: "Delivery of order #ORD-2024-0149 failed. Shop was closed. Rescheduled for tomorrow.",
-    channel: "push",
-    eventType: "delivery_dispatched",
-    read: false,
-    createdAt: "2025-01-14T14:00:00Z",
-  },
-  {
-    id: "notif-10",
-    userId: "user-1",
-    type: "warning",
-    title: "Payment Overdue - Mehta Dairy",
-    message: "Outstanding balance of INR 15,400 is overdue by 7 days. Please follow up.",
-    channel: "in_app",
-    eventType: "payment_reminder",
-    read: true,
-    createdAt: "2025-01-14T10:00:00Z",
-  },
-  {
-    id: "notif-12",
-    userId: "user-1",
-    type: "info",
-    title: "Invoice #INV-2024-0233 Generated",
-    message: "Invoice generated for Patel Milk Distributors. Amount: INR 6,320.",
-    channel: "in_app",
-    eventType: "invoice_generated",
-    read: false,
-    createdAt: "2025-01-13T18:00:00Z",
-  },
-  {
-    id: "notif-14",
-    userId: "user-1",
-    type: "info",
-    title: "New Order #ORD-2024-0151",
-    message: "Fresh Milk Corner placed a new order for 5 items totaling INR 2,150.",
-    channel: "in_app",
-    eventType: "order_placed",
-    read: true,
-    createdAt: "2025-01-13T14:20:00Z",
-  },
-  {
-    id: "notif-16",
-    userId: "user-1",
-    type: "info",
-    title: "Delivery Dispatched",
-    message: "3 deliveries dispatched from City Centre Agency. Driver: Amit Patel.",
-    channel: "push",
-    eventType: "delivery_dispatched",
-    read: true,
-    createdAt: "2025-01-13T08:15:00Z",
-  },
-  {
-    id: "notif-17",
-    userId: "user-1",
-    type: "success",
-    title: "Payment Received - INR 9,800",
-    message: "Full payment received from Mehta Dairy. Account balance cleared.",
-    channel: "in_app",
-    eventType: "payment_received",
-    read: true,
-    createdAt: "2025-01-12T17:45:00Z",
-  },
-];
+function getRecipientName(notif: SentNotification): string | undefined {
+  if (notif.userName) return notif.userName;
+  const u = notif.userId;
+  if (u && typeof u === "object") {
+    const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+    return full || u.email;
+  }
+  return undefined;
+}
+
+function toDisplayNotification(n: SentNotification): DisplayNotification {
+  const { uiType, eventType } = mapBackendType(n.type);
+  return {
+    id: n._id,
+    type: uiType,
+    title: n.title,
+    message: n.message,
+    eventType,
+    read: n.isRead,
+    createdAt: n.createdAt,
+    recipient: getRecipientName(n),
+  };
+}
 
 // --- Helpers ---
 
@@ -395,11 +364,14 @@ function getNotificationTypeIcon(type: string) {
 }
 
 // --- All Channels ---
-const allChannels: NotificationChannel[] = ["in_app", "push"];
+// Only push is exposed in the UI; in_app remains in the type for legacy
+// Notification records but is no longer surfaced as a togglable channel.
+const allChannels: NotificationChannel[] = ["push"];
 
 // --- Main Page ---
 
 export default function NotificationsPage() {
+  const tPage = useTranslations("pages.tenantNotifications");
   // --- Templates Tab State ---
   const [preferences, setPreferences] = useState<NotificationPreference[]>(initialPreferences);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -408,14 +380,29 @@ export default function NotificationsPage() {
   const [templateBody, setTemplateBody] = useState("");
 
   // --- Channels Tab State ---
-  const [channels, setChannels] = useState<Record<NotificationChannel, ChannelState>>(initialChannelState);
+  // The Push channel is gated by the tenant's `pushNotifications` feature
+  // flag in settings. The toggle below mutates that flag, which the backend's
+  // NotificationsService checks before creating/dispatching push records.
+  const { data: settings, isLoading: isLoadingSettings } = useSettings();
+  const updateSettings = useUpdateSettings();
+  const pushEnabled = settings?.config?.features?.pushNotifications ?? false;
 
   // --- History Tab State ---
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [historySearch, setHistorySearch] = useState("");
-  const [channelFilter, setChannelFilter] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+
+  const {
+    data: sentNotificationsPage,
+    isLoading: isLoadingHistory,
+    isError: isHistoryError,
+    error: historyError,
+  } = useSentNotifications({ page: 1, pageSize: 100 });
+
+  const notifications = useMemo<DisplayNotification[]>(
+    () => (sentNotificationsPage?.data ?? []).map(toDisplayNotification),
+    [sentNotificationsPage]
+  );
 
   // --- Templates: Toggle channel for a preference ---
   function togglePrefChannel(prefId: string, channel: NotificationChannel) {
@@ -465,25 +452,27 @@ export default function NotificationsPage() {
     setTemplateModalOpen(false);
   }
 
-  // --- Channels: Toggle channel enabled ---
-  function toggleChannelEnabled(channel: NotificationChannel) {
-    setChannels((prev) => ({
-      ...prev,
-      [channel]: { ...prev[channel], enabled: !prev[channel].enabled },
-    }));
-    toast.success(`${channelMeta[channel].label} ${channels[channel].enabled ? "disabled" : "enabled"}`);
+  // --- Channels: Toggle Push channel ---
+  function togglePushChannel(next: boolean) {
+    updateSettings.mutate(
+      { features: { pushNotifications: next } },
+      {
+        onSuccess: () => {
+          toast.success(`Push notifications ${next ? "enabled" : "disabled"}`);
+        },
+      }
+    );
   }
 
   // --- History: Filtered notifications ---
   const filteredNotifications = useMemo(() => {
+    const search = historySearch.trim().toLowerCase();
     return notifications.filter((n) => {
       const matchesSearch =
-        historySearch === "" ||
-        n.title.toLowerCase().includes(historySearch.toLowerCase()) ||
-        n.message.toLowerCase().includes(historySearch.toLowerCase());
-
-      const matchesChannel =
-        channelFilter === "all" || n.channel === channelFilter;
+        search === "" ||
+        n.title.toLowerCase().includes(search) ||
+        n.message.toLowerCase().includes(search) ||
+        (n.recipient ?? "").toLowerCase().includes(search);
 
       const matchesRead =
         readFilter === "all" ||
@@ -493,34 +482,22 @@ export default function NotificationsPage() {
       const matchesEvent =
         eventFilter === "all" || n.eventType === eventFilter;
 
-      return matchesSearch && matchesChannel && matchesRead && matchesEvent;
+      return matchesSearch && matchesRead && matchesEvent;
     });
-  }, [notifications, historySearch, channelFilter, readFilter, eventFilter]);
+  }, [notifications, historySearch, readFilter, eventFilter]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications]
   );
 
-  // --- History: Mark as read ---
-  function markAsRead(notifId: string) {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
-    );
-  }
-
-  function markAllAsRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    toast.success("All notifications marked as read");
-  }
-
   // --- Render ---
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Notifications"
-        description="Manage notification templates, channels, and history"
+        title={tPage("title")}
+        description={tPage("description")}
       />
 
       <Tabs defaultValue="templates">
@@ -587,6 +564,8 @@ export default function NotificationsPage() {
                         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                           {allChannels.map((ch) => {
                             const isEnabled = pref.channels.includes(ch);
+                            const meta = channelMeta[ch];
+                            if (!meta) return null;
                             return (
                               <button
                                 key={ch}
@@ -598,7 +577,7 @@ export default function NotificationsPage() {
                                 }`}
                               >
                                 {isEnabled && <Check className="h-2.5 w-2.5" />}
-                                {channelMeta[ch].label}
+                                {meta.label}
                               </button>
                             );
                           })}
@@ -641,58 +620,71 @@ export default function NotificationsPage() {
             transition={{ duration: 0.3 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"
           >
-            {(Object.keys(channelMeta) as NotificationChannel[]).map(
-              (channel, index) => {
-                const meta = channelMeta[channel];
-                const ChannelIcon = meta.icon;
-                const state = channels[channel];
+            {(() => {
+              const meta = channelMeta.push;
+              if (!meta) return null;
+              const ChannelIcon = meta.icon;
+              const isPending = updateSettings.isPending;
+              const isLoading = isLoadingSettings;
 
-                return (
-                  <motion.div
-                    key={channel}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="glass rounded-xl p-6 space-y-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg p-3">
-                          <ChannelIcon className="h-6 w-6 text-blue-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm">{meta.label}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {state.enabled ? "Active" : "Inactive"}
-                          </p>
-                        </div>
+              return (
+                <motion.div
+                  key="push"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="glass rounded-xl p-6 space-y-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg p-3">
+                        <ChannelIcon className="h-6 w-6 text-blue-400" />
                       </div>
-                      <Switch
-                        checked={state.enabled}
-                        onCheckedChange={() => toggleChannelEnabled(channel)}
-                      />
+                      <div>
+                        <h3 className="font-semibold text-sm">{meta.label}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {isLoading
+                            ? "Loading…"
+                            : pushEnabled
+                              ? "Active"
+                              : "Inactive"}
+                        </p>
+                      </div>
                     </div>
+                    <Switch
+                      checked={pushEnabled}
+                      disabled={isLoading || isPending}
+                      onCheckedChange={togglePushChannel}
+                    />
+                  </div>
 
-                    <p className="text-xs text-muted-foreground">
-                      {meta.description}
-                    </p>
+                  <p className="text-xs text-muted-foreground">
+                    {meta.description}
+                  </p>
 
-                    <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1">
+                    {isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    ) : (
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          state.enabled ? "bg-[var(--success)]" : "bg-muted-foreground/40"
+                          pushEnabled
+                            ? "bg-[var(--success)]"
+                            : "bg-muted-foreground/40"
                         }`}
                       />
-                      <span className="text-[10px] text-muted-foreground">
-                        {state.enabled
-                          ? "Notifications will be delivered via this channel"
-                          : "Channel is currently disabled"}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              }
-            )}
+                    )}
+                    <span className="text-[10px] text-muted-foreground">
+                      {isPending
+                        ? "Saving…"
+                        : pushEnabled
+                          ? "Push notifications will be sent to mobile users"
+                          : "Push channel is disabled — no notifications will be sent"}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })()}
           </motion.div>
         </TabsContent>
 
@@ -714,16 +706,6 @@ export default function NotificationsPage() {
                     placeholder="Search notifications..."
                     className="flex-1"
                   />
-                  <Select value={channelFilter} onValueChange={setChannelFilter}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
-                      <SelectValue placeholder="All Channels" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Channels</SelectItem>
-                      <SelectItem value="in_app">In-App</SelectItem>
-                      <SelectItem value="push">Push</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <Select value={readFilter} onValueChange={setReadFilter}>
                     <SelectTrigger className="w-full sm:w-[160px]">
                       <SelectValue placeholder="All Status" />
@@ -751,137 +733,140 @@ export default function NotificationsPage() {
                   </Select>
                 </div>
 
-                {/* Action buttons */}
+                {/* Counts */}
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">
                     {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? "s" : ""}
-                    {unreadCount > 0 && ` (${unreadCount} unread)`}
+                    {unreadCount > 0 && ` (${unreadCount} unread by recipients)`}
                   </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={markAllAsRead}
-                    disabled={unreadCount === 0}
-                  >
-                    <CheckCheck className="h-3.5 w-3.5" />
-                    Mark All as Read
-                  </Button>
                 </div>
               </div>
             </motion.div>
 
             {/* Notification List */}
             <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {filteredNotifications.length === 0 ? (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="glass rounded-xl p-12 text-center"
-                  >
-                    <Bell className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-muted-foreground text-lg font-medium">
-                      No notifications found
-                    </p>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      Try adjusting your filters.
-                    </p>
-                  </motion.div>
-                ) : (
-                  filteredNotifications.map((notif, index) => {
-                    const TypeIcon = getNotificationTypeIcon(notif.type);
+              {isLoadingHistory ? (
+                <div className="glass rounded-xl p-12 text-center">
+                  <Loader2 className="h-8 w-8 mx-auto text-muted-foreground/70 mb-3 animate-spin" />
+                  <p className="text-muted-foreground text-sm">
+                    Loading notifications…
+                  </p>
+                </div>
+              ) : isHistoryError ? (
+                <div className="glass rounded-xl p-12 text-center">
+                  <XCircle className="h-10 w-10 mx-auto text-[var(--destructive)] mb-3" />
+                  <p className="text-muted-foreground text-sm font-medium">
+                    Failed to load notifications
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    {(historyError as Error)?.message ?? "Please try again later."}
+                  </p>
+                </div>
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  {filteredNotifications.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="glass rounded-xl p-12 text-center"
+                    >
+                      <Bell className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground text-lg font-medium">
+                        {notifications.length === 0
+                          ? "No notifications sent yet"
+                          : "No notifications match your filters"}
+                      </p>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        {notifications.length === 0
+                          ? "Push notifications sent to the mobile app will appear here."
+                          : "Try adjusting your filters."}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    filteredNotifications.map((notif, index) => {
+                      const TypeIcon = getNotificationTypeIcon(notif.type);
 
-                    return (
-                      <motion.div
-                        key={notif.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2, delay: index * 0.03 }}
-                        className={`glass rounded-xl p-4 transition-colors ${
-                          !notif.read ? "border-l-2 border-l-blue-500" : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Type Icon */}
-                          <div
-                            className={`rounded-lg p-2 shrink-0 ${
-                              notif.type === "success"
-                                ? "bg-[var(--success)]/10"
-                                : notif.type === "warning"
-                                  ? "bg-[var(--warning)]/10"
-                                  : notif.type === "error"
-                                    ? "bg-[var(--destructive)]/10"
-                                    : "bg-[var(--info)]/10"
-                            }`}
-                          >
-                            <TypeIcon
-                              className={`h-4 w-4 ${
+                      return (
+                        <motion.div
+                          key={notif.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.2, delay: index * 0.03 }}
+                          className="glass rounded-xl p-4 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Type Icon */}
+                            <div
+                              className={`rounded-lg p-2 shrink-0 ${
                                 notif.type === "success"
-                                  ? "text-[var(--success)]"
+                                  ? "bg-[var(--success)]/10"
                                   : notif.type === "warning"
-                                    ? "text-[var(--warning-dark)]"
+                                    ? "bg-[var(--warning)]/10"
                                     : notif.type === "error"
-                                      ? "text-[var(--destructive)]"
-                                      : "text-[var(--info)]"
+                                      ? "bg-[var(--destructive)]/10"
+                                      : "bg-[var(--info)]/10"
                               }`}
-                            />
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4
-                                className={`text-sm ${
-                                  !notif.read ? "font-semibold" : "font-medium"
-                                }`}
-                              >
-                                {notif.title}
-                              </h4>
-                              <StatusBadge
-                                status={notif.type}
-                                colorMap={notificationTypeColorMap}
-                              />
-                              <StatusBadge
-                                status={notif.channel}
-                                colorMap={channelColorMap}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {notif.message}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-[10px] text-muted-foreground">
-                                {formatDateTime(notif.createdAt)}
-                              </span>
-                              {!notif.read && (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-400 font-medium">
-                                  <BellRing className="h-2.5 w-2.5" />
-                                  New
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Mark as Read */}
-                          {!notif.read && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => markAsRead(notif.id)}
-                              title="Mark as read"
                             >
-                              <Check className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })
-                )}
-              </AnimatePresence>
+                              <TypeIcon
+                                className={`h-4 w-4 ${
+                                  notif.type === "success"
+                                    ? "text-[var(--success)]"
+                                    : notif.type === "warning"
+                                      ? "text-[var(--warning-dark)]"
+                                      : notif.type === "error"
+                                        ? "text-[var(--destructive)]"
+                                        : "text-[var(--info)]"
+                                }`}
+                              />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-medium">
+                                  {notif.title}
+                                </h4>
+                                <StatusBadge
+                                  status={notif.type}
+                                  colorMap={notificationTypeColorMap}
+                                />
+                                <StatusBadge status="push" colorMap={channelColorMap} />
+                                {notif.read ? (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--success)] font-medium">
+                                    <Check className="h-2.5 w-2.5" />
+                                    Read
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">
+                                    Unread
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {notif.message}
+                              </p>
+                              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatDateTime(notif.createdAt)}
+                                </span>
+                                {notif.recipient && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <UserIcon className="h-2.5 w-2.5" />
+                                    {notif.recipient}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </AnimatePresence>
+              )}
             </div>
           </div>
         </TabsContent>

@@ -263,5 +263,176 @@
     "history": "इतिहास",
     "markAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
     "noNotifications": "कोई सूचना नहीं"
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "agencies": "एजेंसियां",
+    "products": "उत्पाद",
+    "stores": "दुकानें",
+    "employees": "कर्मचारी",
+    "orders": "ऑर्डर",
+    "invoices": "चालान",
+    "transfers": "स्थानांतरण",
+    "payments": "भुगतान",
+    "deliveries": "डिलीवरी",
+    "purchases": "खरीद",
+    "expenses": "व्यय",
+    "planningStudio": "योजना स्टूडियो",
+    "reports": "रिपोर्ट",
+    "notifications": "सूचनाएं",
+    "settings": "सेटिंग्स",
+    "tenants": "किरायेदार",
+    "users": "उपयोगकर्ता",
+    "configurations": "कॉन्फ़िगरेशन",
+    "superAdmin": "सुपर एडमिन",
+    "platformAdmin": "प्लेटफ़ॉर्म एडमिन",
+    "tenantAdminPanel": "किरायेदार एडमिन पैनल"
+  },
+  "navbar": {
+    "searchPlaceholder": "खोजें... (Cmd+K)",
+    "profileSettings": "प्रोफ़ाइल सेटिंग्स",
+    "logout": "लॉगआउट",
+    "notifications": "सूचनाएं",
+    "noNotifications": "कोई सूचना नहीं",
+    "changeLanguage": "भाषा बदलें",
+    "toggleTheme": "थीम बदलें"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "डैशबोर्ड",
+      "description": "ऑर्डर, डिलीवरी और संग्रह का अवलोकन",
+      "loadingData": "डैशबोर्ड डेटा लोड हो रहा है...",
+      "loadFailed": "डैशबोर्ड डेटा लोड करने में विफल।",
+      "retry": "पुनः प्रयास करें",
+      "recentActivity": "हाल की गतिविधि",
+      "noRecentActivity": "कोई हाल की गतिविधि नहीं",
+      "activityHint": "ऑर्डर आने पर गतिविधि यहां दिखाई देगी"
+    },
+    "agencies": {
+      "title": "एजेंसियां",
+      "description": "अपनी वितरण एजेंसियां प्रबंधित करें"
+    },
+    "products": {
+      "title": "उत्पाद",
+      "description": "अपना उत्पाद कैटलॉग प्रबंधित करें"
+    },
+    "stores": {
+      "title": "दुकानें",
+      "description": "दुकान खाते प्रबंधित करें"
+    },
+    "employees": {
+      "title": "कर्मचारी",
+      "description": "अपने फील्ड कर्मचारियों का प्रबंधन करें"
+    },
+    "orders": {
+      "title": "ऑर्डर मैट्रिक्स",
+      "description": "सभी दुकानों के ऑर्डर देखें और प्रबंधित करें"
+    },
+    "invoices": {
+      "title": "चालान",
+      "description": "चालान प्रबंधित करें और ट्रैक करें"
+    },
+    "transfers": {
+      "title": "चालान स्थानांतरण",
+      "description": "दुकानों के बीच स्थानांतरित वस्तुओं का आंतरिक रिकॉर्ड। प्रत्येक स्थानांतरण देने वाले और प्राप्त करने वाले के चालानों को समायोजित करता है।"
+    },
+    "payments": {
+      "title": "भुगतान",
+      "description": "बकाया शेष ट्रैक करें और दुकान के अनुसार भुगतान एकत्र करें"
+    },
+    "collections": {
+      "title": "संग्रह डैशबोर्ड",
+      "description": "दैनिक संग्रह प्रदर्शन और कर्मचारी लक्ष्य की निगरानी करें"
+    },
+    "deliveries": {
+      "title": "डिलीवरी",
+      "description": "सभी डिलीवरी प्रबंधित करें और ट्रैक करें"
+    },
+    "deliveryTracking": {
+      "title": "डिलीवरी ट्रैकिंग",
+      "description": "सक्रिय डिलीवरी की रीयल-टाइम ट्रैकिंग"
+    },
+    "purchases": {
+      "title": "खरीद",
+      "description": "सभी एजेंसियों में डेयरी से दैनिक खरीदारी रिकॉर्ड करें"
+    },
+    "expenses": {
+      "title": "व्यय",
+      "description": "ईंधन, वेतन, रखरखाव, घाटा और बहुत कुछ — सभी व्यवसायिक व्यय ट्रैक और प्रबंधित करें"
+    },
+    "planningStudio": {
+      "title": "योजना स्टूडियो",
+      "description": "विज़ुअल कैलकुलेटर जो आज के एजेंसी ऑर्डर को स्पष्ट खरीद निर्णयों में बदल देते हैं।"
+    },
+    "agencyFormula": {
+      "title": "ऑर्डर फाइनल कैलकुलेटर",
+      "description": "प्रत्येक उत्पाद के लिए, आज के संयुक्त ऑर्डर को दो एजेंसियों में से एक को सौंपें।"
+    },
+    "reports": {
+      "title": "रिपोर्ट और विश्लेषण",
+      "description": "व्यापक बिक्री, संग्रह, डिलीवरी और वित्तीय रिपोर्ट"
+    },
+    "tenantNotifications": {
+      "title": "सूचनाएं",
+      "description": "अधिसूचना टेम्पलेट, चैनल और इतिहास प्रबंधित करें"
+    },
+    "settings": {
+      "title": "सेटिंग्स",
+      "description": "अपनी टेनेंट कॉन्फ़िगरेशन और प्राथमिकताएं प्रबंधित करें"
+    },
+    "adminDashboard": {
+      "title": "प्लेटफ़ॉर्म डैशबोर्ड",
+      "description": "सभी टेनेंट और प्लेटफ़ॉर्म मेट्रिक्स का अवलोकन"
+    },
+    "adminTenants": {
+      "title": "टेनेंट प्रबंधन",
+      "description": "प्लेटफ़ॉर्म पर सभी टेनेंट संगठनों को देखें, प्रबंधित करें और कॉन्फ़िगर करें।"
+    },
+    "adminTenantCreate": {
+      "title": "नया टेनेंट बनाएं",
+      "description": "प्लेटफ़ॉर्म पर नया टेनेंट संगठन पंजीकृत करें।"
+    },
+    "adminTenantNotFound": {
+      "title": "टेनेंट नहीं मिला",
+      "description": "अनुरोधित टेनेंट नहीं मिल सका।"
+    },
+    "adminUsers": {
+      "title": "उपयोगकर्ता प्रबंधन",
+      "description": "सभी टेनेंट के उपयोगकर्ताओं को प्रबंधित करें"
+    },
+    "adminUserCreate": {
+      "title": "नया उपयोगकर्ता बनाएं",
+      "description": "सिस्टम में नया उपयोगकर्ता जोड़ें"
+    },
+    "adminConfigurations": {
+      "title": "कॉन्फ़िगरेशन",
+      "description": "प्लेटफ़ॉर्म-व्यापी सेटिंग्स और कॉन्फ़िगरेशन"
+    },
+    "adminNotifications": {
+      "title": "अधिसूचना प्रबंधन",
+      "description": "अधिसूचना टेम्पलेट, चैनल कॉन्फ़िगर करें और इतिहास देखें"
+    },
+    "adminReports": {
+      "title": "प्लेटफ़ॉर्म रिपोर्ट",
+      "description": "सभी टेनेंट में विश्लेषण और अंतर्दृष्टि"
+    },
+    "adminSettings": {
+      "title": "सेटिंग्स",
+      "description": "अपना खाता और प्लेटफ़ॉर्म प्राथमिकताएं प्रबंधित करें"
+    }
+  },
+  "stats": {
+    "todaysOrders": "आज के ऑर्डर",
+    "todaysOrdersHint": "आज दिए गए ऑर्डर",
+    "pendingPlacedOrders": "लंबित दिए गए ऑर्डर",
+    "pendingPlacedOrdersHint": "दुकानें जिन्होंने आज ऑर्डर नहीं किया",
+    "outstanding": "बकाया",
+    "outstandingHint": "लंबित भुगतान",
+    "totalActiveStores": "कुल सक्रिय दुकानें",
+    "totalActiveStoresHint": "सक्रिय दुकानें",
+    "activeEmployees": "सक्रिय कर्मचारी",
+    "activeEmployeesHint": "फील्ड एजेंट",
+    "pendingCollections": "लंबित संग्रह",
+    "pendingCollectionsHint": "एकत्र करने के लिए भुगतान"
   }
 }

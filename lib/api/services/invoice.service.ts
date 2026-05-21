@@ -61,8 +61,9 @@ function normalize(raw: any): any {
     totalAmount: raw.total ?? raw.totalAmount ?? raw.amount ?? 0,
     paidAmount: raw.amountPaid ?? raw.paidAmount ?? 0,
     dueAmount: raw.amountDue ?? raw.dueAmount ?? 0,
-    taxAmount: raw.tax ?? raw.taxAmount ?? 0,
     subtotal: raw.subtotal ?? 0,
+    source: raw.source || 'order',
+    adjustments: raw.adjustments || [],
     items: (raw.items || []).map(normalizeItem),
   };
 }
