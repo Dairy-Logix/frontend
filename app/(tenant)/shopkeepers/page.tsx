@@ -282,6 +282,10 @@ export default function ShopkeepersPage() {
       toast.error("Area is required");
       return;
     }
+    if (!formEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -297,7 +301,7 @@ export default function ShopkeepersPage() {
       shopName: formShopName,
       ownerName: formOwnerName,
       phone: formPhone,
-      email: formEmail || undefined,
+      email: formEmail,
       address: {
         line1: formAddressLine1,
         line2: formAddressLine2 || undefined,
@@ -811,7 +815,7 @@ export default function ShopkeepersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="shop-email">Email (Optional)</Label>
+              <Label htmlFor="shop-email">Email</Label>
               <Input
                 id="shop-email"
                 type="email"
@@ -833,7 +837,7 @@ export default function ShopkeepersPage() {
               onChange={(e) => setFormPassword(e.target.value)}
             />
             <p className="text-[11px] text-muted-foreground">
-              If email and password are provided, the store owner can log in to the application.
+              Set a password to enable mobile login for the store owner. Leave blank to create the store without login access.
             </p>
           </div>
 
