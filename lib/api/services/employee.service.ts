@@ -90,6 +90,22 @@ export const employeeService = {
     };
   },
 
+  async updateEmployeeStatus(
+    id: string,
+    isActive: boolean,
+  ): Promise<ApiResponse<Employee>> {
+    const status = isActive ? 'active' : 'inactive';
+    const { data } = await apiClient.patch<any>(
+      `/employees/${id}/status`,
+      { status },
+    );
+    return {
+      success: true,
+      data: normalizeEmployee(data),
+      message: `Employee ${isActive ? 'activated' : 'deactivated'} successfully`,
+    };
+  },
+
   async deleteEmployee(id: string): Promise<ApiResponse<void>> {
     await apiClient.delete(`/employees/${id}`);
     return {

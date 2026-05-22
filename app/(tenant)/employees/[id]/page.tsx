@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/table";
 import type { Employee } from "@/lib/types";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/constants";
-import { useEmployee, useUpdateEmployee } from "@/lib/hooks/use-employees";
+import { useEmployee, useUpdateEmployee, useUpdateEmployeeStatus } from "@/lib/hooks/use-employees";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useShopkeepers, shopkeeperKeys } from "@/lib/hooks/use-shopkeepers";
 import { shopkeeperService } from "@/lib/api/services/shopkeeper.service";
@@ -90,6 +90,7 @@ export default function EmployeeDetailsPage() {
   const { data: employee, isLoading, error, refetch } = useEmployee(employeeId);
 
   const updateEmployee = useUpdateEmployee();
+  const updateStatus = useUpdateEmployeeStatus();
   const queryClient = useQueryClient();
 
   // Fetch agencies and all shopkeepers for the assign modal
@@ -241,13 +242,15 @@ export default function EmployeeDetailsPage() {
 
   const handleDeactivate = () => {
     setDeactivateLoading(true);
-    setTimeout(() => {
-      setDeactivateLoading(false);
-      setDeactivateOpen(false);
-      toast.success(
-        `Employee "${employee.name}" ${employee.isActive ? "deactivated" : "activated"} successfully`
-      );
-    }, 800);
+    updateStatus.mutate(
+      { id: employeeId, isActive: !employee.isActive },
+      {
+        onSettled: () => {
+          setDeactivateLoading(false);
+          setDeactivateOpen(false);
+        },
+      },
+    );
   };
 
   const openEditModal = () => {
@@ -451,15 +454,6 @@ export default function EmployeeDetailsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-muted rounded-lg p-2.5">
-              <KeyRound className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Login ID</p>
-              <p className="text-sm font-medium">{employee.email || employee.phone}</p>
-            </div>
-          </div>
         </div>
       </motion.div>
 

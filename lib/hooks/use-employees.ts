@@ -131,6 +131,36 @@ export function useUpdateEmployee() {
 }
 
 /**
+ * Hook to flip an employee's active/inactive status.
+ * Mirrored to the linked User account on the backend, so deactivating an
+ * employee also blocks their mobile login.
+ */
+export function useUpdateEmployeeStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const response = await employeeService.updateEmployeeStatus(id, isActive);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update employee status');
+      }
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(employeeKeys.detail(variables.id), data);
+      queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
+      toast.success(
+        `Employee "${data.name}" ${variables.isActive ? 'activated' : 'deactivated'} successfully`,
+      );
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
+
+/**
  * Hook to delete an employee
  */
 export function useDeleteEmployee() {
