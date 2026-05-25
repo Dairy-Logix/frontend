@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   invoiceTransferService,
@@ -46,6 +46,7 @@ export function useGiverItems(shopkeeperId: string) {
 export function useTransfers(params?: TransferFilterParams) {
   return useQuery({
     queryKey: transferKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await invoiceTransferService.list(params);
       if (!response.success || !response.data) {

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   notificationService,
@@ -41,6 +41,7 @@ export function useSentNotifications(params?: SentNotificationsParams) {
 export function useNotifications(params?: PaginationParams & { read?: boolean }) {
   return useQuery({
     queryKey: notificationKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await notificationService.getNotifications(params);
       if (!response.success) {

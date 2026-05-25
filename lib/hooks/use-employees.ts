@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { employeeService } from '@/lib/api/services/employee.service';
 import { handleApiError } from '@/lib/api/client';
@@ -34,6 +34,13 @@ export function useEmployees(params?: QueryEmployeesParams) {
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    // Keep showing the previous result while a new search/filter is in flight.
+    // Otherwise `isLoading` flips true on every queryKey change (each new
+    // search term creates a fresh key with no cached data), and pages that
+    // gate on `if (isLoading)` will unmount their entire tree — including
+    // the search input — making the input lose focus and the user's typing
+    // gets interrupted mid-keystroke.
+    placeholderData: keepPreviousData,
   });
 }
 

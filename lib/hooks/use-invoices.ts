@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { invoiceService } from '@/lib/api/services/invoice.service';
 import { handleApiError } from '@/lib/api/client';
@@ -35,6 +35,7 @@ export function usePendingByStore(params?: { agencyId?: string; search?: string;
 export function useInvoices(params?: InvoiceFilterParams) {
   return useQuery({
     queryKey: invoiceKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await invoiceService.getInvoices(params);
       if (!response.success) {

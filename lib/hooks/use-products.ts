@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { productService } from '@/lib/api/services/product.service';
 import { handleApiError } from '@/lib/api/client';
@@ -24,6 +24,7 @@ export const productKeys = {
 export function useProducts(params?: PaginationParams) {
   return useQuery({
     queryKey: productKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await productService.getProducts(params);
       if (!response.success) {

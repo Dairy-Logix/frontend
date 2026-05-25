@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { orderService } from '@/lib/api/services/order.service';
 import { handleApiError } from '@/lib/api/client';
@@ -21,6 +21,7 @@ export const orderKeys = {
 export function useOrders(params?: OrderFilterParams) {
   return useQuery({
     queryKey: orderKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await orderService.getOrders(params);
       if (!response.success) {

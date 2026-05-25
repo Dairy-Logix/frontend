@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { userService } from '@/lib/api/services/user.service';
 import { handleApiError } from '@/lib/api/client';
@@ -27,6 +27,7 @@ export const userKeys = {
 export function useUsers(params?: QueryUsersParams) {
   return useQuery({
     queryKey: userKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await userService.getUsers(params);
       if (!response.success) {

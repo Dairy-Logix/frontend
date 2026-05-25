@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { agencyService } from '@/lib/api/services/agency.service';
 import { handleApiError } from '@/lib/api/client';
@@ -24,6 +24,7 @@ export const agencyKeys = {
 export function useAgencies(params?: QueryAgenciesParams) {
   return useQuery({
     queryKey: agencyKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await agencyService.getAgencies(params);
       if (!response.success) {

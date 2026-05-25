@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { purchaseService, type PurchaseFilterParams } from '@/lib/api/services/purchase.service';
 import { handleApiError } from '@/lib/api/client';
@@ -24,6 +24,7 @@ export function usePurchases(params?: PurchaseFilterParams) {
       return response.data;
     },
     staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

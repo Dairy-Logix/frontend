@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { shopkeeperService } from '@/lib/api/services/shopkeeper.service';
 import { handleApiError } from '@/lib/api/client';
@@ -27,6 +27,7 @@ export const shopkeeperKeys = {
 export function useShopkeepers(params?: QueryShopkeepersParams) {
   return useQuery({
     queryKey: shopkeeperKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await shopkeeperService.getShopkeepers(params);
       if (!response.success) {
@@ -162,6 +163,10 @@ export function useUpdateShopkeeper() {
       if (data.agencyId) {
         queryClient.invalidateQueries({ queryKey: shopkeeperKeys.byAgency(data.agencyId) });
       }
+
+      // Shop edits can change assignedEmployeeId, which drives the count on the
+      // employees list/detail. Invalidate so those views refetch.
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
 
       toast.success(`Shop "${data.shopName}" updated successfully`);
     },

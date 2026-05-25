@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { tenantService } from '@/lib/api/services/tenant.service';
 import { handleApiError } from '@/lib/api/client';
@@ -25,6 +25,7 @@ export const tenantKeys = {
 export function useTenants(params?: PaginationParams) {
   return useQuery({
     queryKey: tenantKeys.list(params),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await tenantService.getTenants(params);
       if (!response.success) {
