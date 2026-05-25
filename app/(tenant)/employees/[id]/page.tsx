@@ -56,9 +56,10 @@ import {
 } from "@/components/ui/table";
 import type { Employee } from "@/lib/types";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/constants";
-import { useEmployee, useUpdateEmployee, useUpdateEmployeeStatus } from "@/lib/hooks/use-employees";
+import { useEmployee, useUpdateEmployee, useUpdateEmployeeStatus, useAssignShops, useUnassignShops } from "@/lib/hooks/use-employees";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useShopkeepers, shopkeeperKeys } from "@/lib/hooks/use-shopkeepers";
+import { employeeKeys } from "@/lib/hooks/use-employees";
 import { shopkeeperService } from "@/lib/api/services/shopkeeper.service";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 as LoaderIcon, AlertCircle as AlertCircleIcon } from "lucide-react";
@@ -91,6 +92,8 @@ export default function EmployeeDetailsPage() {
 
   const updateEmployee = useUpdateEmployee();
   const updateStatus = useUpdateEmployeeStatus();
+  const assignShopsMutation = useAssignShops();
+  const unassignShopsMutation = useUnassignShops();
   const queryClient = useQueryClient();
 
   // Fetch agencies and all shopkeepers for the assign modal
@@ -274,28 +277,18 @@ export default function EmployeeDetailsPage() {
     setAssignLoading(true);
     try {
       const currentAssignedIds = assignedShops.map((s) => s.id);
-
-      // Shops to assign (newly selected)
       const toAssign = selectedShopIds.filter((id) => !currentAssignedIds.includes(id));
-      // Shops to unassign (were assigned, now deselected)
       const toUnassign = currentAssignedIds.filter((id) => !selectedShopIds.includes(id));
 
-      const promises: Promise<unknown>[] = [];
-
-      for (const shopId of toAssign) {
-        promises.push(
-          shopkeeperService.updateShopkeeper(shopId, { assignedEmployeeId: employeeId })
-        );
+      // Each direction is a single bulk call to the new
+      // /employees/:id/assignments endpoint — one round-trip each, not N.
+      if (toAssign.length > 0) {
+        await assignShopsMutation.mutateAsync({ employeeId, shopIds: toAssign });
+      }
+      if (toUnassign.length > 0) {
+        await unassignShopsMutation.mutateAsync({ employeeId, shopIds: toUnassign });
       }
 
-      for (const shopId of toUnassign) {
-        promises.push(
-          shopkeeperService.updateShopkeeper(shopId, { assignedEmployeeId: null })
-        );
-      }
-
-      await Promise.all(promises);
-      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.lists() });
       await refetchAssigned();
       setAssignShopsModalOpen(false);
       const count = selectedShopIds.length;
@@ -318,8 +311,10 @@ export default function EmployeeDetailsPage() {
     setUnassignLoading(true);
     try {
       const shop = allShops.find((s) => s.id === shopToUnassign);
-      await shopkeeperService.updateShopkeeper(shopToUnassign, { assignedEmployeeId: null });
-      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.lists() });
+      await unassignShopsMutation.mutateAsync({
+        employeeId,
+        shopIds: [shopToUnassign],
+      });
       await refetchAssigned();
       setUnassignDialogOpen(false);
       setShopToUnassign(null);
@@ -536,12 +531,6 @@ export default function EmployeeDetailsPage() {
                 <p className="text-sm">
                   {EMPLOYEE_ROLE_LABELS[employee.employeeRole]}
                 </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                  Assigned Shops
-                </p>
-                <p className="text-sm">{employee.assignedShopCount} shop(s)</p>
               </div>
             </div>
           </motion.div>

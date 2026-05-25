@@ -192,7 +192,9 @@ export function useDeleteEmployee() {
 }
 
 /**
- * Hook to assign shops to an employee
+ * Hook to assign shops to an employee.
+ * Invalidates employee + shopkeeper caches so the list counts refresh
+ * everywhere.
  */
 export function useAssignShops() {
   const queryClient = useQueryClient();
@@ -206,15 +208,37 @@ export function useAssignShops() {
       return response.data;
     },
     onSuccess: (_data, variables) => {
-      // Invalidate employee data
       queryClient.invalidateQueries({ queryKey: employeeKeys.detail(variables.employeeId) });
       queryClient.invalidateQueries({ queryKey: employeeKeys.assignments(variables.employeeId) });
       queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
-
-      // Invalidate shopkeepers (assignment affects them)
       queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
 
-      toast.success(`${variables.shopIds.length} shop(s) assigned successfully`);
+/**
+ * Hook to unassign shops from an employee.
+ */
+export function useUnassignShops() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ employeeId, shopIds }: { employeeId: string; shopIds: string[] }) => {
+      const response = await employeeService.unassignShops(employeeId, shopIds);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to unassign shops');
+      }
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: employeeKeys.detail(variables.employeeId) });
+      queryClient.invalidateQueries({ queryKey: employeeKeys.assignments(variables.employeeId) });
+      queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
     },
     onError: (error) => {
       const message = handleApiError(error);
