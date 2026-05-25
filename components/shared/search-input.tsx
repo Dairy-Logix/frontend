@@ -23,8 +23,21 @@ export function SearchInput({
 }: SearchInputProps) {
   const [internalValue, setInternalValue] = useState(value);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track the value our debounce most recently pushed up. When the parent
+  // re-renders with this same value, the sync-from-prop effect below
+  // recognises it as our own echo and skips — preventing it from
+  // overwriting characters the user typed between the debounce firing
+  // and the parent re-render.
+  const lastSentRef = useRef(value);
 
   useEffect(() => {
+    // Only adopt the prop value when it differs from what we just sent.
+    // That guards against the race: user types "Ravi", debounce sends
+    // "Ravi" up, user immediately types " ", parent re-renders with
+    // value="Ravi", and (without this guard) the effect would clobber
+    // the user's pending space. External resets (parent setting search
+    // to "" or to some other value) still sync correctly.
+    if (value === lastSentRef.current) return;
     setInternalValue(value);
   }, [value]);
 
@@ -34,6 +47,7 @@ export function SearchInput({
         clearTimeout(timerRef.current);
       }
       timerRef.current = setTimeout(() => {
+        lastSentRef.current = newValue;
         onChange(newValue);
       }, debounceMs);
     },
@@ -55,11 +69,12 @@ export function SearchInput({
   };
 
   const handleClear = () => {
-    setInternalValue("");
-    onChange("");
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
+    lastSentRef.current = "";
+    setInternalValue("");
+    onChange("");
   };
 
   return (
