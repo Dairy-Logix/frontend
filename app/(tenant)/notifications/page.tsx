@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/select";
 
 import { useSentNotifications } from "@/lib/hooks/use-notifications";
-import { useSettings, useUpdateSettings } from "@/lib/hooks/use-settings";
+import { useFeature } from "@/lib/hooks/use-feature";
 import type {
   NotificationChannel,
   NotificationEventType,
@@ -380,12 +380,10 @@ export default function NotificationsPage() {
   const [templateBody, setTemplateBody] = useState("");
 
   // --- Channels Tab State ---
-  // The Push channel is gated by the tenant's `pushNotifications` feature
-  // flag in settings. The toggle below mutates that flag, which the backend's
-  // NotificationsService checks before creating/dispatching push records.
-  const { data: settings, isLoading: isLoadingSettings } = useSettings();
-  const updateSettings = useUpdateSettings();
-  const pushEnabled = settings?.config?.features?.pushNotifications ?? false;
+  // Push is plan-derived: the tenant.features.pushNotifications flag is
+  // included or excluded by the active subscription plan. Tenants cannot
+  // toggle it here; they upgrade their plan to unlock it.
+  const pushEnabled = useFeature("pushNotifications");
 
   // --- History Tab State ---
   const [historySearch, setHistorySearch] = useState("");
@@ -450,18 +448,6 @@ export default function NotificationsPage() {
     );
     toast.success("Template saved successfully");
     setTemplateModalOpen(false);
-  }
-
-  // --- Channels: Toggle Push channel ---
-  function togglePushChannel(next: boolean) {
-    updateSettings.mutate(
-      { features: { pushNotifications: next } },
-      {
-        onSuccess: () => {
-          toast.success(`Push notifications ${next ? "enabled" : "disabled"}`);
-        },
-      }
-    );
   }
 
   // --- History: Filtered notifications ---
@@ -624,8 +610,6 @@ export default function NotificationsPage() {
               const meta = channelMeta.push;
               if (!meta) return null;
               const ChannelIcon = meta.icon;
-              const isPending = updateSettings.isPending;
-              const isLoading = isLoadingSettings;
 
               return (
                 <motion.div
@@ -643,19 +627,10 @@ export default function NotificationsPage() {
                       <div>
                         <h3 className="font-semibold text-sm">{meta.label}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {isLoading
-                            ? "Loading…"
-                            : pushEnabled
-                              ? "Active"
-                              : "Inactive"}
+                          {pushEnabled ? "Active" : "Not included in plan"}
                         </p>
                       </div>
                     </div>
-                    <Switch
-                      checked={pushEnabled}
-                      disabled={isLoading || isPending}
-                      onCheckedChange={togglePushChannel}
-                    />
                   </div>
 
                   <p className="text-xs text-muted-foreground">
@@ -663,23 +638,17 @@ export default function NotificationsPage() {
                   </p>
 
                   <div className="flex items-center gap-2 pt-1">
-                    {isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    ) : (
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          pushEnabled
-                            ? "bg-[var(--success)]"
-                            : "bg-muted-foreground/40"
-                        }`}
-                      />
-                    )}
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        pushEnabled
+                          ? "bg-[var(--success)]"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
                     <span className="text-[10px] text-muted-foreground">
-                      {isPending
-                        ? "Saving…"
-                        : pushEnabled
-                          ? "Push notifications will be sent to mobile users"
-                          : "Push channel is disabled — no notifications will be sent"}
+                      {pushEnabled
+                        ? "Push notifications will be sent to mobile users"
+                        : "Upgrade your plan to enable push notifications"}
                     </span>
                   </div>
                 </motion.div>

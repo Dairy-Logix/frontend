@@ -1,5 +1,23 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { toast } from 'sonner';
 import { API_BASE_URL, API_TIMEOUT } from '@/lib/constants';
+
+// Pulls the backend error payload regardless of whether it's wrapped by the
+// global ResponseInterceptor or thrown raw via HttpException.
+function unwrapErrorPayload(data: unknown): Record<string, any> | null {
+  if (!data || typeof data !== 'object') return null;
+  const obj = data as Record<string, any>;
+  if (obj.data && typeof obj.data === 'object') return obj.data as Record<string, any>;
+  return obj;
+}
+
+const RESOURCE_LABELS: Record<string, string> = {
+  agencies: 'agencies',
+  shopkeepers: 'stores',
+  products: 'products',
+  users: 'users',
+  ordersPerMonth: 'orders this month',
+};
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -107,6 +125,32 @@ apiClient.interceptors.response.use(
         // Refresh failed — refresh token is expired or revoked.
         forceLogoutAndRedirect();
         return Promise.reject(error);
+      }
+    }
+
+    // Plan-limit refusal: render an actionable toast with an Upgrade button so
+    // the user understands why the create was blocked. Sonner dedupes by id so
+    // calling-code toasts (handleApiError) collapse into this one.
+    if (error.response?.status === 403) {
+      const payload = unwrapErrorPayload(error.response.data);
+      if (payload?.code === 'LIMIT_EXCEEDED') {
+        const resource = String(payload.resource ?? '');
+        const label = RESOURCE_LABELS[resource] ?? resource;
+        toast.error(
+          `You've reached your plan's limit of ${payload.limit} ${label}.`,
+          {
+            id: `limit-exceeded:${resource}`,
+            description: 'Upgrade your plan to add more.',
+            action: {
+              label: 'Upgrade',
+              onClick: () => {
+                if (typeof window !== 'undefined') {
+                  window.location.href = '/billing';
+                }
+              },
+            },
+          },
+        );
       }
     }
 

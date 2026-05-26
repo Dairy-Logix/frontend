@@ -1,37 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useFeature, type FeatureKey } from "@/lib/hooks/use-feature";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useTenant } from "@/lib/hooks/use-tenants";
-import { toast } from "sonner";
+import { FeatureLockedCard } from "@/components/billing/feature-locked-card";
 
 interface FeatureGuardProps {
   feature: FeatureKey;
   children: React.ReactNode;
-  redirectTo?: string;
 }
 
-export function FeatureGuard({
-  feature,
-  children,
-  redirectTo = "/dashboard",
-}: FeatureGuardProps) {
-  const router = useRouter();
+/**
+ * Wraps a route's children and renders an in-place "feature locked" upgrade
+ * card when the tenant's plan doesn't include the feature. The sidebar
+ * already hides items for missing features, so this guard primarily covers
+ * deep-links and direct URL navigation.
+ */
+export function FeatureGuard({ feature, children }: FeatureGuardProps) {
   const enabled = useFeature(feature);
   const user = useAuthStore((s) => s.user);
   const { isLoading } = useTenant(user?.tenantId || "");
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (user?.role === "super_admin") return;
-    if (!enabled) {
-      toast.error("This feature is not available on your subscription plan.");
-      router.replace(redirectTo);
-    }
-  }, [isLoading, enabled, user?.role, redirectTo, router]);
 
   if (isLoading) {
     return (
@@ -42,7 +31,7 @@ export function FeatureGuard({
   }
 
   if (!enabled && user?.role !== "super_admin") {
-    return null;
+    return <FeatureLockedCard feature={feature} />;
   }
 
   return <>{children}</>;

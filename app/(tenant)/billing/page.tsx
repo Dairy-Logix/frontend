@@ -9,7 +9,6 @@ import {
   CreditCard,
   CheckCircle2,
   AlertTriangle,
-  Calendar,
   Loader2,
   XCircle,
   ArrowUpRight,
@@ -45,12 +44,20 @@ import {
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   useBillingSubscription,
   useBillingPayments,
   useSubscribe,
   useCancelSubscription,
   billingKeys,
 } from "@/lib/hooks/use-billing";
+import { billingService } from "@/lib/api/services/billing.service";
 import { usePublicPlans } from "@/lib/hooks/use-signup";
 
 const statusBadge: Record<string, { label: string; variant: any }> = {
@@ -100,8 +107,69 @@ const LIMIT_LABELS: Record<string, string> = {
 
 const PENDING_KEY = "beatmitra-pending-subscribe";
 const PENDING_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const RAZORPAY_CHECKOUT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+const RAZORPAY_SCRIPT_TIMEOUT_MS = 3000;
 
 type PendingSubscribe = { ts: number; planSlug: string };
+
+// Razorpay Checkout JS is loaded on demand. We only fall back to the hosted
+// shortUrl if the script can't be loaded (script blocker / offline / very
+// slow network) — otherwise we always open the popup so the user stays on
+// our page.
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, cb: (resp: unknown) => void) => void;
+    };
+  }
+}
+
+let razorpayScriptPromise: Promise<boolean> | null = null;
+
+function loadRazorpayCheckout(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (window.Razorpay) return Promise.resolve(true);
+  if (razorpayScriptPromise) return razorpayScriptPromise;
+
+  razorpayScriptPromise = new Promise<boolean>((resolve) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${RAZORPAY_CHECKOUT_SRC}"]`,
+    );
+    const script = existing ?? document.createElement("script");
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok && !!window.Razorpay);
+    };
+
+    const timer = window.setTimeout(
+      () => finish(false),
+      RAZORPAY_SCRIPT_TIMEOUT_MS,
+    );
+
+    script.addEventListener("load", () => {
+      window.clearTimeout(timer);
+      finish(true);
+    });
+    script.addEventListener("error", () => {
+      window.clearTimeout(timer);
+      finish(false);
+    });
+
+    if (!existing) {
+      script.src = RAZORPAY_CHECKOUT_SRC;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }).then((ok) => {
+    if (!ok) razorpayScriptPromise = null; // allow retry on next click
+    return ok;
+  });
+
+  return razorpayScriptPromise;
+}
 
 export default function BillingPage() {
   const { data: sub, isLoading: loadingSub } = useBillingSubscription();
@@ -165,22 +233,95 @@ export default function BillingPage() {
   const handleSubscribe = () => {
     const planForFlow = selectedPlan || sub?.planSlug;
     subscribe.mutate(planForFlow, {
-      onSuccess: (data) => {
-        // Mark that we kicked off a subscribe in this session, so when the
-        // user lands back on /billing post-payment the celebration banner
-        // shows for the right tenant.
+      onSuccess: async (data) => {
+        // Mark that we kicked off a subscribe in this session, so the
+        // celebration banner shows for the right tenant once the webhook
+        // flips status to active.
         if (typeof window !== "undefined" && planForFlow) {
           sessionStorage.setItem(
             PENDING_KEY,
             JSON.stringify({ ts: Date.now(), planSlug: planForFlow }),
           );
         }
-        // Same-tab redirect to Razorpay hosted checkout. After payment,
-        // Razorpay redirects back to the URL configured in
-        //   Dashboard → Settings → Subscriptions → Customer Settings → Redirect URL
-        // — set it to `{FRONTEND_URL}/billing?razorpay=success` so the page
-        // catches the return, shows a toast, and force-refetches.
-        window.location.href = data.shortUrl;
+
+        const scriptOk = data.razorpayKeyId
+          ? await loadRazorpayCheckout()
+          : false;
+
+        // Fallback: if checkout.js failed to load (or no key id), use the
+        // hosted page so payment is never blocked.
+        if (!scriptOk || !window.Razorpay || !data.razorpayKeyId) {
+          window.location.href = data.shortUrl;
+          return;
+        }
+
+        const rzp = new window.Razorpay({
+          key: data.razorpayKeyId,
+          subscription_id: data.razorpaySubscriptionId,
+          name: data.tenantName || "BeatMitra",
+          description: data.planLabel
+            ? `${data.planLabel} subscription`
+            : "Subscription",
+          // Razorpay's iframe fetches this URL itself, so a relative path
+          // would resolve against checkout.razorpay.com and 404. Use the
+          // absolute URL of the current origin instead.
+          image: `${window.location.origin}/logo.png`,
+          prefill: data.prefill,
+          notes: { planSlug: planForFlow },
+          theme: { color: "#1e40af" },
+          handler: async () => {
+            // Razorpay fires this when the payment + mandate succeed.
+            // Webhooks are the *normal* source of truth, but in local dev
+            // (and during webhook outages) they can't reach us. So we also
+            // force-sync directly from the Razorpay API here — that flips
+            // the local sub to active without waiting on a webhook.
+            toast.success("Payment received. Activating your subscription...");
+            const targetSlug = planForFlow ?? sub?.planSlug ?? undefined;
+            try {
+              // Razorpay's API can lag a beat after the popup callback —
+              // retry a couple of times until status flips to active.
+              for (let i = 0; i < 4; i += 1) {
+                const synced = await billingService.sync();
+                if (synced.data?.sub?.status === "active") break;
+                await new Promise((r) => setTimeout(r, 1500));
+              }
+            } catch (err) {
+              // Sync can fail if the subscription is still in `created`
+              // state. Webhook will eventually catch up in production.
+              console.warn("Post-payment sync failed", err);
+            }
+            await queryClient.invalidateQueries({
+              queryKey: billingKeys.subscription(),
+            });
+            await queryClient.invalidateQueries({
+              queryKey: billingKeys.payments(),
+            });
+            if (targetSlug) {
+              const planLabel =
+                plans?.find((p) => p.slug === targetSlug)?.label ?? targetSlug;
+              setCelebrationPlanLabel(planLabel);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              toast.info("Payment cancelled. You can try again any time.");
+            },
+            escape: true,
+            confirm_close: true,
+          },
+          retry: { enabled: true, max_count: 2 },
+        });
+
+        rzp.on("payment.failed", (resp: any) => {
+          const reason =
+            resp?.error?.description || "Please try a different method.";
+          toast.error(`Payment failed: ${reason}`);
+          queryClient.invalidateQueries({
+            queryKey: billingKeys.payments(),
+          });
+        });
+
+        rzp.open();
       },
     });
   };
@@ -230,38 +371,77 @@ export default function BillingPage() {
     <div className="space-y-6">
       <PageHeader title="Billing" description="Manage your subscription, payments, and plan." />
 
-      {celebrationPlanLabel && (
-        <motion.div
-          initial={{ opacity: 0, y: -8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="glass border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
-            <CardContent className="py-4 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center">
-                <PartyPopper className="h-5 w-5 text-primary" />
+      <Dialog
+        open={!!celebrationPlanLabel}
+        onOpenChange={(open) => !open && setCelebrationPlanLabel(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center text-center">
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="h-16 w-16 rounded-full bg-primary/15 flex items-center justify-center mb-2"
+            >
+              <PartyPopper className="h-8 w-8 text-primary" />
+            </motion.div>
+            <DialogTitle className="text-xl">
+              Welcome to BeatMitra {celebrationPlanLabel}!
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your subscription is active and all plan features are unlocked.
+            </p>
+          </DialogHeader>
+
+          {sub && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3 mt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Plan</span>
+                <span className="font-medium capitalize">
+                  {celebrationPlanLabel ?? sub.planSlug}
+                </span>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold">
-                  Welcome to BeatMitra {celebrationPlanLabel} — your subscription is
-                  active!
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Payment received and your plan features are unlocked. Thanks for
-                  subscribing.
-                </p>
+              {currentPlan && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-medium">
+                    {formatPrice(currentPlan.priceInPaise)} / month
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Next renewal</span>
+                <span className="font-medium">
+                  {formatDate(sub.currentPeriodEnd)}
+                </span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCelebrationPlanLabel(null)}
-              >
-                Dismiss
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+              {sub.razorpaySubscriptionId && (
+                <div className="flex justify-between text-sm gap-2">
+                  <span className="text-muted-foreground">Reference</span>
+                  <span className="font-mono text-xs truncate">
+                    {sub.razorpaySubscriptionId}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground text-center mt-1">
+            Auto-debit is set up — you won't need to pay manually next month.
+            A receipt will be emailed for every charge.
+          </p>
+
+          <DialogFooter className="sm:justify-center mt-2">
+            <Button
+              onClick={() => setCelebrationPlanLabel(null)}
+              className="w-full sm:w-auto"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         {sub.status === "trialing" && (
@@ -291,12 +471,20 @@ export default function BillingPage() {
               <div className="flex-1">
                 <p className="font-medium">Cancellation scheduled</p>
                 <p className="text-sm text-muted-foreground">
-                  You cancelled on {formatDate(sub.cancelledAt)}. Access continues until{" "}
-                  {formatDate(sub.currentPeriodEnd)}
+                  You cancelled on {formatDate(sub.cancelledAt)}. Your subscription
+                  stays active until {formatDate(sub.currentPeriodEnd)}
                   {accessDaysLeft !== null
                     ? ` (${accessDaysLeft} day${accessDaysLeft === 1 ? "" : "s"} left)`
-                    : ""}
-                  . Re-subscribe below to keep your account active.
+                    : ""}{" "}
+                  — you can re-subscribe any time after that. Changed your mind
+                  sooner? Email{" "}
+                  <a
+                    href="mailto:support@beatmitra.com"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    support@beatmitra.com
+                  </a>{" "}
+                  and we'll restore it for you.
                 </p>
               </div>
             </CardContent>
@@ -452,22 +640,28 @@ export default function BillingPage() {
           </CardContent>
         </Card>
 
-        {(sub.status === "trialing" ||
-          sub.status === "past_due" ||
-          sub.status === "locked" ||
-          sub.status === "cancelled" ||
-          cancellationPending) && (
+        {/*
+          Re-subscribe is intentionally blocked while a cancellation is
+          pending. Razorpay doesn't support "uncancel", so letting the user
+          start a new subscription mid-cycle would double-charge them on
+          top of the time they already paid for. They can re-subscribe
+          freely once the current period ends and status flips to
+          "cancelled". See project_cancel_resubscribe_flow memory.
+        */}
+        {!cancellationPending &&
+          (sub.status === "trialing" ||
+            sub.status === "past_due" ||
+            sub.status === "locked" ||
+            sub.status === "cancelled") && (
           <Card className="glass mt-6">
             <CardHeader>
               <CardTitle>
-                {sub.status === "cancelled" || cancellationPending
+                {sub.status === "cancelled"
                   ? "Re-subscribe"
                   : "Subscribe to a Paid Plan"}
               </CardTitle>
               <CardDescription>
-                {cancellationPending
-                  ? "Pick a plan to undo your cancellation and continue without interruption."
-                  : "Choose a plan and pay via UPI Autopay, card, or netbanking."}
+                Choose a plan and pay via UPI Autopay, card, or netbanking.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -506,13 +700,13 @@ export default function BillingPage() {
                   <CreditCard className="h-4 w-4" />
                 )}
                 {targetPlan
-                  ? `${cancellationPending || sub.status === "cancelled" ? "Re-subscribe" : "Subscribe"} — ${targetPlan.label} ${formatPrice(targetPlan.priceInPaise)}/mo`
+                  ? `${sub.status === "cancelled" ? "Re-subscribe" : "Subscribe"} — ${targetPlan.label} ${formatPrice(targetPlan.priceInPaise)}/mo`
                   : `Subscribe to ${sub.planSlug}`}
                 <ArrowUpRight className="h-4 w-4" />
               </Button>
               <p className="text-xs text-muted-foreground">
-                You'll be redirected to Razorpay to complete payment and authorise auto-debit.
-                Prices include GST.
+                A secure Razorpay window will open to complete payment and authorise
+                auto-debit. Prices include GST.
               </p>
             </CardContent>
           </Card>

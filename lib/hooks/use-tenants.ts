@@ -131,6 +131,31 @@ export function useUpdateTenant() {
 }
 
 /**
+ * Hook for a super admin to switch a tenant's subscription plan.
+ * Re-syncs cached features/limits on the tenant doc immediately.
+ */
+export function useChangeTenantPlan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, planSlug }: { id: string; planSlug: string }) => {
+      const response = await tenantService.changePlan(id, planSlug);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to change plan');
+      }
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(tenantKeys.detail(variables.id), data);
+      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['admin-billing', 'sub', variables.id] });
+      toast.success(`Plan switched to ${variables.planSlug}`);
+    },
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/**
  * Hook to delete a tenant (Super Admin only)
  */
 export function useDeleteTenant() {

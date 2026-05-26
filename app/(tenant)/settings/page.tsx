@@ -6,11 +6,7 @@ import {
   User,
   Globe,
   FileText,
-  ToggleLeft,
   Upload,
-  Smartphone,
-  BarChart3,
-  Bell,
   Loader2,
   AlertCircle,
   X,
@@ -68,39 +64,6 @@ interface ProfileData {
   pincode: string;
 }
 
-// --- Feature Metadata ---
-
-interface FeatureMeta {
-  key: string;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-}
-
-const featureList: FeatureMeta[] = [
-  {
-    key: "advancedAnalytics",
-    label: "Advanced Analytics",
-    description:
-      "Access detailed analytics dashboards with sales trends, product performance, and revenue forecasting.",
-    icon: BarChart3,
-  },
-  {
-    key: "pushNotifications",
-    label: "Push Notifications",
-    description:
-      "Enable browser and mobile push notifications for real-time alerts on orders, deliveries, and payments.",
-    icon: Smartphone,
-  },
-  {
-    key: "appNotifications",
-    label: "App Notifications",
-    description:
-      "Show the notification bell in the header so admins receive in-app alerts for orders, deliveries, payments, and other important events.",
-    icon: Bell,
-  },
-];
-
 // --- Main Page ---
 
 export default function SettingsPage() {
@@ -122,12 +85,6 @@ export default function SettingsPage() {
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceNumberFormat, setInvoiceNumberFormat] = useState("YYYY-NNNN");
   const [termsAndConditions, setTermsAndConditions] = useState("");
-
-  const [features, setFeatures] = useState<Record<string, boolean>>({
-    advancedAnalytics: false,
-    pushNotifications: false,
-    appNotifications: false,
-  });
 
   const [profile, setProfile] = useState<ProfileData>({
     businessName: "",
@@ -203,15 +160,6 @@ export default function SettingsPage() {
         setInvoicePrefix(settings.config.invoiceSettings.invoicePrefix || "INV");
         setInvoiceNumberFormat(settings.config.invoiceSettings.invoiceNumberFormat || "YYYY-NNNN");
         setTermsAndConditions(settings.config.invoiceSettings.termsAndConditions || "");
-      }
-
-      // Features
-      if (settings.config.features) {
-        setFeatures({
-          advancedAnalytics: settings.config.features.advancedAnalytics ?? false,
-          pushNotifications: settings.config.features.pushNotifications ?? false,
-          appNotifications: settings.config.features.appNotifications ?? false,
-        });
       }
     }
   }, [settings]);
@@ -372,21 +320,6 @@ export default function SettingsPage() {
         invoicePrefix,
         invoiceNumberFormat,
         termsAndConditions,
-      },
-    });
-  }
-
-  // --- Features handlers ---
-  function toggleFeature(key: string) {
-    setFeatures((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function handleSaveFeatures() {
-    updateSettings.mutate({
-      features: {
-        advancedAnalytics: features.advancedAnalytics,
-        pushNotifications: features.pushNotifications,
-        appNotifications: features.appNotifications,
       },
     });
   }
@@ -563,10 +496,6 @@ export default function SettingsPage() {
           <TabsTrigger value="invoice">
             <FileText className="h-4 w-4" />
             Invoice
-          </TabsTrigger>
-          <TabsTrigger value="features">
-            <ToggleLeft className="h-4 w-4" />
-            Features
           </TabsTrigger>
           <TabsTrigger value="order-print">
             <Printer className="h-4 w-4" />
@@ -929,65 +858,6 @@ export default function SettingsPage() {
                 disabled={updateSettings.isPending}
               >
                 {updateSettings.isPending ? "Saving..." : "Save Invoice Settings"}
-              </Button>
-            </div>
-          </motion.div>
-        </TabsContent>
-
-        {/* ===================== FEATURES TAB ===================== */}
-        <TabsContent value="features">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-3 mt-4"
-          >
-            {featureList.map((feature, index) => {
-              const FeatureIcon = feature.icon;
-              const isEnabled = features[feature.key] ?? false;
-
-              return (
-                <motion.div
-                  key={feature.key}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="glass rounded-xl p-4"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg p-2.5 shrink-0 mt-0.5">
-                      <FeatureIcon className="h-5 w-5 text-blue-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{feature.label}</h3>
-                        {isEnabled && (
-                          <span className="inline-flex items-center rounded-full bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20 px-2 py-0.5 text-[10px] font-medium">
-                            Enabled
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {feature.description}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={() => toggleFeature(feature.key)}
-                    />
-                  </div>
-                </motion.div>
-              );
-            })}
-
-            {/* Save */}
-            <div className="flex justify-end pt-2">
-              <Button
-                className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-                onClick={handleSaveFeatures}
-                disabled={updateSettings.isPending}
-              >
-                {updateSettings.isPending ? "Saving..." : "Save Feature Settings"}
               </Button>
             </div>
           </motion.div>

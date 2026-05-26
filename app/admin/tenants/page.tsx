@@ -21,6 +21,17 @@ const tenantStatusColorMap: Record<string, { label: string; variant: "default" |
   suspended: { label: "Suspended", variant: "error" },
 };
 
+// Subscription lifecycle status (separate from operational tenant.status).
+// Kept in sync with the Subscription document via webhooks; this column lets
+// support see at a glance who's trialing, past-due, locked, etc.
+const subscriptionStatusColorMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "error" | "info" }> = {
+  trialing: { label: "Trialing", variant: "info" },
+  active: { label: "Active", variant: "success" },
+  past_due: { label: "Past Due", variant: "warning" },
+  locked: { label: "Locked", variant: "error" },
+  cancelled: { label: "Cancelled", variant: "default" },
+};
+
 const planLabels: Record<string, string> = {
   free: "Free",
   basic: "Basic",
@@ -66,6 +77,17 @@ const columns: ColumnDef<TenantRow>[] = [
     cell: (row) => (
       <StatusBadge status={row.status} colorMap={tenantStatusColorMap} />
     ),
+  },
+  {
+    key: "subscriptionStatus",
+    header: "Subscription",
+    sortable: true,
+    cell: (row) => {
+      const s = (row.subscriptionStatus as string) ?? "active";
+      return (
+        <StatusBadge status={s} colorMap={subscriptionStatusColorMap} />
+      );
+    },
   },
   {
     key: "ownerEmail",

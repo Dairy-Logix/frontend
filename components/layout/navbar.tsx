@@ -19,7 +19,7 @@ import { AgencySwitcher } from "@/components/shared/agency-switcher";
 import { useUIStore } from "@/lib/stores/ui-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useTenantStore } from "@/lib/stores/tenant-store";
-import { useSettings } from "@/lib/hooks";
+import { useFeature } from "@/lib/hooks/use-feature";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/components/providers/intl-provider";
 
@@ -28,11 +28,10 @@ export function Navbar() {
   const { user, logout } = useAuthStore();
   const { context } = useTenantStore();
   const router = useRouter();
-  const { data: settings } = useSettings();
   const t = useTranslations("navbar");
   const tNav = useTranslations("nav");
 
-  const appNotificationsEnabled = settings?.config?.features?.appNotifications ?? false;
+  const appNotificationsEnabled = useFeature("appNotifications");
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleLogout = () => {

@@ -33,6 +33,11 @@ export interface BillingPayment {
 export interface SubscribeResult {
   shortUrl: string;
   razorpaySubscriptionId: string;
+  razorpayKeyId: string | null;
+  prefill: { name?: string; email?: string; contact?: string };
+  tenantName?: string;
+  planLabel?: string;
+  amountInPaise?: number;
 }
 
 export const billingService = {

@@ -154,6 +154,8 @@ export interface SubscriptionFeatures {
   advancedAnalytics: boolean;
   pushNotifications: boolean;
   appNotifications: boolean;
+  storeMobileApp: boolean;
+  printTemplates: boolean;
 }
 
 export interface SubscriptionLimits {
@@ -224,8 +226,6 @@ export interface Tenant {
 }
 
 export interface TenantConfig {
-  features: TenantFeatures;
-  limits: TenantLimits;
   branding: TenantBranding;
   invoiceSettings: InvoiceSettings;
   notificationChannels: NotificationChannel[];
@@ -259,20 +259,6 @@ export interface OrderPrintTemplate {
   titleText: string;
   enabledProductIds: string[];
   enabledStoresByAgency: Record<string, string[]>;
-}
-
-export interface TenantFeatures {
-  gpsTracking: boolean;
-  pushNotifications: boolean;
-  advancedAnalytics: boolean;
-  bulkImport: boolean;
-  photoProofDelivery: boolean;
-}
-
-export interface TenantLimits {
-  maxAgencies: number;
-  maxEmployees: number;
-  maxShopkeepers: number;
 }
 
 export interface TenantBranding {
@@ -319,8 +305,6 @@ export interface TenantSettings {
 }
 
 export interface UpdateSettingsInput {
-  features?: Partial<TenantFeatures>;
-  limits?: Partial<TenantLimits>;
   branding?: Partial<TenantBranding>;
   invoiceSettings?: Partial<InvoiceSettings>;
   notificationChannels?: NotificationChannel[];

@@ -52,6 +52,17 @@ export const tenantService = {
     };
   },
 
+  async changePlan(id: string, planSlug: string): Promise<ApiResponse<Tenant>> {
+    const { data } = await apiClient.patch<Tenant>(`/tenants/${id}/plan`, {
+      planSlug,
+    });
+    return {
+      success: true,
+      data,
+      message: 'Plan changed successfully',
+    };
+  },
+
   async deleteTenant(id: string): Promise<ApiResponse<void>> {
     const { data } = await apiClient.delete<{ message: string }>(`/tenants/${id}`);
     return {

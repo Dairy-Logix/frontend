@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Tenant, TenantConfig, TenantFeatures, SupportedLocale } from '@/lib/types';
+import type { Tenant, TenantConfig, SubscriptionFeatures, SupportedLocale } from '@/lib/types';
 
 interface TenantStore {
   tenant: Tenant | null;
@@ -14,20 +14,12 @@ interface TenantStore {
   setError: (error: string | null) => void;
   clearTenant: () => void;
 
-  // Convenience getters
-  getFeatures: () => TenantFeatures | null;
+  // Convenience getters — features are plan-derived (tenant.features), not in config.
+  getFeatures: () => SubscriptionFeatures | null;
   getConfig: () => TenantConfig | null;
   getDefaultLanguage: () => SupportedLocale;
   isSuperAdmin: () => boolean;
 }
-
-const defaultFeatures: TenantFeatures = {
-  gpsTracking: false,
-  pushNotifications: true,
-  advancedAnalytics: false,
-  bulkImport: true,
-  photoProofDelivery: false,
-};
 
 export const useTenantStore = create<TenantStore>()(
   persist(
@@ -43,7 +35,7 @@ export const useTenantStore = create<TenantStore>()(
       setError: (error) => set({ error, isLoading: false }),
       clearTenant: () => set({ tenant: null, error: null }),
 
-      getFeatures: () => get().tenant?.config?.features ?? null,
+      getFeatures: () => get().tenant?.features ?? null,
       getConfig: () => get().tenant?.config ?? null,
       getDefaultLanguage: () => get().tenant?.config?.defaultLanguage ?? 'en',
       isSuperAdmin: () => get().context === 'super_admin',
@@ -57,5 +49,3 @@ export const useTenantStore = create<TenantStore>()(
     }
   )
 );
-
-export { defaultFeatures };
