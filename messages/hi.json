@@ -286,7 +286,11 @@
     "configurations": "कॉन्फ़िगरेशन",
     "superAdmin": "सुपर एडमिन",
     "platformAdmin": "प्लेटफ़ॉर्म एडमिन",
-    "tenantAdminPanel": "किरायेदार एडमिन पैनल"
+    "tenantAdminPanel": "किरायेदार एडमिन पैनल",
+    "plans": "योजनाएँ",
+    "billing": "बिलिंग",
+    "leads": "लीड्स",
+    "audit": "ऑडिट लॉग"
   },
   "navbar": {
     "searchPlaceholder": "खोजें... (Cmd+K)",

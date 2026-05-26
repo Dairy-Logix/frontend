@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { usePublicPlans, useSubmitSignup } from "@/lib/hooks/use-signup";
+import { usePlatformStatus } from "@/lib/hooks/use-platform";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 
 const BUSINESS_TYPES = [
@@ -98,6 +99,7 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   const { data: plans, isLoading: loadingPlans } = usePublicPlans();
+  const { data: platform } = usePlatformStatus();
   const submit = useSubmitSignup();
 
   const setField = (key: keyof FormState, value: string) => {
@@ -144,6 +146,35 @@ export default function SignupPage() {
   };
 
   const selectedPlan = plans?.find((p) => p.slug === form.planSlug);
+
+  // Respect the platform-wide signup kill switch (and maintenance mode). The
+  // backend also enforces this; gating here gives a friendly state up front.
+  if (platform && !platform.allowNewSignups) {
+    return (
+      <div className="min-h-screen relative overflow-hidden flex flex-col">
+        <MarketingHeader />
+        <div className="relative z-10 flex-1 flex items-center justify-center p-4">
+          <Card className="glass max-w-md w-full text-center">
+            <CardHeader className="space-y-2">
+              <CardTitle>Signups are paused</CardTitle>
+              <CardDescription>
+                New trial signups are temporarily disabled. Please check back soon
+                {platform.maintenanceMode ? " — we're currently performing maintenance." : "."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Button asChild variant="outline">
+                <Link href="/auth/login">Log in to an existing account</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link href="/">Back to home</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">

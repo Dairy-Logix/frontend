@@ -286,7 +286,11 @@
     "configurations": "Configurations",
     "superAdmin": "Super Admin",
     "platformAdmin": "Platform Admin",
-    "tenantAdminPanel": "Tenant Admin Panel"
+    "tenantAdminPanel": "Tenant Admin Panel",
+    "plans": "Plans",
+    "billing": "Billing",
+    "leads": "Leads",
+    "audit": "Audit Log"
   },
   "navbar": {
     "searchPlaceholder": "Search... (Cmd+K)",

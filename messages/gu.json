@@ -286,7 +286,11 @@
     "configurations": "કોન્ફિગરેશન",
     "superAdmin": "સુપર એડમિન",
     "platformAdmin": "પ્લેટફોર્મ એડમિન",
-    "tenantAdminPanel": "ભાડૂત એડમિન પેનલ"
+    "tenantAdminPanel": "ભાડૂત એડમિન પેનલ",
+    "plans": "યોજનાઓ",
+    "billing": "બિલિંગ",
+    "leads": "લીડ્સ",
+    "audit": "ઓડિટ લોગ"
   },
   "navbar": {
     "searchPlaceholder": "શોધો... (Cmd+K)",

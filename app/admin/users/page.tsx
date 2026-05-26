@@ -7,12 +7,21 @@ import { Users, UserCheck, UserX, Plus, Loader2, AlertCircle } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useUsers } from "@/lib/hooks";
+import { useUsers, useTenants } from "@/lib/hooks";
 import type { User, UserRole } from "@/lib/types";
 import { useTranslations } from "@/components/providers/intl-provider";
 
@@ -131,15 +140,25 @@ export default function UsersPage() {
   const tPage = useTranslations("pages.adminUsers");
   const router = useRouter();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | undefined>("tenant_admin");
+  const [tenantFilter, setTenantFilter] = useState<string | undefined>(undefined);
+  const [showDemo, setShowDemo] = useState(false);
 
-  // Fetch users with default filter for tenant admins
+  // Tenants for the filter dropdown (cross-tenant super-admin view).
+  const { data: tenantsData } = useTenants({ page: 1, pageSize: 100 });
+  const tenants = tenantsData?.data || [];
+
+  // Fetch users with default filter for tenant admins. Demo tenant users are
+  // hidden by default; the toggle reveals them.
   const { data, isLoading, error } = useUsers({
     page,
-    limit: 10,
+    limit,
     search,
     role: roleFilter,
+    tenantId: tenantFilter,
+    includeDemo: showDemo,
   });
 
   const users = data?.data || [];
@@ -218,11 +237,40 @@ export default function UsersPage() {
             className="max-w-sm"
           />
 
-          {roleFilter && (
-            <Button variant="outline" onClick={handleShowAllUsers}>
-              Show All Users
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            {/* Filter users by tenant (All tenants by default) */}
+            <Select
+              value={tenantFilter ?? "all"}
+              onValueChange={(value) => {
+                setTenantFilter(value === "all" ? undefined : value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All tenants" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All tenants</SelectItem>
+                {tenants.map((tenant) => (
+                  <SelectItem key={tenant.id} value={tenant.id}>
+                    {tenant.companyName || tenant.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-2">
+              <Switch id="show-demo-users" checked={showDemo} onCheckedChange={setShowDemo} />
+              <Label htmlFor="show-demo-users" className="text-sm text-muted-foreground cursor-pointer">
+                Show demo users
+              </Label>
+            </div>
+            {roleFilter && (
+              <Button variant="outline" onClick={handleShowAllUsers}>
+                Show All Users
+              </Button>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -231,11 +279,23 @@ export default function UsersPage() {
           </div>
         ) : (
           <DataTable
-            data={users}
+            data={users as UserRow[]}
             columns={columns}
             onRowClick={handleRowClick}
-            pagination={pagination}
-            onPageChange={setPage}
+            pagination={
+              pagination
+                ? {
+                    page: pagination.page,
+                    pageSize: pagination.limit,
+                    total: pagination.total,
+                    onPageChange: setPage,
+                    onPageSizeChange: (size) => {
+                      setLimit(size);
+                      setPage(1);
+                    },
+                  }
+                : undefined
+            }
           />
         )}
       </motion.div>

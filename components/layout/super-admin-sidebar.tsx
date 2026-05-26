@@ -11,6 +11,10 @@ import {
   BarChart3,
   Cog,
   Shield,
+  Package,
+  CreditCard,
+  UserPlus,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,10 +30,14 @@ import { useTranslations } from "@/components/providers/intl-provider";
 const navigation = [
   { key: "dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { key: "tenants", href: "/admin/tenants", icon: Building2 },
+  { key: "leads", href: "/admin/signups", icon: UserPlus },
   { key: "users", href: "/admin/users", icon: Users },
+  { key: "plans", href: "/admin/plans", icon: Package },
+  { key: "billing", href: "/admin/billing", icon: CreditCard },
   { key: "configurations", href: "/admin/configurations", icon: Cog },
   { key: "notifications", href: "/admin/notifications", icon: Bell },
   { key: "reports", href: "/admin/reports", icon: BarChart3 },
+  { key: "audit", href: "/admin/audit", icon: ScrollText },
   { key: "settings", href: "/admin/settings", icon: Settings },
 ];
 

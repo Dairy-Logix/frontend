@@ -9,6 +9,13 @@ import type {
   UpdateTenantInput,
 } from '@/lib/types';
 
+// Backend returns Mongo documents keyed by `_id`; the frontend Tenant type uses
+// `id`. Dropdowns/links that read `tenant.id` (e.g. the user filter and the
+// create-user tenant picker) get `undefined` without this.
+function normalizeTenant(raw: Tenant & { _id?: string }): Tenant {
+  return { ...raw, id: raw?._id || raw?.id };
+}
+
 export const tenantService = {
   async getTenants(params?: PaginationParams): Promise<ApiResponse<PaginatedResponse<Tenant>>> {
     const { data } = await apiClient.get<{ tenants: Tenant[]; pagination: any }>(
@@ -18,7 +25,7 @@ export const tenantService = {
     return {
       success: true,
       data: {
-        data: data.tenants,
+        data: (data.tenants || []).map(normalizeTenant),
         pagination: data.pagination,
       },
       message: 'Tenants fetched successfully',

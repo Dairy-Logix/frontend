@@ -34,6 +34,8 @@ export interface PaginationParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   search?: string;
+  // Super-admin list endpoints hide the demo tenant by default; set true to include it.
+  includeDemo?: boolean;
 }
 
 // --- User & Auth Types ---
@@ -99,6 +101,8 @@ export interface QueryUsersParams extends PaginationParams {
   status?: UserStatus;
   tenantId?: string;
   search?: string;
+  // The users endpoint takes `limit` directly (not pageSize like other lists).
+  limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -221,6 +225,7 @@ export interface Tenant {
   subscriptionHistory?: SubscriptionHistoryEntry[];
   config: TenantConfig;
   agencyCount: number;
+  isDemo?: boolean;
   createdAt: string;
   updatedAt: string;
 }

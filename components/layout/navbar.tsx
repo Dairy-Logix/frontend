@@ -1,8 +1,7 @@
 "use client";
 
-import { Bell, Menu, Search, User } from "lucide-react";
+import { Bell, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,7 @@ import { useTranslations } from "@/components/providers/intl-provider";
 
 export function Navbar() {
   const { toggleSidebar, toggleSidebarCollapsed, notifications } = useUIStore();
-  const { user, logout } = useAuthStore();
+  const { user, logout, impersonation } = useAuthStore();
   const { context } = useTenantStore();
   const router = useRouter();
   const t = useTranslations("navbar");
@@ -48,7 +47,13 @@ export function Navbar() {
   };
 
   const { tenant } = useTenantStore();
-  const panelLabel = context === "super_admin" ? tNav("superAdmin") : (tenant?.name || tNav("dashboard"));
+  // While impersonating, always show the target tenant's name (the tenant-store
+  // context can still read super_admin underneath the impersonation overlay).
+  const panelLabel = impersonation
+    ? impersonation.tenant.name
+    : context === "super_admin"
+      ? tNav("superAdmin")
+      : (tenant?.name || tNav("dashboard"));
 
   return (
     <nav className="sticky top-0 z-50 glass border-b">
@@ -69,21 +74,8 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Search Bar - Center */}
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder={t("searchPlaceholder")}
-              className="pl-10 glass-subtle"
-              onFocus={() => useUIStore.getState().setCommandPaletteOpen(true)}
-            />
-          </div>
-        </div>
-
         {/* Right Section */}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <LanguageSwitcher />
           <ThemeToggle />
 

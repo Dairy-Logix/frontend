@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Building2,
   IndianRupee,
@@ -87,8 +89,11 @@ const itemVariants = {
 export default function ReportsPage() {
   const tPage = useTranslations("pages.adminReports");
   const [period, setPeriod] = useState("6months");
-  const { data: dashboardData, isLoading, error, refetch } = useSuperAdminDashboard();
-  const { data: tenantsData } = useTenants({ page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' });
+  const [showDemo, setShowDemo] = useState(false);
+  // Demo tenant is excluded from platform analytics by default; the toggle
+  // feeds both data sources so every chart and stat stays consistent.
+  const { data: dashboardData, isLoading, error, refetch } = useSuperAdminDashboard(showDemo);
+  const { data: tenantsData } = useTenants({ page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc', includeDemo: showDemo });
 
   const handleExport = () => {
     toast.success("Report exported successfully");
@@ -222,7 +227,13 @@ export default function ReportsPage() {
         title="Platform Reports"
         description="Analytics and insights across all tenants"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch id="show-demo-reports" checked={showDemo} onCheckedChange={setShowDemo} />
+              <Label htmlFor="show-demo-reports" className="text-sm text-muted-foreground cursor-pointer">
+                Show demo tenant
+              </Label>
+            </div>
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-[140px] glass-subtle">
                 <SelectValue />

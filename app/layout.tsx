@@ -6,6 +6,8 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { IntlProvider } from "@/components/providers/intl-provider";
 import { TenantProvider } from "@/components/providers/tenant-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { PlatformBanner } from "@/components/shared/platform-banner";
+import { ImpersonationBanner } from "@/components/shared/impersonation-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +39,8 @@ export default function RootLayout({
           <QueryProvider>
             <TenantProvider>
               <IntlProvider>
+                <ImpersonationBanner />
+                <PlatformBanner />
                 {children}
                 <Toaster />
               </IntlProvider>

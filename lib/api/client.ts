@@ -7,6 +7,8 @@ import {
   getRefreshToken,
   setTokens,
 } from '@/lib/auth/token-storage';
+import { getImpToken } from '@/lib/auth/impersonation-token';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 // Pulls the backend error payload regardless of whether it's wrapped by the
 // global ResponseInterceptor or thrown raw via HttpException.
@@ -38,7 +40,9 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = getAccessToken();
+      // Prefer the impersonation token when a super-admin is viewing a tenant;
+      // otherwise use the normal access token.
+      const token = getImpToken() || getAccessToken();
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -94,6 +98,16 @@ apiClient.interceptors.response.use(
 
     // Handle 401 errors (unauthorized)
     if (error.response?.status === 401) {
+      // If we're impersonating, a 401 means the (short-lived) impersonation
+      // token expired. Don't try to refresh the admin session against a tenant
+      // request — cleanly end impersonation and return the admin to the console.
+      if (typeof window !== 'undefined' && getImpToken()) {
+        useAuthStore.getState().exitImpersonation();
+        toast.info('Impersonation session ended.');
+        window.location.replace('/admin/tenants');
+        return Promise.reject(error);
+      }
+
       // Already tried once — token refresh didn't save us. Bounce to login.
       if (originalRequest._retry) {
         forceLogoutAndRedirect();

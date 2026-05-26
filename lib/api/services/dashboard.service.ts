@@ -13,9 +13,12 @@ export const dashboardService = {
   /**
    * Get Super Admin dashboard statistics
    */
-  async getSuperAdminStats(): Promise<ApiResponse<SuperAdminDashboardStats>> {
+  async getSuperAdminStats(
+    includeDemo = false,
+  ): Promise<ApiResponse<SuperAdminDashboardStats>> {
     const { data } = await apiClient.get<SuperAdminDashboardStats>(
-      '/dashboard/super-admin'
+      '/dashboard/super-admin',
+      { params: includeDemo ? { includeDemo: true } : undefined },
     );
     return {
       success: true,

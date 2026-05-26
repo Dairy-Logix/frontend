@@ -9,6 +9,13 @@ import type {
   ResetPasswordInput,
 } from '@/lib/types';
 
+// Backend returns Mongo documents keyed by `_id`; the frontend User type uses
+// `id`. Without this, `user.id` is undefined and row-click navigation lands on
+// /admin/users/undefined ("user not found").
+function normalizeUser(raw: User & { _id?: string }): User {
+  return { ...raw, id: raw?._id || raw?.id };
+}
+
 export const userService = {
   async getUsers(params?: QueryUsersParams): Promise<ApiResponse<PaginatedResponse<User>>> {
     const { data } = await apiClient.get<{ users: User[]; pagination: any }>(
@@ -18,7 +25,7 @@ export const userService = {
     return {
       success: true,
       data: {
-        data: data.users,
+        data: (data.users || []).map(normalizeUser),
         pagination: data.pagination,
       },
       message: 'Users fetched successfully',
@@ -29,7 +36,7 @@ export const userService = {
     const { data } = await apiClient.get<User>(`/users/${id}`);
     return {
       success: true,
-      data,
+      data: normalizeUser(data),
       message: 'User fetched successfully',
     };
   },
@@ -45,7 +52,7 @@ export const userService = {
     return {
       success: true,
       data: {
-        data: data.users,
+        data: (data.users || []).map(normalizeUser),
         pagination: data.pagination,
       },
       message: 'Users fetched successfully',
@@ -56,7 +63,7 @@ export const userService = {
     const { data } = await apiClient.post<User>('/users', input);
     return {
       success: true,
-      data,
+      data: normalizeUser(data),
       message: 'User created successfully',
     };
   },
@@ -65,7 +72,7 @@ export const userService = {
     const { data } = await apiClient.patch<User>(`/users/${id}`, input);
     return {
       success: true,
-      data,
+      data: normalizeUser(data),
       message: 'User updated successfully',
     };
   },

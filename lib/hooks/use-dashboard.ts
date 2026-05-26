@@ -6,7 +6,8 @@ import type { AnalyticsQuery, TopProductsQuery } from '@/lib/types';
 // Query keys
 export const dashboardKeys = {
   all: ['dashboard'] as const,
-  superAdmin: () => [...dashboardKeys.all, 'super-admin'] as const,
+  superAdmin: (includeDemo = false) =>
+    [...dashboardKeys.all, 'super-admin', { includeDemo }] as const,
   tenant: () => [...dashboardKeys.all, 'tenant'] as const,
   analytics: (q: AnalyticsQuery) =>
     [...dashboardKeys.all, 'analytics', q] as const,
@@ -17,13 +18,13 @@ export const dashboardKeys = {
 /**
  * Hook to fetch Super Admin dashboard statistics
  */
-export function useSuperAdminDashboard() {
+export function useSuperAdminDashboard(includeDemo = false) {
   const { isSuperAdmin } = useAuthStore();
 
   return useQuery({
-    queryKey: dashboardKeys.superAdmin(),
+    queryKey: dashboardKeys.superAdmin(includeDemo),
     queryFn: async () => {
-      const response = await dashboardService.getSuperAdminStats();
+      const response = await dashboardService.getSuperAdminStats(includeDemo);
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to fetch dashboard stats');
       }

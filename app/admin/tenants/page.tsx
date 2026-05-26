@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Building2, Users, ShieldAlert, Plus, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
@@ -49,7 +52,14 @@ const columns: ColumnDef<TenantRow>[] = [
     sortable: true,
     cell: (row) => (
       <div>
-        <p className="font-medium">{row.companyName || row.name}</p>
+        <p className="font-medium flex items-center gap-2">
+          {row.companyName || row.name}
+          {row.isDemo && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+              Demo
+            </Badge>
+          )}
+        </p>
         <p className="text-xs text-muted-foreground">{row.slug}</p>
       </div>
     ),
@@ -131,14 +141,17 @@ const itemVariants = {
 export default function TenantsPage() {
   const tPage = useTranslations("pages.adminTenants");
   const router = useRouter();
+  const [showDemo, setShowDemo] = useState(false);
 
-  // Fetch real data from backend
-  const { data: dashboardData, isLoading: isDashboardLoading } = useSuperAdminDashboard();
+  // Fetch real data from backend. Demo tenant is hidden by default; the toggle
+  // feeds both the dashboard cards and the table so the counts stay consistent.
+  const { data: dashboardData, isLoading: isDashboardLoading } = useSuperAdminDashboard(showDemo);
   const { data: tenantsData, isLoading: isTenantsLoading, error, refetch } = useTenants({
     page: 1,
     pageSize: 100,
     sortBy: 'createdAt',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    includeDemo: showDemo,
   });
 
   const totalTenants = dashboardData?.totalTenants || 0;
@@ -186,12 +199,20 @@ export default function TenantsPage() {
         title="Tenant Management"
         description="View, manage, and configure all tenant organizations on the platform."
         action={
-          <Button asChild>
-            <Link href="/admin/tenants/create">
-              <Plus className="h-4 w-4" />
-              Add Tenant
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch id="show-demo" checked={showDemo} onCheckedChange={setShowDemo} />
+              <Label htmlFor="show-demo" className="text-sm text-muted-foreground cursor-pointer">
+                Show demo tenant
+              </Label>
+            </div>
+            <Button asChild>
+              <Link href="/admin/tenants/create">
+                <Plus className="h-4 w-4" />
+                Add Tenant
+              </Link>
+            </Button>
+          </div>
         }
       />
 

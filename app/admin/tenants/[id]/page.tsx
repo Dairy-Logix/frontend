@@ -21,6 +21,7 @@ import {
   Calendar,
   Loader2,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FormModal } from "@/components/shared/form-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTenant, useUpdateTenant, useDeleteTenant, useTenantStats } from "@/lib/hooks";
+import { useStartImpersonation } from "@/lib/hooks/use-impersonation";
+import { PlanUsage } from "@/components/admin/plan-usage";
 import { AdminSubscriptionTab } from "./subscription-tab";
 import { toast } from "sonner";
 
@@ -84,6 +87,7 @@ export default function TenantDetailsPage() {
   const { data: tenantStats } = useTenantStats(tenantId);
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
+  const startImpersonation = useStartImpersonation();
 
   // Derive tenantName early (before useEffect)
   const tenantName = tenant?.companyName || tenant?.name || "Unknown";
@@ -239,12 +243,22 @@ export default function TenantDetailsPage() {
         title={tenantName}
         description={`Manage details and configuration for ${tenantName}.`}
         action={
-          <Button variant="outline" asChild>
-            <Link href="/admin/tenants">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Tenants
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => startImpersonation.mutate(tenantId)}
+              disabled={startImpersonation.isPending}
+            >
+              <Eye className="h-4 w-4" />
+              View as tenant
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/tenants">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Tenants
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -291,6 +305,34 @@ export default function TenantDetailsPage() {
                 icon={Building2}
               />
             </motion.div>
+          </motion.div>
+
+          {/* Plan Usage vs Limits */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle>Plan Usage</CardTitle>
+                <CardDescription>
+                  Usage against the {tenant.subscriptionPlan || tenant.plan || "current"} plan&apos;s limits.
+                  Amber = approaching cap, red = over cap.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PlanUsage
+                  limits={tenant.limits}
+                  usage={{
+                    agencies: tenantStats?.totalAgencies ?? tenant.agencyCount ?? 0,
+                    stores: tenantStats?.totalShopkeepers ?? 0,
+                    products: tenantStats?.totalProducts ?? 0,
+                    users: tenantStats?.totalUsers ?? 0,
+                  }}
+                />
+              </CardContent>
+            </Card>
           </motion.div>
 
           {/* Tenant Info Card */}
@@ -486,72 +528,15 @@ export default function TenantDetailsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-3">
-                    {(() => {
-                      const limits: any = tenant.limits || {};
-                      const agencyCount = tenantStats?.totalAgencies ?? tenant.agencyCount ?? 0;
-                      const storeCount = tenantStats?.totalShopkeepers ?? 0;
-                      const productCount = tenantStats?.totalProducts ?? 0;
-                      const maxAgencies = limits?.maxAgencies ?? 0;
-                      const maxStores = limits?.maxShopkeepers ?? 0;
-                      const maxProducts = limits?.maxProducts ?? 0;
-                      return (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Max Agencies</Label>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold">{agencyCount}</span>
-                              <span className="text-sm text-muted-foreground">
-                                / {maxAgencies}
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-gradient-primary transition-all"
-                                style={{
-                                  width: `${maxAgencies > 0 ? Math.min(100, (agencyCount / maxAgencies) * 100) : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Max Shopkeepers</Label>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold">{storeCount}</span>
-                              <span className="text-sm text-muted-foreground">
-                                / {maxStores}
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-gradient-primary transition-all"
-                                style={{
-                                  width: `${maxStores > 0 ? Math.min(100, (storeCount / maxStores) * 100) : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Max Products</Label>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold">{productCount}</span>
-                              <span className="text-sm text-muted-foreground">
-                                / {maxProducts}
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-gradient-primary transition-all"
-                                style={{
-                                  width: `${maxProducts > 0 ? Math.min(100, (productCount / maxProducts) * 100) : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
+                  <PlanUsage
+                    limits={tenant.limits}
+                    usage={{
+                      agencies: tenantStats?.totalAgencies ?? tenant.agencyCount ?? 0,
+                      stores: tenantStats?.totalShopkeepers ?? 0,
+                      products: tenantStats?.totalProducts ?? 0,
+                      users: tenantStats?.totalUsers ?? 0,
+                    }}
+                  />
                 </CardContent>
               </Card>
             </motion.div>
