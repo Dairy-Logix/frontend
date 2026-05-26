@@ -1,6 +1,12 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import { API_BASE_URL, API_TIMEOUT } from '@/lib/constants';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from '@/lib/auth/token-storage';
 
 // Pulls the backend error payload regardless of whether it's wrapped by the
 // global ResponseInterceptor or thrown raw via HttpException.
@@ -32,7 +38,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('accessToken');
+      const token = getAccessToken();
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -49,14 +55,15 @@ apiClient.interceptors.request.use(
 // still 401). Idempotent — safe to call from multiple interceptor branches.
 function forceLogoutAndRedirect() {
   if (typeof window === 'undefined') return;
-  // Clear raw tokens.
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
+  // Clear raw tokens from whichever store holds them (local or session).
+  clearTokens();
   // Clear persisted zustand stores so the login page doesn't see stale
-  // user/tenant state (auth-store and tenant-store from CLAUDE.md).
-  localStorage.removeItem('auth-storage');
-  localStorage.removeItem('tenant-storage');
-  localStorage.removeItem('agency-storage');
+  // user/tenant state (auth-store and tenant-store from CLAUDE.md). These can
+  // live in either store depending on the user's "Remember me" choice.
+  for (const key of ['auth-storage', 'tenant-storage', 'agency-storage']) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
   // Don't redirect if we're already on a marketing/auth route — prevents
   // a tight loop if the login page itself happens to hit a 401-returning
   // endpoint (e.g. the public plans listing).
@@ -96,7 +103,7 @@ apiClient.interceptors.response.use(
 
       if (typeof window === 'undefined') return Promise.reject(error);
 
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
       // No refresh token at all — session is dead, bounce immediately.
       if (!refreshToken) {
         forceLogoutAndRedirect();
@@ -111,10 +118,9 @@ apiClient.interceptors.response.use(
         // Handle wrapped response: { success: true, data: { accessToken, refreshToken } }
         const responseData = response.data?.data || response.data;
         const { accessToken, refreshToken: newRefreshToken } = responseData;
-        localStorage.setItem('accessToken', accessToken);
-        if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
-        }
+        // Preserve the existing storage location (Remember me) — omitting the
+        // `remember` arg keeps the tokens wherever the session already lives.
+        setTokens(accessToken, newRefreshToken ?? refreshToken);
 
         // Retry the original request with the fresh token.
         if (originalRequest.headers) {

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useTenantStore } from '@/lib/stores/tenant-store';
 import type { LoginCredentials, RegisterInput } from '@/lib/types';
 import { handleApiError } from '@/lib/api/client';
+import { getAccessToken } from '@/lib/auth/token-storage';
 
 // Query keys
 export const authKeys = {
@@ -35,7 +36,7 @@ export function useCurrentUser() {
     },
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: typeof window !== 'undefined' && !!getAccessToken(),
   });
 }
 
@@ -48,16 +49,22 @@ export function useLogin() {
   const { setUser, setTokens } = useAuthStore();
 
   return useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
+    mutationFn: async ({
+      remember,
+      ...credentials
+    }: LoginCredentials & { remember?: boolean }) => {
+      // `remember` is a client-side persistence preference — don't send it to the API.
+      void remember;
       const response = await authService.login(credentials);
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Login failed');
       }
       return response.data;
     },
-    onSuccess: (data) => {
-      // Store tokens
-      setTokens(data.accessToken, data.refreshToken);
+    onSuccess: (data, variables) => {
+      // Store tokens — "Remember me" decides localStorage (persistent) vs
+      // sessionStorage (cleared when the browser closes).
+      setTokens(data.accessToken, data.refreshToken, variables.remember ?? false);
 
       // Store user
       setUser(data.user);

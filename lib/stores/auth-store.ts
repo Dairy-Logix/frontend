@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { User, UserRole, AuthState } from '@/lib/types';
+import * as tokenStorage from '@/lib/auth/token-storage';
 
 interface AuthStore extends AuthState {
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setAuth: (user: User, accessToken: string, refreshToken: string, remember?: boolean) => void;
   setUser: (user: User) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken: string, remember?: boolean) => void;
   logout: () => void;
   setLoading: (isLoading: boolean) => void;
 
@@ -27,9 +28,8 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       isLoading: true,
 
-      setAuth: (user, accessToken, refreshToken) => {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
+      setAuth: (user, accessToken, refreshToken, remember = true) => {
+        tokenStorage.setTokens(accessToken, refreshToken, remember);
         set({
           user,
           accessToken,
@@ -42,15 +42,13 @@ export const useAuthStore = create<AuthStore>()(
         set({ user, isAuthenticated: true });
       },
 
-      setTokens: (accessToken, refreshToken) => {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
+      setTokens: (accessToken, refreshToken, remember) => {
+        tokenStorage.setTokens(accessToken, refreshToken, remember);
         set({ accessToken, isAuthenticated: true });
       },
 
       logout: () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        tokenStorage.clearTokens();
         set({
           user: null,
           accessToken: null,
@@ -73,6 +71,28 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'auth-storage',
+      // Pin the persisted user state to the same store as the tokens so the
+      // cached session never outlives the credentials (Remember me): reads
+      // check both stores; writes follow wherever the tokens currently live.
+      storage: createJSONStorage(() => ({
+        getItem: (name) =>
+          typeof window === 'undefined'
+            ? null
+            : window.localStorage.getItem(name) ?? window.sessionStorage.getItem(name),
+        setItem: (name, value) => {
+          if (typeof window === 'undefined') return;
+          const target = tokenStorage.getActiveStorage() as Storage;
+          const other =
+            target === window.localStorage ? window.sessionStorage : window.localStorage;
+          target.setItem(name, value);
+          other.removeItem(name);
+        },
+        removeItem: (name) => {
+          if (typeof window === 'undefined') return;
+          window.localStorage.removeItem(name);
+          window.sessionStorage.removeItem(name);
+        },
+      })),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

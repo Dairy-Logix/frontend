@@ -27,6 +27,7 @@ export default function LoginPage() {
     loginMutation.mutate({
       email: formData.email,
       password: formData.password,
+      remember: formData.remember,
     });
   };
 
