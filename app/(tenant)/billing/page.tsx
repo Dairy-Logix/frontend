@@ -97,6 +97,15 @@ const FEATURE_LABELS: Record<string, string> = {
   printTemplates: "Print templates",
 };
 
+// Features listed in the plan catalog but not yet implemented in the app.
+// Surfaced with a "Coming soon" badge so customers aren't misled about what's
+// actually live today.
+const COMING_SOON_FEATURES = new Set([
+  "gpsTracking",
+  "photoProofDelivery",
+  "bulkImport",
+]);
+
 const LIMIT_LABELS: Record<string, string> = {
   maxAgencies: "Agencies",
   maxShopkeepers: "Shopkeepers",
@@ -613,10 +622,11 @@ export default function BillingPage() {
                   <ul className="space-y-1.5">
                     {allFeatures.map((key) => {
                       const enabled = sub.features?.[key] === true;
+                      const comingSoon = COMING_SOON_FEATURES.has(key);
                       return (
                         <li
                           key={key}
-                          className={`flex items-center gap-2 text-sm ${enabled ? "" : "text-muted-foreground/60"}`}
+                          className={`flex items-center gap-2 text-sm ${enabled && !comingSoon ? "" : "text-muted-foreground/60"}`}
                         >
                           {enabled ? (
                             <Check className="h-3.5 w-3.5 text-primary" />
@@ -624,6 +634,14 @@ export default function BillingPage() {
                             <Minus className="h-3.5 w-3.5" />
                           )}
                           <span>{FEATURE_LABELS[key]}</span>
+                          {comingSoon && (
+                            <Badge
+                              variant="secondary"
+                              className="ml-1 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide"
+                            >
+                              Coming soon
+                            </Badge>
+                          )}
                         </li>
                       );
                     })}
