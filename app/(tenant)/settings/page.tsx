@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   User,
   Globe,
@@ -15,6 +16,12 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  Bell,
+  MessageSquare,
+  ShoppingCart,
+  Pencil,
+  Truck,
+  CreditCard,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -41,13 +48,54 @@ import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { OrderPrintTemplate, PrintOrientation } from "@/lib/types";
+import type {
+  OrderPrintTemplate,
+  PrintOrientation,
+  NotificationEventType,
+  AdminNotificationPref,
+} from "@/lib/types";
 import { useTranslations } from "@/components/providers/intl-provider";
 
 // --- Helpers ---
 
 function makeId(): string {
   return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// --- Admin notification purposes ---
+// In-app web alerts the tenant's staff receive as a live toast and/or a navbar
+// bell entry (NOT mobile push). Every alert is triggered by an action taken by
+// a shopkeeper or a field manager — the `actor` names who. The tenant admin's
+// own actions are intentionally excluded (this is the admin's own settings, so
+// they don't need to be alerted about what they did themselves).
+// Each row carries two delivery toggles (toast + bell).
+type NotificationActor = "Shopkeeper" | "Field Manager";
+
+const ADMIN_NOTIFICATION_PURPOSES: {
+  key: NotificationEventType;
+  label: string;
+  actor: NotificationActor;
+  description: string;
+  icon: React.ElementType;
+}[] = [
+  { key: "order_placed", label: "Order Placed", actor: "Shopkeeper", description: "A shopkeeper places a new order", icon: ShoppingCart },
+  { key: "order_updated", label: "Order Updated", actor: "Shopkeeper", description: "A shopkeeper updates an existing order", icon: Pencil },
+  { key: "delivery_dispatched", label: "Delivery Dispatched", actor: "Field Manager", description: "A field manager dispatches a delivery", icon: Truck },
+  { key: "payment_received", label: "Payment Received", actor: "Field Manager", description: "A field manager collects a payment from a shopkeeper", icon: CreditCard },
+];
+
+type AdminNotifState = Record<NotificationEventType, AdminNotificationPref>;
+
+function seedAdminNotif(
+  saved?: Partial<Record<NotificationEventType, AdminNotificationPref>>,
+): AdminNotifState {
+  const next = {} as AdminNotifState;
+  for (const { key } of ADMIN_NOTIFICATION_PURPOSES) {
+    const s = saved?.[key];
+    // A missing purpose (or missing channel) defaults to enabled.
+    next[key] = { toast: s?.toast ?? true, bell: s?.bell ?? true };
+  }
+  return next;
 }
 
 // --- Profile Data Types ---
@@ -86,6 +134,11 @@ export default function SettingsPage() {
   const [invoiceNumberFormat, setInvoiceNumberFormat] = useState("YYYY-NNNN");
   const [termsAndConditions, setTermsAndConditions] = useState("");
 
+  // Tax (GST) settings
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxRate, setTaxRate] = useState("0");
+  const [taxLabel, setTaxLabel] = useState("GST");
+
   const [profile, setProfile] = useState<ProfileData>({
     businessName: "",
     contactPerson: "",
@@ -120,6 +173,10 @@ export default function SettingsPage() {
   const [activeStoreTabByTemplate, setActiveStoreTabByTemplate] = useState<Record<string, string>>({});
   // collapse/expand per template id
   const [expandedTemplateIds, setExpandedTemplateIds] = useState<Set<string>>(new Set());
+
+  // --- Admin notification preferences state ---
+  const [adminNotif, setAdminNotif] = useState<AdminNotifState>(() => seedAdminNotif());
+  const [adminNotifInitialized, setAdminNotifInitialized] = useState(false);
 
 
   // Sync tenant profile data into form
@@ -161,8 +218,23 @@ export default function SettingsPage() {
         setInvoiceNumberFormat(settings.config.invoiceSettings.invoiceNumberFormat || "YYYY-NNNN");
         setTermsAndConditions(settings.config.invoiceSettings.termsAndConditions || "");
       }
+
+      // Tax settings
+      if (settings.config.tax) {
+        setTaxEnabled(settings.config.tax.enabled ?? false);
+        setTaxRate(String(settings.config.tax.rate ?? 0));
+        setTaxLabel(settings.config.tax.label || "GST");
+      }
     }
   }, [settings]);
+
+  // Seed admin notification toggles once settings are loaded. Missing purposes
+  // default to enabled (both toast + bell).
+  useEffect(() => {
+    if (adminNotifInitialized || !settings) return;
+    setAdminNotif(seedAdminNotif(settings.config.adminNotifications));
+    setAdminNotifInitialized(true);
+  }, [settings, adminNotifInitialized]);
 
   // Seed print templates once settings are loaded.
   // - If templates exist on the server, use them as-is.
@@ -315,11 +387,21 @@ export default function SettingsPage() {
 
   // --- Invoice handlers ---
   function handleSaveInvoice() {
+    const parsedRate = Number(taxRate);
+    if (taxEnabled && (Number.isNaN(parsedRate) || parsedRate < 0 || parsedRate > 100)) {
+      toast.error("Tax rate must be a number between 0 and 100");
+      return;
+    }
     updateSettings.mutate({
       invoiceSettings: {
         invoicePrefix,
         invoiceNumberFormat,
         termsAndConditions,
+      },
+      tax: {
+        enabled: taxEnabled,
+        rate: Number.isNaN(parsedRate) ? 0 : parsedRate,
+        label: taxLabel.trim() || "GST",
       },
     });
   }
@@ -441,6 +523,32 @@ export default function SettingsPage() {
     updateSettings.mutate({ orderPrintTemplates: printTemplates });
   }
 
+  // --- Admin notification handlers ---
+  function toggleAdminNotif(
+    key: NotificationEventType,
+    channel: keyof AdminNotificationPref,
+    value: boolean,
+  ) {
+    setAdminNotif((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [channel]: value },
+    }));
+  }
+
+  function setAllAdminNotif(channel: keyof AdminNotificationPref, value: boolean) {
+    setAdminNotif((prev) => {
+      const next = { ...prev };
+      for (const { key } of ADMIN_NOTIFICATION_PURPOSES) {
+        next[key] = { ...next[key], [channel]: value };
+      }
+      return next;
+    });
+  }
+
+  function handleSaveAdminNotifications() {
+    updateSettings.mutate({ adminNotifications: adminNotif });
+  }
+
   // --- Loading State ---
   if (isLoading || isLoadingTenant) {
     return (
@@ -500,6 +608,10 @@ export default function SettingsPage() {
           <TabsTrigger value="order-print">
             <Printer className="h-4 w-4" />
             Print Templates
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="h-4 w-4" />
+            Notifications
           </TabsTrigger>
         </TabsList>
 
@@ -848,6 +960,79 @@ export default function SettingsPage() {
                   .replace("YYYY", "2025")
                   .replace("NNNN", "0001")}
               </p>
+            </div>
+
+            {/* Tax / GST */}
+            <div className="border-t border-border/50 pt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">Tax (GST)</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    When enabled, tax is added on top of every new order&apos;s
+                    total and carried onto its invoice.
+                  </p>
+                </div>
+                <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+              </div>
+
+              {taxEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                    <Input
+                      id="tax-rate"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      placeholder="e.g. 5"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Percentage applied to subtotal − discount + shipping
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tax-label">Tax Label</Label>
+                    <Input
+                      id="tax-label"
+                      placeholder="e.g. GST"
+                      maxLength={20}
+                      value={taxLabel}
+                      onChange={(e) => setTaxLabel(e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Shown on the order summary and invoice
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {taxEnabled && (
+                <div className="glass-subtle rounded-lg p-4">
+                  <p className="text-xs font-medium mb-2">Example on a ₹100 order</p>
+                  <div className="text-sm font-mono text-muted-foreground space-y-0.5">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>₹100.00</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>
+                        {(taxLabel.trim() || "GST")} ({Number(taxRate) || 0}%)
+                      </span>
+                      <span>
+                        ₹{(((Number(taxRate) || 0) * 100) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-foreground">
+                      <span>Total</span>
+                      <span>₹{(100 + (Number(taxRate) || 0)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Save */}
@@ -1228,6 +1413,130 @@ export default function SettingsPage() {
               >
                 {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 {updateSettings.isPending ? "Saving..." : "Save Templates"}
+              </Button>
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        {/* ===================== NOTIFICATIONS TAB ===================== */}
+        <TabsContent value="notifications">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="glass rounded-xl p-6 mt-4 space-y-6"
+          >
+            <div>
+              <h3 className="text-sm font-semibold">In-App Notifications</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Stay informed about what your{" "}
+                <span className="font-medium">shopkeepers</span> and{" "}
+                <span className="font-medium">field managers</span> are doing.
+                Each alert below is triggered by one of their actions and can be
+                delivered as a <span className="font-medium">live toast</span> (a
+                pop-up alert that appears briefly) and/or a{" "}
+                <span className="font-medium">bell notification</span> (an entry
+                in the navbar bell). These are in-app web alerts only — they are
+                not mobile push notifications. Turn either off for any action you
+                don&apos;t want to be alerted about.
+              </p>
+            </div>
+
+            <div className="glass-subtle rounded-lg border border-border/50 overflow-hidden">
+              {/* Column header */}
+              <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border/40 bg-muted/20">
+                <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Purpose
+                </span>
+                {([
+                  { channel: "toast" as const, label: "Toast", icon: MessageSquare },
+                  { channel: "bell" as const, label: "Bell", icon: Bell },
+                ]).map(({ channel, label, icon: ChannelIcon }) => {
+                  const allOn = ADMIN_NOTIFICATION_PURPOSES.every(
+                    (p) => adminNotif[p.key]?.[channel],
+                  );
+                  return (
+                    <div
+                      key={channel}
+                      className="w-16 sm:w-24 flex flex-col items-center gap-1"
+                    >
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <ChannelIcon className="h-3 w-3" />
+                        {label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAllAdminNotif(channel, !allOn)}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        {allOn ? "Disable all" : "Enable all"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Rows */}
+              <div className="divide-y divide-border/30">
+                {ADMIN_NOTIFICATION_PURPOSES.map((purpose) => {
+                  const PurposeIcon = purpose.icon;
+                  const pref = adminNotif[purpose.key] ?? { toast: true, bell: true };
+                  return (
+                    <div
+                      key={purpose.key}
+                      className="flex items-center gap-4 px-4 py-3"
+                    >
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg p-2 shrink-0">
+                          <PurposeIcon className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium leading-tight">
+                              {purpose.label}
+                            </p>
+                            <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                              by {purpose.actor}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {purpose.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="w-16 sm:w-24 flex justify-center">
+                        <Switch
+                          checked={pref.toast}
+                          onCheckedChange={(v) =>
+                            toggleAdminNotif(purpose.key, "toast", v)
+                          }
+                          aria-label={`Toast notifications for ${purpose.label}`}
+                        />
+                      </div>
+                      <div className="w-16 sm:w-24 flex justify-center">
+                        <Switch
+                          checked={pref.bell}
+                          onCheckedChange={(v) =>
+                            toggleAdminNotif(purpose.key, "bell", v)
+                          }
+                          aria-label={`Bell notifications for ${purpose.label}`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Save */}
+            <div className="flex justify-end pt-2">
+              <Button
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                onClick={handleSaveAdminNotifications}
+                disabled={updateSettings.isPending || !adminNotifInitialized}
+              >
+                {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {updateSettings.isPending ? "Saving..." : "Save Notification Settings"}
               </Button>
             </div>
           </motion.div>

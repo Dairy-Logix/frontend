@@ -468,7 +468,7 @@ export default function OrderDetailPage() {
                       : item.unitPrice;
                   return (
                     <motion.tr
-                      key={item.id}
+                      key={item.id ?? `${item.productId}-${index}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.2, delay: 0.4 + index * 0.05 }}

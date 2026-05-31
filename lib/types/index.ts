@@ -233,12 +233,24 @@ export interface Tenant {
 export interface TenantConfig {
   branding: TenantBranding;
   invoiceSettings: InvoiceSettings;
+  tax?: TaxSettings;
   notificationChannels: NotificationChannel[];
   defaultLanguage: SupportedLocale;
   timezone: string;
   currencyFormat: string;
   orderPrint?: OrderPrintConfig;
   orderPrintTemplates?: OrderPrintTemplate[];
+  adminNotifications?: Partial<Record<NotificationEventType, AdminNotificationPref>>;
+}
+
+/**
+ * Per-purpose admin web-notification delivery toggles. `toast` = live pop-up
+ * alert, `bell` = navbar bell-icon entry. A missing purpose defaults to both
+ * enabled (applied client-side when seeding the settings form).
+ */
+export interface AdminNotificationPref {
+  toast: boolean;
+  bell: boolean;
 }
 
 export interface OrderPrintConfig {
@@ -279,6 +291,15 @@ export interface InvoiceSettings {
   termsAndConditions?: string;
 }
 
+export interface TaxSettings {
+  /** When false, no tax is applied to orders/invoices. */
+  enabled: boolean;
+  /** Tax percentage (0–100) added on top of the order's taxable base. */
+  rate: number;
+  /** Display label for the tax line (e.g. "GST"). */
+  label: string;
+}
+
 export interface CreateTenantInput {
   name: string;
   slug?: string;
@@ -312,12 +333,14 @@ export interface TenantSettings {
 export interface UpdateSettingsInput {
   branding?: Partial<TenantBranding>;
   invoiceSettings?: Partial<InvoiceSettings>;
+  tax?: Partial<TaxSettings>;
   notificationChannels?: NotificationChannel[];
   defaultLanguage?: SupportedLocale;
   timezone?: string;
   currencyFormat?: string;
   orderPrint?: Partial<OrderPrintConfig>;
   orderPrintTemplates?: OrderPrintTemplate[];
+  adminNotifications?: Partial<Record<NotificationEventType, AdminNotificationPref>>;
 }
 
 // --- Agency Types ---
@@ -911,6 +934,7 @@ export interface BulkCreatePurchasesInput {
 export type NotificationChannel = 'in_app' | 'push';
 export type NotificationEventType =
   | 'order_placed'
+  | 'order_updated'
   | 'order_confirmed'
   | 'delivery_dispatched'
   | 'invoice_generated'
@@ -939,6 +963,7 @@ export interface Notification {
 // `isRead` instead of `read`, optional populated `userId`).
 export type SentNotificationType =
   | 'order_created'
+  | 'order_updated'
   | 'order_confirmed'
   | 'order_delivered'
   | 'payment_received'

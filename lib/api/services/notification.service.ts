@@ -24,17 +24,52 @@ interface RawSentNotificationsResponse {
   };
 }
 
+export interface NotificationsParams {
+  page?: number;
+  limit?: number;
+  isRead?: boolean;
+}
+
+/** The current user's notifications page — `/notifications` returns the same
+ *  document shape as `/notifications/sent`, plus the user's unread count. */
+export interface NotificationsPage {
+  data: SentNotification[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  unreadCount: number;
+}
+
+interface RawNotificationsResponse {
+  notifications: SentNotification[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  unreadCount?: number;
+}
+
 export const notificationService = {
   async getNotifications(
-    params?: PaginationParams & { read?: boolean }
-  ): Promise<ApiResponse<PaginatedResponse<Notification>>> {
-    const { data } = await apiClient.get<PaginatedResponse<Notification>>(
+    params?: NotificationsParams
+  ): Promise<ApiResponse<NotificationsPage>> {
+    const { data } = await apiClient.get<RawNotificationsResponse>(
       '/notifications',
       { params }
     );
     return {
       success: true,
-      data,
+      data: {
+        data: data.notifications ?? [],
+        total: data.pagination?.total ?? 0,
+        page: data.pagination?.page ?? 1,
+        pageSize: data.pagination?.limit ?? 0,
+        totalPages: data.pagination?.totalPages ?? 0,
+        unreadCount: data.unreadCount ?? 0,
+      },
       message: 'Notifications fetched successfully',
     };
   },

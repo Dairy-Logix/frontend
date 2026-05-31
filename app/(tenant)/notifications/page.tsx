@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
@@ -48,7 +48,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useSentNotifications } from "@/lib/hooks/use-notifications";
+import {
+  useSentNotifications,
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "@/lib/hooks/use-notifications";
 import { useFeature } from "@/lib/hooks/use-feature";
 import type {
   NotificationChannel,
@@ -70,8 +74,13 @@ interface EventMeta {
 const eventTypeMeta: Record<NotificationEventType, EventMeta> = {
   order_placed: {
     label: "Order Placed",
-    description: "Triggered when a new order is placed by a shopkeeper",
+    description: "Triggered when a new order is placed by a agency",
     icon: ShoppingCart,
+  },
+  order_updated: {
+    label: "Order Updated",
+    description: "Triggered when an order is updated by the agency",
+    icon: Pencil,
   },
   order_confirmed: {
     label: "Order Confirmed",
@@ -166,6 +175,15 @@ const initialPreferences: NotificationPreference[] = [
     isActive: true,
   },
   {
+    id: "pref-order-updated",
+    tenantId: "tenant-1",
+    eventType: "order_updated",
+    channels: ["push"],
+    templateSubject: "Order #{orderNumber} Updated",
+    templateBody: "Your order #{orderNumber} has been updated by your distributor.",
+    isActive: true,
+  },
+  {
     id: "pref-2",
     tenantId: "tenant-1",
     eventType: "order_confirmed",
@@ -257,6 +275,7 @@ interface DisplayNotification {
 // 'system' (no row in eventTypeMeta) and render with the generic Info icon.
 const backendTypeToEventType: Partial<Record<SentNotificationType, NotificationEventType>> = {
   order_created: "order_placed",
+  order_updated: "order_updated",
   order_confirmed: "order_confirmed",
   order_delivered: "delivery_dispatched",
   delivery_scheduled: "delivery_dispatched",
@@ -373,7 +392,34 @@ const allChannels: NotificationChannel[] = ["push"];
 export default function NotificationsPage() {
   const tPage = useTranslations("pages.tenantNotifications");
   // --- Templates Tab State ---
+  // Backend stores the per-event on/off flag (isActive) + channels; the
+  // message templates below are UI-only defaults keyed by event type, merged
+  // in for the editor (templates aren't persisted server-side yet).
   const [preferences, setPreferences] = useState<NotificationPreference[]>(initialPreferences);
+  const { data: serverPreferences } = useNotificationPreferences();
+  const updatePreferences = useUpdateNotificationPreferences();
+
+  const templateDefaults = useMemo(
+    () => new Map(initialPreferences.map((p) => [p.eventType, p])),
+    []
+  );
+
+  // Hydrate the local list from the server (source of truth for isActive /
+  // channels), keeping the UI-only template text from the defaults.
+  useEffect(() => {
+    if (!serverPreferences) return;
+    setPreferences(
+      serverPreferences.map((sp) => {
+        const tmpl = templateDefaults.get(sp.eventType);
+        return {
+          ...sp,
+          templateSubject: tmpl?.templateSubject,
+          templateBody: tmpl?.templateBody,
+        };
+      })
+    );
+  }, [serverPreferences, templateDefaults]);
+
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [editingPref, setEditingPref] = useState<NotificationPreference | null>(null);
   const [templateSubject, setTemplateSubject] = useState("");
@@ -402,31 +448,30 @@ export default function NotificationsPage() {
     [sentNotificationsPage]
   );
 
-  // --- Templates: Toggle channel for a preference ---
+  // --- Templates: Toggle channel for a preference (persisted) ---
   function togglePrefChannel(prefId: string, channel: NotificationChannel) {
+    const pref = preferences.find((p) => p.id === prefId);
+    if (!pref) return;
+    const nextChannels = pref.channels.includes(channel)
+      ? pref.channels.filter((c) => c !== channel)
+      : [...pref.channels, channel];
     setPreferences((prev) =>
-      prev.map((p) => {
-        if (p.id !== prefId) return p;
-        const hasChannel = p.channels.includes(channel);
-        return {
-          ...p,
-          channels: hasChannel
-            ? p.channels.filter((c) => c !== channel)
-            : [...p.channels, channel],
-        };
-      })
+      prev.map((p) => (p.id === prefId ? { ...p, channels: nextChannels } : p))
     );
+    updatePreferences.mutate([{ eventType: pref.eventType, channels: nextChannels }]);
     toast.success("Channel updated");
   }
 
-  // --- Templates: Toggle active ---
+  // --- Templates: Toggle active (persisted — this is the enforced flag) ---
   function togglePrefActive(prefId: string) {
+    const pref = preferences.find((p) => p.id === prefId);
+    if (!pref) return;
+    const nextActive = !pref.isActive;
     setPreferences((prev) =>
-      prev.map((p) =>
-        p.id === prefId ? { ...p, isActive: !p.isActive } : p
-      )
+      prev.map((p) => (p.id === prefId ? { ...p, isActive: nextActive } : p))
     );
-    toast.success("Template status updated");
+    updatePreferences.mutate([{ eventType: pref.eventType, isActive: nextActive }]);
+    toast.success(nextActive ? "Notification enabled" : "Notification disabled");
   }
 
   // --- Templates: Edit template modal ---

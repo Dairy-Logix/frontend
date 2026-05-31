@@ -19,11 +19,31 @@ import { useUIStore } from "@/lib/stores/ui-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useTenantStore } from "@/lib/stores/tenant-store";
 import { useFeature } from "@/lib/hooks/use-feature";
+import {
+  useNotifications,
+  useMarkAsRead,
+  useMarkAllAsRead,
+} from "@/lib/hooks/use-notifications";
+import { TENANT_ROUTES } from "@/lib/constants";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/components/providers/intl-provider";
 
+// Subscription-plan badge styling. Plan values come from tenant.plan
+// (set by TenantBrandingLoader as subscriptionPlan || plan).
+const PLAN_LABELS: Record<string, string> = {
+  basic: "Basic",
+  standard: "Standard",
+  premium: "Premium",
+};
+
+const PLAN_BADGE_CLASS: Record<string, string> = {
+  basic: "border-transparent bg-muted text-muted-foreground",
+  standard: "border-primary/30 bg-primary/10 text-primary",
+  premium: "border-transparent bg-gradient-primary text-white",
+};
+
 export function Navbar() {
-  const { toggleSidebar, toggleSidebarCollapsed, notifications } = useUIStore();
+  const { toggleSidebar, toggleSidebarCollapsed } = useUIStore();
   const { user, logout, impersonation } = useAuthStore();
   const { context } = useTenantStore();
   const router = useRouter();
@@ -31,7 +51,28 @@ export function Navbar() {
   const tNav = useTranslations("nav");
 
   const appNotificationsEnabled = useFeature("appNotifications");
-  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Bell reads persisted notifications from the DB so they survive refresh and
+  // mirror the notification history. Live order activity invalidates this query
+  // (see RealtimeNotifications) for an instant refresh. Auto-refetches each
+  // minute as a fallback.
+  const { data: notificationsPage } = useNotifications(
+    { limit: 10 },
+    { enabled: appNotificationsEnabled }
+  );
+  const notifications = notificationsPage?.data ?? [];
+  const unreadCount = notificationsPage?.unreadCount ?? 0;
+  const markAsRead = useMarkAsRead();
+  const markAllAsRead = useMarkAllAsRead();
+
+  const handleNotificationClick = (notification: (typeof notifications)[number]) => {
+    if (!notification.isRead) {
+      markAsRead.mutate(notification._id);
+    }
+    if (notification.relatedEntityType === "order" && notification.relatedEntityId) {
+      router.push(TENANT_ROUTES.ORDER_DETAIL(notification.relatedEntityId));
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -65,6 +106,14 @@ export function Navbar() {
           </Button>
           <div className="hidden md:flex items-center gap-2">
             <span className="text-xl font-semibold">{panelLabel}</span>
+            {context === "tenant" && tenant?.plan && (
+              <Badge
+                variant="outline"
+                className={`capitalize ${PLAN_BADGE_CLASS[tenant.plan] ?? ""}`}
+              >
+                {PLAN_LABELS[tenant.plan] ?? tenant.plan}
+              </Badge>
+            )}
           </div>
           {/* Agency Switcher - only for tenant context */}
           {context === "tenant" && (
@@ -96,7 +145,23 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>{t("notifications")}</DropdownMenuLabel>
+                <div className="flex items-center justify-between px-2">
+                  <DropdownMenuLabel className="px-0">
+                    {t("notifications")}
+                  </DropdownMenuLabel>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        markAllAsRead.mutate();
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {t("markAllRead")}
+                    </button>
+                  )}
+                </div>
                 <DropdownMenuSeparator />
                 {notifications.length === 0 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
@@ -104,11 +169,15 @@ export function Navbar() {
                   </div>
                 ) : (
                   notifications.slice(0, 5).map((notification) => (
-                    <DropdownMenuItem key={notification.id} className="p-3">
+                    <DropdownMenuItem
+                      key={notification._id}
+                      className="p-3 cursor-pointer"
+                      onClick={() => handleNotificationClick(notification)}
+                    >
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{notification.title}</span>
-                          {!notification.read && (
+                          {!notification.isRead && (
                             <Badge variant="secondary" className="h-2 w-2 p-0" />
                           )}
                         </div>

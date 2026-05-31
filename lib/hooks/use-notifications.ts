@@ -3,9 +3,9 @@ import { toast } from 'sonner';
 import {
   notificationService,
   type SentNotificationsParams,
+  type NotificationsParams,
 } from '@/lib/api/services/notification.service';
 import { handleApiError } from '@/lib/api/client';
-import type { PaginationParams } from '@/lib/types';
 
 // Query keys
 export const notificationKeys = {
@@ -38,13 +38,17 @@ export function useSentNotifications(params?: SentNotificationsParams) {
 /**
  * Hook to fetch notifications with auto-refetch
  */
-export function useNotifications(params?: PaginationParams & { read?: boolean }) {
+export function useNotifications(
+  params?: NotificationsParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
-    queryKey: notificationKeys.list(params),
+    queryKey: notificationKeys.list(params as Record<string, unknown>),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const response = await notificationService.getNotifications(params);
-      if (!response.success) {
+      if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to fetch notifications');
       }
       return response.data;
@@ -116,5 +120,29 @@ export function useNotificationPreferences() {
       return response.data;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
+ * Hook to update notification preferences (per-event on/off toggles).
+ * Primes the cache with the server's refreshed list on success.
+ */
+export function useUpdateNotificationPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      preferences: Partial<import('@/lib/types').NotificationPreference>[]
+    ) => {
+      const response = await notificationService.updateNotificationPreferences(preferences);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update notification preferences');
+      }
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(notificationKeys.preferences(), data);
+    },
+    onError: (error) => toast.error(handleApiError(error)),
   });
 }

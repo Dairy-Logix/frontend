@@ -1,6 +1,10 @@
 // API Configuration
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 export const API_TIMEOUT = 30000;
+// Socket.IO mounts at the server root (not under the /api global prefix), so we
+// strip a trailing `/api` from the REST base URL to reach the gateway.
+export const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || API_BASE_URL.replace(/\/api\/?$/, '');
 export const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'dairylogics.com';
 
 // Pagination
@@ -221,8 +225,9 @@ export const TOAST_ERROR_DURATION = 5000;
 export const WS_EVENTS = {
   CONNECT: 'connect',
   DISCONNECT: 'disconnect',
-  NEW_ORDER: 'order:new',
-  ORDER_UPDATE: 'order:update',
+  NEW_ORDER: 'order:created',
+  ORDER_UPDATE: 'order:updated',
+  SHOPKEEPER_ORDER: 'shopkeeper:order',
   DELIVERY_UPDATE: 'delivery:update',
   PAYMENT_UPDATE: 'payment:update',
   NOTIFICATION: 'notification',

@@ -298,6 +298,7 @@
     "logout": "Logout",
     "notifications": "Notifications",
     "noNotifications": "No notifications",
+    "markAllRead": "Mark all read",
     "changeLanguage": "Change Language",
     "toggleTheme": "Toggle Theme"
   },

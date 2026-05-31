@@ -12,9 +12,10 @@ export const settingsKeys = {
 /**
  * Hook to fetch tenant settings
  */
-export function useSettings() {
+export function useSettings(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: settingsKeys.tenant(),
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const response = await settingsService.getTenantSettings();
       if (!response.success) {
