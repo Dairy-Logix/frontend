@@ -347,6 +347,18 @@ export interface UpdateSettingsInput {
 
 export type AgencyType = 'AM' | 'PM';
 
+/**
+ * Per-agency "business day" / order-cycle. Times are "HH:mm" (24h). An empty
+ * dayStartTime means inherit the tenant default (then a midnight window).
+ */
+export interface OrderCycle {
+  dayStartTime?: string;
+  orderOpenTime?: string;
+  orderCutoff?: string;
+  autoToggle?: boolean;
+  timezone?: string;
+}
+
 export interface Agency {
   id: string;
   tenantId: string;
@@ -359,6 +371,7 @@ export interface Agency {
   email?: string;
   isActive: boolean;
   isAcceptingOrders: boolean;
+  orderCycle?: OrderCycle;
   employeeCount: number;
   shopkeeperCount: number;
   createdAt: string;
@@ -373,6 +386,7 @@ export interface CreateAgencyInput {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  orderCycle?: OrderCycle;
 }
 
 export interface UpdateAgencyInput {
@@ -384,6 +398,7 @@ export interface UpdateAgencyInput {
   phone?: string;
   email?: string;
   isActive?: boolean;
+  orderCycle?: OrderCycle;
 }
 
 export interface QueryAgenciesParams extends PaginationParams {

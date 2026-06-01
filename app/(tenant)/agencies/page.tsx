@@ -10,6 +10,7 @@ import {
   Mail,
   Store,
   Plus,
+  Clock,
   Loader2 as LoaderIcon,
   AlertCircle,
 } from "lucide-react";
@@ -523,10 +524,43 @@ function AgencyCard({
             </div>
           </div>
         </div>
-        <StatusBadge
-          status={agency.isActive ? "active" : "inactive"}
-          colorMap={statusColorMap}
-        />
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusBadge
+            status={agency.isActive ? "active" : "inactive"}
+            colorMap={statusColorMap}
+          />
+          {(() => {
+            const oc = agency.orderCycle;
+            const customDay = !!oc?.dayStartTime && oc.dayStartTime !== "00:00";
+            if (!oc || (!customDay && !oc.autoToggle)) return null;
+            const to12 = (t?: string) => {
+              if (!t) return "";
+              const [h, m] = t.split(":").map(Number);
+              const ap = h >= 12 ? "PM" : "AM";
+              return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${ap}`;
+            };
+            const detail = [
+              customDay ? `Day starts ${to12(oc.dayStartTime)}` : null,
+              oc.autoToggle
+                ? `Auto orders${oc.orderOpenTime ? ` · opens ${to12(oc.orderOpenTime)}` : ""}${oc.orderCutoff ? ` · closes ${to12(oc.orderCutoff)}` : ""}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" — ");
+            return (
+              <div
+                title={detail}
+                className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground whitespace-nowrap"
+              >
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>
+                  {customDay ? to12(oc.dayStartTime) : "Auto"}
+                  {customDay && oc.autoToggle ? " · Auto" : ""}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {agency.contactPerson && (

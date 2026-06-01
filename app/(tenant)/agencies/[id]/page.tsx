@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -45,8 +45,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useAgency, useUpdateAgency } from "@/lib/hooks/use-agencies";
 import { useShopkeepersByAgency } from "@/lib/hooks/use-shopkeepers";
+import { OrderCycleFields } from "@/components/shared/order-cycle-fields";
 import { AGENCY_TYPE_LABELS } from "@/lib/constants";
-import type { Employee, Shop } from "@/lib/types";
+import type { Employee, Shop, OrderCycle } from "@/lib/types";
 
 const agencyStatusColorMap: Record<
   string,
@@ -76,6 +77,26 @@ export default function AgencyDetailsPage() {
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+
+  // Order-cycle tab: a draft seeded from the agency, saved via the same update hook.
+  const EMPTY_CYCLE: OrderCycle = {
+    dayStartTime: "",
+    orderOpenTime: "",
+    orderCutoff: "",
+    autoToggle: false,
+  };
+  const [cycleDraft, setCycleDraft] = useState<OrderCycle>(EMPTY_CYCLE);
+  useEffect(() => {
+    if (agency) setCycleDraft(agency.orderCycle ?? EMPTY_CYCLE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agency?.id]);
+
+  const handleSaveCycle = () => {
+    updateAgency.mutate(
+      { id: agencyId, input: { orderCycle: cycleDraft } },
+      { onSuccess: () => toast.success("Order cycle updated") },
+    );
+  };
   const [shopkeeperSearch, setShopkeeperSearch] = useState("");
 
   const filteredShopkeepers = useMemo(() => {
@@ -271,6 +292,7 @@ export default function AgencyDetailsPage() {
           <TabsTrigger value="shopkeepers">
             Stores ({agencyShopkeepers.length})
           </TabsTrigger>
+          <TabsTrigger value="order-cycle">Order Cycle</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -414,6 +436,30 @@ export default function AgencyDetailsPage() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Order Cycle Tab */}
+        <TabsContent value="order-cycle">
+          <div className="max-w-2xl space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold">Order cycle / business day</h3>
+              <p className="text-muted-foreground text-sm">
+                Controls when this agency&apos;s business day rolls over and,
+                optionally, when ordering automatically opens and closes. Leave
+                the rollover at 00:00 for a standard midnight-to-midnight day.
+              </p>
+            </div>
+            <OrderCycleFields value={cycleDraft} onChange={setCycleDraft} />
+            <div className="flex justify-end">
+              <Button
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white border-0 hover:opacity-90"
+                onClick={handleSaveCycle}
+                disabled={updateAgency.isPending}
+              >
+                {updateAgency.isPending ? "Saving..." : "Save Order Cycle"}
+              </Button>
             </div>
           </div>
         </TabsContent>

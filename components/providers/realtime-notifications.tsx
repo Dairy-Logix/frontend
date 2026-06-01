@@ -46,7 +46,16 @@ export function RealtimeNotifications() {
   const active = isAuthenticated && isStaff && appNotificationsEnabled;
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      // Surface *why* we're not subscribing so a prod "no live toasts" report is
+      // diagnosable from the console instead of being a silent no-op. The usual
+      // culprit is `appNotifications` reading false from a stale tenant features
+      // cache (push uses a different flag, so push can work while this is off).
+      console.info(
+        `[realtime] inactive — auth=${isAuthenticated} staff=${isStaff} appNotifications=${appNotificationsEnabled}`,
+      );
+      return;
+    }
 
     const token = getAccessToken();
     if (!token) return;

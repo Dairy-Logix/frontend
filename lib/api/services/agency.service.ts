@@ -6,7 +6,20 @@ import type {
   Agency,
   CreateAgencyInput,
   UpdateAgencyInput,
+  OrderCycle,
 } from '@/lib/types';
+
+// Drop empty-string time fields so they fall back to inheritance / schema default.
+function cleanOrderCycle(cycle?: OrderCycle): OrderCycle | undefined {
+  if (!cycle) return undefined;
+  const out: OrderCycle = {};
+  if (cycle.dayStartTime) out.dayStartTime = cycle.dayStartTime;
+  if (cycle.orderOpenTime) out.orderOpenTime = cycle.orderOpenTime;
+  if (cycle.orderCutoff) out.orderCutoff = cycle.orderCutoff;
+  if (cycle.autoToggle !== undefined) out.autoToggle = cycle.autoToggle;
+  if (cycle.timezone) out.timezone = cycle.timezone;
+  return out;
+}
 
 // Normalize backend agency document to frontend Agency type
 // Backend uses: territory, status (enum), flat address fields
@@ -28,6 +41,15 @@ function normalizeAgency(raw: any): Agency {
     email: raw.email,
     isActive: raw.isActive ?? (raw.status === 'active'),
     isAcceptingOrders: raw.isAcceptingOrders ?? false,
+    orderCycle: raw.orderCycle
+      ? {
+          dayStartTime: raw.orderCycle.dayStartTime || '',
+          orderOpenTime: raw.orderCycle.orderOpenTime || '',
+          orderCutoff: raw.orderCycle.orderCutoff || '',
+          autoToggle: raw.orderCycle.autoToggle ?? false,
+          timezone: raw.orderCycle.timezone || '',
+        }
+      : undefined,
     employeeCount: 0,
     shopkeeperCount: raw.shopkeeperCount || 0,
     createdAt: raw.createdAt,
@@ -49,6 +71,7 @@ function toBackendInput(input: CreateAgencyInput): Record<string, unknown> {
     contactPerson: input.contactPerson || '',
     phone: input.phone || '',
     email: input.email || undefined,
+    orderCycle: cleanOrderCycle(input.orderCycle),
   };
 }
 
@@ -61,6 +84,7 @@ function toBackendUpdate(input: UpdateAgencyInput): Record<string, unknown> {
   if (input.phone !== undefined) payload.phone = input.phone;
   if (input.email !== undefined) payload.email = input.email;
   if (input.isActive !== undefined) payload.status = input.isActive ? 'active' : 'inactive';
+  if (input.orderCycle !== undefined) payload.orderCycle = cleanOrderCycle(input.orderCycle);
   if (input.address) {
     payload.address = input.address.line1 || '';
     payload.city = input.address.city || '';
