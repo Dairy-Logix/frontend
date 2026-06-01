@@ -222,6 +222,11 @@ export default function ShopkeeperDetailsPage() {
 
   function handleEditSubmit() {
     if (!formShopName.trim() || !formOwnerName.trim() || !formPhone.trim()) return;
+    // Email is the store's mobile-app login — required.
+    if (!formEmail.trim()) {
+      alert("Email is required — the store uses it to log in to the mobile app");
+      return;
+    }
     if (!formAmAgencyId && !formPmAgencyId) {
       alert("Please select at least one agency (AM or PM)");
       return;
@@ -603,7 +608,9 @@ export default function ShopkeeperDetailsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-shop-email">Email (Optional)</Label>
+              <Label htmlFor="edit-shop-email">
+                Email <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="edit-shop-email"
                 type="email"
@@ -611,6 +618,9 @@ export default function ShopkeeperDetailsPage() {
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Used by the store to log in to the mobile app.
+              </p>
             </div>
           </div>
 

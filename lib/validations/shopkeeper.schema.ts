@@ -22,11 +22,11 @@ export const shopkeeperSchema = z.object({
     .string()
     .min(1, 'Phone number is required')
     .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number'),
+  // Required — the store uses this email to log in to the mobile app.
   email: z
     .string()
-    .email('Invalid email address')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Email is required')
+    .email('Invalid email address'),
   address: z.object({
     line1: z.string().min(1, 'Address line 1 is required'),
     line2: z.string().optional().or(z.literal('')),

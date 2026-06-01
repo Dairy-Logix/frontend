@@ -815,7 +815,9 @@ export default function ShopkeepersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="shop-email">Email</Label>
+              <Label htmlFor="shop-email">
+                Email <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="shop-email"
                 type="email"
@@ -823,6 +825,9 @@ export default function ShopkeepersPage() {
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Used by the store to log in to the mobile app.
+              </p>
             </div>
           </div>
 
