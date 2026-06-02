@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { MarketingHeader } from "@/components/layout/marketing-header";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | BeatMitra",
@@ -34,8 +32,6 @@ function Section({
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background">
-      <MarketingHeader />
-
       <main className="container mx-auto max-w-3xl px-4 py-12 sm:py-16">
         <header>
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
@@ -233,15 +229,6 @@ export default function PrivacyPolicyPage() {
             .
           </p>
         </Section>
-
-        <footer className="mt-16 border-t pt-6 text-sm text-muted-foreground">
-          <Link
-            href="/"
-            className="text-primary underline underline-offset-4"
-          >
-            ← Back to BeatMitra
-          </Link>
-        </footer>
       </main>
     </div>
   );
