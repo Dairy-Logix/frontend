@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   User,
-  Globe,
   FileText,
   Upload,
   Loader2,
@@ -126,10 +125,6 @@ export default function SettingsPage() {
   const updateTenant = useUpdateTenant();
 
   // Local state for form fields
-  const [defaultLanguage, setDefaultLanguage] = useState("en");
-  const [timezone, setTimezone] = useState("Asia/Kolkata");
-  const [currencyFormat, setCurrencyFormat] = useState("INR");
-
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceNumberFormat, setInvoiceNumberFormat] = useState("YYYY-NNNN");
   const [termsAndConditions, setTermsAndConditions] = useState("");
@@ -201,17 +196,6 @@ export default function SettingsPage() {
   // Sync backend settings to local state
   useEffect(() => {
     if (settings) {
-      // Preferences
-      if (settings.config.defaultLanguage) {
-        setDefaultLanguage(settings.config.defaultLanguage);
-      }
-      if (settings.config.timezone) {
-        setTimezone(settings.config.timezone);
-      }
-      if (settings.config.currencyFormat) {
-        setCurrencyFormat(settings.config.currencyFormat);
-      }
-
       // Invoice settings
       if (settings.config.invoiceSettings) {
         setInvoicePrefix(settings.config.invoiceSettings.invoicePrefix || "INV");
@@ -373,15 +357,6 @@ export default function SettingsPage() {
           if (logoInputRef.current) logoInputRef.current.value = "";
         }
       },
-    });
-  }
-
-  // --- Preferences handlers ---
-  function handleSavePreferences() {
-    updateSettings.mutate({
-      defaultLanguage: defaultLanguage as "en" | "hi" | "gu",
-      timezone,
-      currencyFormat,
     });
   }
 
@@ -597,10 +572,6 @@ export default function SettingsPage() {
             <User className="h-4 w-4" />
             Profile
           </TabsTrigger>
-          <TabsTrigger value="preferences">
-            <Globe className="h-4 w-4" />
-            Preferences
-          </TabsTrigger>
           <TabsTrigger value="invoice">
             <FileText className="h-4 w-4" />
             Invoice
@@ -801,98 +772,6 @@ export default function SettingsPage() {
               >
                 {updateTenant.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 {updateTenant.isPending ? "Saving..." : "Save Profile"}
-              </Button>
-            </div>
-          </motion.div>
-        </TabsContent>
-
-        {/* ===================== PREFERENCES TAB ===================== */}
-        <TabsContent value="preferences">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="glass rounded-xl p-6 mt-4 space-y-6"
-          >
-            <h3 className="text-sm font-semibold">Regional Preferences</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="pref-language">Default Language</Label>
-                <Select
-                  value={defaultLanguage}
-                  onValueChange={setDefaultLanguage}
-                >
-                  <SelectTrigger id="pref-language" className="w-full">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="hi">Hindi</SelectItem>
-                    <SelectItem value="gu">Gujarati</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  Default language for the application interface
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pref-timezone">Timezone</Label>
-                <Select
-                  value={timezone}
-                  onValueChange={setTimezone}
-                >
-                  <SelectTrigger id="pref-timezone" className="w-full">
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Asia/Kolkata">
-                      Asia/Kolkata (IST, UTC+5:30)
-                    </SelectItem>
-                    <SelectItem value="Asia/Mumbai">
-                      Asia/Mumbai (IST, UTC+5:30)
-                    </SelectItem>
-                    <SelectItem value="Asia/Dubai">
-                      Asia/Dubai (GST, UTC+4:00)
-                    </SelectItem>
-                    <SelectItem value="UTC">UTC (UTC+0:00)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  Used for report generation and scheduling
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pref-currency">Currency Format</Label>
-                <Select
-                  value={currencyFormat}
-                  onValueChange={setCurrencyFormat}
-                >
-                  <SelectTrigger id="pref-currency" className="w-full">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">INR - Indian Rupee</SelectItem>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="AED">AED - UAE Dirham</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  Currency used for pricing and invoices
-                </p>
-              </div>
-            </div>
-
-            {/* Save */}
-            <div className="flex justify-end pt-2">
-              <Button
-                className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-                onClick={handleSavePreferences}
-                disabled={updateSettings.isPending}
-              >
-                {updateSettings.isPending ? "Saving..." : "Save Preferences"}
               </Button>
             </div>
           </motion.div>
