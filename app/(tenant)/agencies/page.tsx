@@ -595,11 +595,32 @@ function AgencyCard({
           className="flex items-center gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-xs text-muted-foreground">Accepting Orders</span>
-          <Switch
-            checked={agency.isAcceptingOrders}
-            onCheckedChange={onToggleAcceptingOrders}
-          />
+          {agency.orderCycle?.autoToggle ? (
+            // On the auto schedule → state is driven by the order cycle; show a
+            // read-only status so the list can't accidentally pin a manual override.
+            <span
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                agency.isAcceptingOrders
+                  ? "bg-green-500/10 text-green-600"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  agency.isAcceptingOrders ? "bg-green-500" : "bg-muted-foreground/50"
+                }`}
+              />
+              {agency.isAcceptingOrders ? "Open" : "Closed"} · Auto
+            </span>
+          ) : (
+            <>
+              <span className="text-xs text-muted-foreground">Accepting Orders</span>
+              <Switch
+                checked={agency.isAcceptingOrders}
+                onCheckedChange={onToggleAcceptingOrders}
+              />
+            </>
+          )}
         </div>
       </div>
     </motion.div>

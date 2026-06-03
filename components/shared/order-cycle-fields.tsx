@@ -7,6 +7,7 @@ import type { OrderCycle } from "@/lib/types";
 import {
   businessDayWindow,
   isOrderWindowOpen,
+  validateOrderCycle,
   fmtIST,
 } from "@/lib/order-cycle";
 
@@ -24,7 +25,8 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
   const set = (patch: Partial<OrderCycle>) => onChange({ ...value, ...patch });
 
   const window = businessDayWindow(value.dayStartTime || "00:00");
-  const open = value.autoToggle ? isOrderWindowOpen(value) : undefined;
+  const cycleError = validateOrderCycle(value);
+  const open = value.autoToggle && !cycleError ? isOrderWindowOpen(value) : undefined;
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
@@ -94,6 +96,12 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
         </div>
       )}
 
+      {cycleError && (
+        <p className="text-destructive flex items-center gap-1 text-xs font-medium">
+          ⚠ {cycleError}
+        </p>
+      )}
+
       {/* Live preview */}
       <div className="bg-muted/50 rounded-md p-3 text-xs">
         <p className="font-medium">Preview (now)</p>
@@ -101,7 +109,7 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
           Business day: <span className="font-medium">{fmtIST(window.start)}</span>{" "}
           → <span className="font-medium">{fmtIST(window.end)}</span>
         </p>
-        {value.autoToggle && (
+        {value.autoToggle && !cycleError && (
           <p className="mt-1">
             Ordering is currently{" "}
             <span className={open ? "font-semibold text-green-600" : "font-semibold text-red-600"}>

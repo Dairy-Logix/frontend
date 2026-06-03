@@ -46,6 +46,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAgency, useUpdateAgency } from "@/lib/hooks/use-agencies";
 import { useShopkeepersByAgency } from "@/lib/hooks/use-shopkeepers";
 import { OrderCycleFields } from "@/components/shared/order-cycle-fields";
+import { validateOrderCycle } from "@/lib/order-cycle";
 import { AGENCY_TYPE_LABELS } from "@/lib/constants";
 import type { Employee, Shop, OrderCycle } from "@/lib/types";
 
@@ -92,6 +93,11 @@ export default function AgencyDetailsPage() {
   }, [agency?.id]);
 
   const handleSaveCycle = () => {
+    const cycleError = validateOrderCycle(cycleDraft);
+    if (cycleError) {
+      toast.error(cycleError);
+      return;
+    }
     updateAgency.mutate(
       { id: agencyId, input: { orderCycle: cycleDraft } },
       { onSuccess: () => toast.success("Order cycle updated") },

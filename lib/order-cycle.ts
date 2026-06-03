@@ -50,6 +50,40 @@ export function isOrderWindowOpen(cycle: OrderCyclePreview, at: Date = new Date(
   return cutoff > open ? now >= open && now < cutoff : now >= open || now < cutoff;
 }
 
+/** Strict "HH:mm" → minutes, or null when empty/invalid. */
+function toMinutesOrNull(time?: string | null): number | null {
+  if (!time) return null;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(time).trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/**
+ * Validate that ordering open/close times sit correctly inside the business-day
+ * window. Times are measured as an offset from the window start (dayStartTime),
+ * since clock times wrap around the rollover. Returns an error message, or null
+ * when valid. Only enforced when auto open/close is on (the times are unused
+ * otherwise); an empty open means "opens at the rollover".
+ */
+export function validateOrderCycle(c: OrderCyclePreview): string | null {
+  if (!c.autoToggle) return null;
+  const start = toMinutesOrNull(c.dayStartTime) ?? 0;
+  const offset = (t: number) => (t - start + 1440) % 1440;
+
+  const open = toMinutesOrNull(c.orderOpenTime);
+  const cutoff = toMinutesOrNull(c.orderCutoff);
+
+  if (open !== null && offset(open) === 0) {
+    return 'Opening time must be after the day-start time.';
+  }
+  const openOffset = open !== null ? offset(open) : 0; // empty open = window start
+  if (cutoff !== null) {
+    const cutoffOffset = offset(cutoff);
+    if (cutoffOffset === 0) return 'Closing time must be within the order window (after the day start).';
+    if (cutoffOffset <= openOffset) return 'Closing time must be after the opening time.';
+  }
+  return null;
+}
+
 /** Format an instant in IST as a friendly "Sun, Jun 1, 5:00 PM". */
 export function fmtIST(d: Date): string {
   return d.toLocaleString('en-IN', {
