@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { Footer } from "@/components/layout/footer";
 
 export default function Home() {
   return (
@@ -251,6 +252,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }
