@@ -47,6 +47,18 @@ export function Footer() {
               Terms
             </Link>
             <Link
+              href="/refunds"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Refunds
+            </Link>
+            <Link
+              href="/shipping"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Shipping
+            </Link>
+            <Link
               href="/contact"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
