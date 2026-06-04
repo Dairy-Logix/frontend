@@ -267,7 +267,11 @@ export default function BillingPage() {
         const rzp = new window.Razorpay({
           key: data.razorpayKeyId,
           subscription_id: data.razorpaySubscriptionId,
-          name: data.tenantName || "BeatMitra",
+          // Merchant header = the platform brand, NOT the tenant. The payment
+          // settles into BeatMitra's Razorpay account (BeatMitra is the
+          // merchant); the tenant is the customer and is identified via
+          // `prefill`. Showing the tenant's company name here was misleading.
+          name: "BeatMitra",
           description: data.planLabel
             ? `${data.planLabel} subscription`
             : "Subscription",
