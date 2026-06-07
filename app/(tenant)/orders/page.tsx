@@ -157,10 +157,12 @@ export default function OrdersPage() {
         });
       }
 
-      // Calculate total amount: qty (crates) × quantityPerUnit × sellingPricePerUnit
+      // Calculate total amount: qty (selling units) × sellingPricePerUnit.
+      // sellingPricePerUnit is the whole-crate price (or per-piece for Piece
+      // products); quantityPerUnit is informational and must not scale it.
       activeProducts.forEach((product) => {
         const qty = editedQuantities[shop.id]?.[product.id] ?? productQuantities[product.id];
-        totalAmount += qty * product.quantityPerUnit * product.sellingPricePerUnit;
+        totalAmount += qty * product.sellingPricePerUnit;
       });
 
       return {
@@ -367,7 +369,7 @@ export default function OrdersPage() {
     let total = 0;
     matrixData.products.forEach((product) => {
       const qty = getCellValue(shopId, product.id);
-      total += qty * product.quantityPerUnit * product.sellingPricePerUnit;
+      total += qty * product.sellingPricePerUnit;
     });
     return total;
   }
