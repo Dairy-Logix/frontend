@@ -61,4 +61,19 @@ export const authService = {
       message: 'User fetched successfully',
     };
   },
+
+  async changePassword(input: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<ApiResponse<void>> {
+    const { data } = await apiClient.post<{ message: string }>(
+      '/auth/change-password',
+      input
+    );
+    return {
+      success: true,
+      data: undefined,
+      message: data.message || 'Password changed successfully',
+    };
+  },
 };

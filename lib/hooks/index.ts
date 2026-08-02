@@ -9,6 +9,7 @@ export {
   useLogout,
   useCurrentUser,
   useRefreshToken,
+  useChangePassword,
   authKeys,
 } from './use-auth';
 

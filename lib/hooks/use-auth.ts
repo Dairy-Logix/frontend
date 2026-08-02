@@ -179,6 +179,28 @@ export function useLogout() {
 }
 
 /**
+ * Hook for a logged-in user to change their own password
+ */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (input: { currentPassword: string; newPassword: string }) => {
+      const response = await authService.changePassword(input);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to change password');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Password changed successfully');
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
+
+/**
  * Hook to refresh the access token
  */
 export function useRefreshToken() {

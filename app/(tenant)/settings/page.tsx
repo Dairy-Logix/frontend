@@ -21,6 +21,7 @@ import {
   Pencil,
   Truck,
   CreditCard,
+  KeyRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers } from "@/lib/hooks";
+import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers, useChangePassword } from "@/lib/hooks";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -123,6 +124,7 @@ export default function SettingsPage() {
   const tenantId = useAuthStore((s) => s.getTenantId()) ?? '';
   const { data: tenantData, isLoading: isLoadingTenant } = useTenant(tenantId);
   const updateTenant = useUpdateTenant();
+  const changePassword = useChangePassword();
 
   // Local state for form fields
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
@@ -152,6 +154,12 @@ export default function SettingsPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Change password form
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordFormError, setPasswordFormError] = useState<string | null>(null);
 
   // --- Order Print config state ---
   const { data: agenciesData } = useAgencies({ page: 1, pageSize: 50 });
@@ -358,6 +366,35 @@ export default function SettingsPage() {
         }
       },
     });
+  }
+
+  // --- Security handlers ---
+  function handleChangePassword() {
+    setPasswordFormError(null);
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordFormError("All fields are required.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordFormError("New password and confirmation do not match.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordFormError("New password must be different from the current password.");
+      return;
+    }
+
+    changePassword.mutate(
+      { currentPassword, newPassword },
+      {
+        onSuccess: () => {
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmNewPassword("");
+        },
+      }
+    );
   }
 
   // --- Invoice handlers ---
@@ -583,6 +620,10 @@ export default function SettingsPage() {
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4" />
             Notifications
+          </TabsTrigger>
+          <TabsTrigger value="security">
+            <KeyRound className="h-4 w-4" />
+            Security
           </TabsTrigger>
         </TabsList>
 
@@ -1416,6 +1457,81 @@ export default function SettingsPage() {
               >
                 {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 {updateSettings.isPending ? "Saving..." : "Save Notification Settings"}
+              </Button>
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        {/* ===================== SECURITY TAB ===================== */}
+        <TabsContent value="security">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="glass rounded-xl p-6 mt-4 space-y-6"
+          >
+            <div>
+              <h3 className="text-sm font-semibold mb-1">Change Password</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Update the password used to sign in to this account.
+              </p>
+
+              {passwordFormError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{passwordFormError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Enter your current password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Enter a new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                  <Input
+                    id="confirm-new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Re-enter the new password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Must be at least 8 characters and include uppercase, lowercase, a number, and a special character.
+              </p>
+            </div>
+
+            {/* Save */}
+            <div className="flex justify-end pt-2">
+              <Button
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                onClick={handleChangePassword}
+                disabled={changePassword.isPending}
+              >
+                {changePassword.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {changePassword.isPending ? "Updating..." : "Update Password"}
               </Button>
             </div>
           </motion.div>
