@@ -201,6 +201,50 @@ export function useChangePassword() {
 }
 
 /**
+ * Hook to request a password-reset email for a logged-out user
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const response = await authService.forgotPassword(email);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to request password reset');
+      }
+      return response.data;
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
+
+/**
+ * Hook to complete a password reset using the token emailed by useForgotPassword
+ */
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (input: { token: string; newPassword: string }) => {
+      const response = await authService.resetPassword(input);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to reset password');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Password reset successfully. Please sign in.');
+      router.push('/auth/login');
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
+
+/**
  * Hook to refresh the access token
  */
 export function useRefreshToken() {

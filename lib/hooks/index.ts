@@ -10,6 +10,8 @@ export {
   useCurrentUser,
   useRefreshToken,
   useChangePassword,
+  useForgotPassword,
+  useResetPassword,
   authKeys,
 } from './use-auth';
 
