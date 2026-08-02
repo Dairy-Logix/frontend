@@ -22,15 +22,6 @@ export interface CollectionReportData {
   dailyBreakdown: { date: string; collected: number; outstanding: number }[];
 }
 
-export interface DeliveryReportData {
-  totalDeliveries: number;
-  onTimeDeliveries: number;
-  failedDeliveries: number;
-  onTimeRate: number;
-  employeeBreakdown: { employeeId: string; employeeName: string; deliveries: number; onTime: number }[];
-  dailyBreakdown: { date: string; total: number; onTime: number; failed: number }[];
-}
-
 export interface FinancialReportData {
   totalRevenue: number;
   totalExpenses: number;
@@ -62,14 +53,6 @@ export const reportService = {
       { params: toApiParams(filters) }
     );
     return { success: true, data, message: 'Collection report fetched successfully' };
-  },
-
-  async getDeliveryReport(filters: ReportFilter): Promise<ApiResponse<DeliveryReportData>> {
-    const { data } = await apiClient.get<DeliveryReportData>(
-      '/reports/deliveries',
-      { params: toApiParams(filters) }
-    );
-    return { success: true, data, message: 'Delivery report fetched successfully' };
   },
 
   async getFinancialReport(filters: ReportFilter): Promise<ApiResponse<FinancialReportData>> {

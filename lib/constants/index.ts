@@ -70,8 +70,6 @@ export const TENANT_ROUTES = {
   INVOICE_DETAIL: (id: string) => `/invoices/${id}`,
   PAYMENTS: '/payments',
   PAYMENT_COLLECTIONS: '/payments/collections',
-  DELIVERIES: '/deliveries',
-  DELIVERY_TRACKING: '/deliveries/tracking',
   PURCHASES: '/purchases',
   REPORTS: '/reports',
   NOTIFICATIONS: '/notifications',

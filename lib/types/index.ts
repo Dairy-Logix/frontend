@@ -369,6 +369,7 @@ export interface Agency {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  vehicleNumber?: string;
   isActive: boolean;
   isAcceptingOrders: boolean;
   orderCycle?: OrderCycle;
@@ -386,6 +387,7 @@ export interface CreateAgencyInput {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  vehicleNumber?: string;
   orderCycle?: OrderCycle;
 }
 
@@ -397,6 +399,7 @@ export interface UpdateAgencyInput {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  vehicleNumber?: string;
   isActive?: boolean;
   orderCycle?: OrderCycle;
 }
@@ -477,6 +480,7 @@ export interface Shop {
   routeId?: string;
   assignedEmployeeId?: string;
   assignedEmployee?: Employee;
+  assignedDeliveryEmployeeId?: string;
   openingBalance: number;
   currentBalance: number;
   walletBalance: number;
@@ -556,9 +560,40 @@ export interface Employee {
   email?: string;
   employeeRole: EmployeeRole;
   assignedShopCount: number;
+  // Agency-based assignment, mirrored for both roles. agencyIds = delivery
+  // agencies; collectorAgencyIds = collector agencies. The *ShopCount fields
+  // are how many stores are currently routed to this employee for each role.
+  // Optional: always populated by normalizeEmployee from the API, but absent
+  // on mock fixtures.
+  agencyIds?: string[];
+  collectorAgencyIds?: string[];
+  assignedDeliveryShopCount?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// An employee's current agency-based assignment for one role: the agencies they
+// cover and the ids of the stores routed to them (the per-store split). Used
+// for both the delivery and collector flows (same shape).
+export interface AgencyAssignment {
+  agencyIds: string[];
+  shopIds: string[];
+}
+
+// Back-compat alias — delivery assignment uses the shared shape.
+export type DeliveryAssignment = AgencyAssignment;
+export type CollectorAssignment = AgencyAssignment;
+
+// Today's collection totals for a collector (their recorded payments). Mirrors
+// the backend payments day-stats shape. `clearedToday` is the total amount.
+export interface CollectionsTodayStats {
+  clearedToday: number;
+  cashAmount: number;
+  onlineAmount: number;
+  chequeAmount: number;
+  walletWithdraw: number;
+  walletDeposit: number;
 }
 
 export interface EmployeeAssignment {
@@ -590,6 +625,10 @@ export interface QueryEmployeesParams extends PaginationParams {
   employeeRole?: EmployeeRole;
   isActive?: boolean;
   search?: string;
+  // Restrict to delivery persons assigned to this agency.
+  agencyId?: string;
+  // Restrict to collectors assigned to this agency.
+  collectorAgencyId?: string;
 }
 
 // --- Order Types ---
@@ -637,6 +676,12 @@ export interface CreateOrderInput {
     quantity: number;
   }[];
   notes?: string;
+  /**
+   * IST calendar date ("YYYY-MM-DD") the order is for. The tenant web app sends
+   * the admin's selected date so it is honoured verbatim, overriding the
+   * agency's order-cycle rollover.
+   */
+  orderForDate?: string;
 }
 
 export interface UpdateOrderInput {

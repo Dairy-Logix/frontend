@@ -7,7 +7,6 @@ export const reportKeys = {
   all: ['reports'] as const,
   sales: (filters: ReportFilter) => [...reportKeys.all, 'sales', filters] as const,
   collection: (filters: ReportFilter) => [...reportKeys.all, 'collection', filters] as const,
-  delivery: (filters: ReportFilter) => [...reportKeys.all, 'delivery', filters] as const,
   financial: (filters: ReportFilter) => [...reportKeys.all, 'financial', filters] as const,
 };
 
@@ -44,24 +43,6 @@ export function useCollectionReport(filters: ReportFilter) {
     },
     enabled: !!filters.dateFrom && !!filters.dateTo,
     staleTime: 2 * 60 * 1000, // 2 minutes (collections change frequently)
-  });
-}
-
-/**
- * Hook to fetch delivery report
- */
-export function useDeliveryReport(filters: ReportFilter) {
-  return useQuery({
-    queryKey: reportKeys.delivery(filters),
-    queryFn: async () => {
-      const response = await reportService.getDeliveryReport(filters);
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to generate delivery report');
-      }
-      return response.data;
-    },
-    enabled: !!filters.dateFrom && !!filters.dateTo,
-    staleTime: 2 * 60 * 1000,
   });
 }
 

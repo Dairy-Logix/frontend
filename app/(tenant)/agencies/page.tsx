@@ -9,6 +9,7 @@ import {
   Phone,
   Mail,
   Store,
+  Truck,
   Plus,
   Clock,
   Loader2 as LoaderIcon,
@@ -32,10 +33,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { AGENCY_TYPE_LABELS } from "@/lib/constants";
-import type { Agency, AgencyType } from "@/lib/types";
+import type { Agency, AgencyType, Employee } from "@/lib/types";
 import {
   useAgencies,
   useCreateAgency,
@@ -43,6 +50,11 @@ import {
   useDeleteAgency,
   useToggleAcceptingOrders,
 } from "@/lib/hooks";
+import {
+  useEmployees,
+  useAssignDeliveryAgencies,
+  useAssignCollectorAgencies,
+} from "@/lib/hooks/use-employees";
 import { useTranslations } from "@/components/providers/intl-provider";
 
 const statusColorMap: Record<
@@ -93,6 +105,17 @@ export default function AgenciesPage() {
   const updateAgency = useUpdateAgency();
   const deleteAgency = useDeleteAgency();
   const toggleAcceptingOrders = useToggleAcceptingOrders();
+  const assignDelivery = useAssignDeliveryAgencies();
+  const assignCollector = useAssignCollectorAgencies();
+
+  // Employee candidates for the staff assignment pickers
+  const { data: employeesData } = useEmployees({ pageSize: 200 });
+  const deliveryCandidates = (employeesData?.data ?? []).filter(
+    (e) => e.employeeRole !== "collector" && e.isActive,
+  );
+  const collectorCandidates = (employeesData?.data ?? []).filter(
+    (e) => e.employeeRole !== "delivery" && e.isActive,
+  );
 
   const agencies = agenciesData?.data || [];
 
@@ -112,8 +135,13 @@ export default function AgenciesPage() {
     contactPerson: "",
     phone: "",
     email: "",
+    vehicleNumber: "",
     agencyType: "" as AgencyType | "",
   });
+
+  // Staff selection for the new agency
+  const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([]);
+  const [selectedCollectorIds, setSelectedCollectorIds] = useState<string[]>([]);
 
   // Note: Filtering is now handled server-side via the API
   const filtered = agencies;
@@ -143,8 +171,11 @@ export default function AgenciesPage() {
       contactPerson: "",
       phone: "",
       email: "",
+      vehicleNumber: "",
       agencyType: "" as AgencyType | "",
     });
+    setSelectedDeliveryIds([]);
+    setSelectedCollectorIds([]);
   };
 
   const handleAddAgency = (e: React.FormEvent) => {
@@ -182,10 +213,25 @@ export default function AgenciesPage() {
       contactPerson: formData.contactPerson || undefined,
       phone: formData.phone || undefined,
       email: formData.email || undefined,
+      vehicleNumber: formData.vehicleNumber || undefined,
     };
 
     createAgency.mutate(input, {
-      onSuccess: () => {
+      onSuccess: async (created) => {
+        const newId = created.id;
+        try {
+          await Promise.all([
+            ...selectedDeliveryIds.map((empId) =>
+              assignDelivery.mutateAsync({ employeeId: empId, agencyIds: [newId] }),
+            ),
+            ...selectedCollectorIds.map((empId) =>
+              assignCollector.mutateAsync({ employeeId: empId, agencyIds: [newId] }),
+            ),
+          ]);
+        } catch {
+          // Assignment hooks toast their own errors; still close + reset
+          // so a partial failure doesn't wedge the form.
+        }
         setAddModalOpen(false);
         setIsSubmitting(false);
         resetForm();
@@ -346,42 +392,60 @@ export default function AgenciesPage() {
         description="Create a new distribution agency"
       >
         <form onSubmit={handleAddAgency} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Agency Name</Label>
-            <Input
-              id="name"
-              placeholder="e.g. North Zone Branch"
-              value={formData.name}
-              onChange={(e) => handleFormChange("name", e.target.value)}
-              required
-            />
+          {/* Row 1: Agency Name | Agency Type */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Agency Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g. North Zone Branch"
+                value={formData.name}
+                onChange={(e) => handleFormChange("name", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="agencyType">Agency Type</Label>
+              <Select
+                value={formData.agencyType}
+                onValueChange={(value) => handleFormChange("agencyType", value)}
+                required
+              >
+                <SelectTrigger id="agencyType" className="w-full">
+                  <SelectValue placeholder="Select distribution type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AM">Morning Distribution (AM)</SelectItem>
+                  <SelectItem value="PM">Evening Distribution (PM)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="agencyType">Agency Type</Label>
-            <Select
-              value={formData.agencyType}
-              onValueChange={(value) => handleFormChange("agencyType", value)}
-              required
-            >
-              <SelectTrigger id="agencyType" className="w-full">
-                <SelectValue placeholder="Select distribution type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="AM">Morning Distribution (AM)</SelectItem>
-                <SelectItem value="PM">Evening Distribution (PM)</SelectItem>
-              </SelectContent>
-            </Select>
+
+          {/* Row 2: Location | Pincode */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                placeholder="e.g. Ahmedabad"
+                value={formData.location}
+                onChange={(e) => handleFormChange("location", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pincode">Pincode</Label>
+              <Input
+                id="pincode"
+                placeholder="e.g. 380001"
+                value={formData.pincode}
+                onChange={(e) => handleFormChange("pincode", e.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              placeholder="e.g. Ahmedabad"
-              value={formData.location}
-              onChange={(e) => handleFormChange("location", e.target.value)}
-              required
-            />
-          </div>
+
+          {/* Row 3: Address Line 1 */}
           <div className="space-y-2">
             <Label htmlFor="line1">Address Line 1</Label>
             <Input
@@ -391,6 +455,8 @@ export default function AgenciesPage() {
               onChange={(e) => handleFormChange("line1", e.target.value)}
             />
           </div>
+
+          {/* Row 4: Address Line 2 */}
           <div className="space-y-2">
             <Label htmlFor="line2">Address Line 2</Label>
             <Input
@@ -400,6 +466,8 @@ export default function AgenciesPage() {
               onChange={(e) => handleFormChange("line2", e.target.value)}
             />
           </div>
+
+          {/* Row 5: City | State */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
@@ -420,25 +488,18 @@ export default function AgenciesPage() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="pincode">Pincode</Label>
-            <Input
-              id="pincode"
-              placeholder="e.g. 380001"
-              value={formData.pincode}
-              onChange={(e) => handleFormChange("pincode", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="contactPerson">Contact Person</Label>
-            <Input
-              id="contactPerson"
-              placeholder="Full name"
-              value={formData.contactPerson}
-              onChange={(e) => handleFormChange("contactPerson", e.target.value)}
-            />
-          </div>
+
+          {/* Row 6: Contact Person | Phone */}
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="contactPerson">Contact Person</Label>
+              <Input
+                id="contactPerson"
+                placeholder="Full name"
+                value={formData.contactPerson}
+                onChange={(e) => handleFormChange("contactPerson", e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input
@@ -448,6 +509,10 @@ export default function AgenciesPage() {
                 onChange={(e) => handleFormChange("phone", e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Row 7: Email | Vehicle Number */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -458,7 +523,99 @@ export default function AgenciesPage() {
                 onChange={(e) => handleFormChange("email", e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="vehicleNumber">Vehicle Number</Label>
+              <Input
+                id="vehicleNumber"
+                placeholder="e.g. GJ 01 AB 1234"
+                value={formData.vehicleNumber}
+                onChange={(e) => handleFormChange("vehicleNumber", e.target.value)}
+              />
+            </div>
           </div>
+
+          {/* Row 8: Delivery Employees | Collectors */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Delivery Employees</Label>
+              {deliveryCandidates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No delivery employees
+                </p>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedDeliveryIds.length > 0
+                        ? `${selectedDeliveryIds.length} selected`
+                        : "Select delivery employees"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-64 overflow-y-auto">
+                    {deliveryCandidates.map((emp: Employee) => (
+                      <DropdownMenuCheckboxItem
+                        key={emp.id}
+                        checked={selectedDeliveryIds.includes(emp.id)}
+                        onCheckedChange={(checked) =>
+                          setSelectedDeliveryIds((prev) =>
+                            checked
+                              ? [...prev, emp.id]
+                              : prev.filter((id) => id !== emp.id),
+                          )
+                        }
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {`${emp.name} (${emp.phone})`}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Collectors</Label>
+              {collectorCandidates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No collectors</p>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedCollectorIds.length > 0
+                        ? `${selectedCollectorIds.length} selected`
+                        : "Select collectors"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-64 overflow-y-auto">
+                    {collectorCandidates.map((emp: Employee) => (
+                      <DropdownMenuCheckboxItem
+                        key={emp.id}
+                        checked={selectedCollectorIds.includes(emp.id)}
+                        onCheckedChange={(checked) =>
+                          setSelectedCollectorIds((prev) =>
+                            checked
+                              ? [...prev, emp.id]
+                              : prev.filter((id) => id !== emp.id),
+                          )
+                        }
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {`${emp.name} (${emp.phone})`}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -579,9 +736,16 @@ function AgencyCard({
       )}
 
       {agency.email && (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
           <Mail className="h-3.5 w-3.5" />
           {agency.email}
+        </div>
+      )}
+
+      {agency.vehicleNumber && (
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+          <Truck className="h-3.5 w-3.5" />
+          {agency.vehicleNumber}
         </div>
       )}
 

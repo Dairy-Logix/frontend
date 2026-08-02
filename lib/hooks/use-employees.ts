@@ -18,6 +18,10 @@ export const employeeKeys = {
   details: () => [...employeeKeys.all, 'detail'] as const,
   detail: (id: string) => [...employeeKeys.details(), id] as const,
   assignments: (id: string) => [...employeeKeys.all, 'assignments', id] as const,
+  deliveryAssignment: (id: string) =>
+    [...employeeKeys.all, 'delivery-assignment', id] as const,
+  collectorAssignment: (id: string) =>
+    [...employeeKeys.all, 'collector-assignment', id] as const,
 };
 
 /**
@@ -214,12 +218,7 @@ export function useAssignShops() {
       }
       return response.data;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: employeeKeys.detail(variables.employeeId) });
-      queryClient.invalidateQueries({ queryKey: employeeKeys.assignments(variables.employeeId) });
-      queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
-    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
     onError: (error) => {
       const message = handleApiError(error);
       toast.error(message);
@@ -241,15 +240,182 @@ export function useUnassignShops() {
       }
       return response.data;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: employeeKeys.detail(variables.employeeId) });
-      queryClient.invalidateQueries({ queryKey: employeeKeys.assignments(variables.employeeId) });
-      queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
-    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
     onError: (error) => {
       const message = handleApiError(error);
       toast.error(message);
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Delivery-person assignment (agencies + per-store split)
+// ---------------------------------------------------------------------------
+
+/**
+ * Hook to fetch a delivery person's current assignment (agencies + shop ids).
+ */
+export function useDeliveryAssignment(employeeId: string, enabled = true) {
+  return useQuery({
+    queryKey: employeeKeys.deliveryAssignment(employeeId),
+    queryFn: async () => {
+      const response = await employeeService.getDeliveryAssignment(employeeId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch delivery assignment');
+      }
+      return response.data;
+    },
+    enabled: !!employeeId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Shared cache invalidation after any assignment write (collector or delivery).
+// Touches the employee detail + lists (counts), both assignment queries, the
+// legacy shop-assignments query, and all shopkeeper queries (store routing
+// changed). Over-invalidating slightly is cheap and keeps every surface fresh.
+function invalidateAssignmentCaches(queryClient: ReturnType<typeof useQueryClient>, employeeId: string) {
+  queryClient.invalidateQueries({ queryKey: employeeKeys.detail(employeeId) });
+  queryClient.invalidateQueries({ queryKey: employeeKeys.assignments(employeeId) });
+  queryClient.invalidateQueries({ queryKey: employeeKeys.deliveryAssignment(employeeId) });
+  queryClient.invalidateQueries({ queryKey: employeeKeys.collectorAssignment(employeeId) });
+  queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
+  queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
+}
+
+/**
+ * Assign agencies to a delivery person (default-fills the agencies' stores).
+ */
+export function useAssignDeliveryAgencies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, agencyIds }: { employeeId: string; agencyIds: string[] }) => {
+      const response = await employeeService.assignDeliveryAgencies(employeeId, agencyIds);
+      if (!response.success) throw new Error(response.message || 'Failed to assign agencies');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/**
+ * Remove agencies from a delivery person (releases their stores in those agencies).
+ */
+export function useUnassignDeliveryAgencies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, agencyIds }: { employeeId: string; agencyIds: string[] }) => {
+      const response = await employeeService.unassignDeliveryAgencies(employeeId, agencyIds);
+      if (!response.success) throw new Error(response.message || 'Failed to unassign agencies');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/**
+ * Re-point specific stores to a delivery person (the per-store split).
+ */
+export function useAssignDeliveryShops() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, shopIds }: { employeeId: string; shopIds: string[] }) => {
+      const response = await employeeService.assignDeliveryShops(employeeId, shopIds);
+      if (!response.success) throw new Error(response.message || 'Failed to assign stores');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/**
+ * Release specific stores from a delivery person.
+ */
+export function useUnassignDeliveryShops() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, shopIds }: { employeeId: string; shopIds: string[] }) => {
+      const response = await employeeService.unassignDeliveryShops(employeeId, shopIds);
+      if (!response.success) throw new Error(response.message || 'Failed to unassign stores');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Collector assignment (agencies). The per-store split reuses useAssignShops /
+// useUnassignShops above.
+// ---------------------------------------------------------------------------
+
+/**
+ * Hook to fetch a collector's current assignment (agencies + shop ids).
+ */
+export function useCollectorAssignment(employeeId: string, enabled = true) {
+  return useQuery({
+    queryKey: employeeKeys.collectorAssignment(employeeId),
+    queryFn: async () => {
+      const response = await employeeService.getCollectorAssignment(employeeId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch collector assignment');
+      }
+      return response.data;
+    },
+    enabled: !!employeeId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Assign agencies to a collector (default-fills the agencies' stores).
+ */
+export function useAssignCollectorAgencies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, agencyIds }: { employeeId: string; agencyIds: string[] }) => {
+      const response = await employeeService.assignCollectorAgencies(employeeId, agencyIds);
+      if (!response.success) throw new Error(response.message || 'Failed to assign agencies');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/**
+ * Hook to fetch today's collection totals for an employee (collector).
+ */
+export function useCollectionsToday(employeeId: string, date: string, enabled = true) {
+  return useQuery({
+    queryKey: [...employeeKeys.detail(employeeId), 'collections-today', date],
+    queryFn: async () => {
+      const response = await employeeService.getCollectionsToday(employeeId, date);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch collections');
+      }
+      return response.data;
+    },
+    enabled: !!employeeId && enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Remove agencies from a collector (releases their stores in those agencies).
+ */
+export function useUnassignCollectorAgencies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, agencyIds }: { employeeId: string; agencyIds: string[] }) => {
+      const response = await employeeService.unassignCollectorAgencies(employeeId, agencyIds);
+      if (!response.success) throw new Error(response.message || 'Failed to unassign agencies');
+      return response.data;
+    },
+    onSuccess: (_data, variables) => invalidateAssignmentCaches(queryClient, variables.employeeId),
+    onError: (error) => toast.error(handleApiError(error)),
   });
 }

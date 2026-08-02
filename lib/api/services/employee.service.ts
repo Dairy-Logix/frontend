@@ -5,6 +5,10 @@ import type {
   PaginationParams,
   Employee,
   EmployeeAssignment,
+  AgencyAssignment,
+  DeliveryAssignment,
+  CollectorAssignment,
+  CollectionsTodayStats,
   CreateEmployeeInput,
   UpdateEmployeeInput,
 } from '@/lib/types';
@@ -22,9 +26,22 @@ function normalizeEmployee(raw: any): Employee {
     email: raw.email || undefined,
     employeeRole: raw.employeeRole || 'collector',
     assignedShopCount: raw.assignedShopCount ?? 0,
+    agencyIds: (raw.agencyIds || []).map((id: any) => String(id)),
+    collectorAgencyIds: (raw.collectorAgencyIds || []).map((id: any) => String(id)),
+    assignedDeliveryShopCount: raw.assignedDeliveryShopCount ?? 0,
     isActive: raw.isActive ?? (raw.status === 'active'),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
+  };
+}
+
+// The assignment endpoints return { agencyIds, shops }. The UI only needs the
+// set of assigned shop ids (it already has full shop objects loaded), so
+// collapse shops → shopIds here. Shared by the delivery and collector flows.
+function normalizeAgencyAssignment(raw: any): AgencyAssignment {
+  return {
+    agencyIds: (raw?.agencyIds || []).map((id: any) => String(id)),
+    shopIds: (raw?.shops || []).map((s: any) => String(s._id || s.id)),
   };
 }
 
@@ -153,6 +170,146 @@ export const employeeService = {
     return {
       success: true,
       message: 'Shops unassigned successfully',
+    };
+  },
+
+  // --- Delivery-person assignment (agencies + per-store split) ---
+
+  async getDeliveryAssignment(id: string): Promise<ApiResponse<DeliveryAssignment>> {
+    const { data } = await apiClient.get<any>(`/employees/${id}/delivery-assignment`);
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Delivery assignment fetched successfully',
+    };
+  },
+
+  // Assign agencies to a delivery person. The backend default-fills every shop
+  // of each agency to this person.
+  async assignDeliveryAgencies(
+    id: string,
+    agencyIds: string[]
+  ): Promise<ApiResponse<DeliveryAssignment>> {
+    const { data } = await apiClient.post<any>(
+      `/employees/${id}/delivery-agencies`,
+      { agencyIds }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Agencies assigned successfully',
+    };
+  },
+
+  async unassignDeliveryAgencies(
+    id: string,
+    agencyIds: string[]
+  ): Promise<ApiResponse<DeliveryAssignment>> {
+    const { data } = await apiClient.delete<any>(
+      `/employees/${id}/delivery-agencies`,
+      { data: { agencyIds } }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Agencies unassigned successfully',
+    };
+  },
+
+  // Re-point specific stores to this delivery person (the per-store split).
+  async assignDeliveryShops(
+    id: string,
+    shopIds: string[]
+  ): Promise<ApiResponse<DeliveryAssignment>> {
+    const { data } = await apiClient.post<any>(
+      `/employees/${id}/delivery-shops`,
+      { shopIds }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Stores assigned successfully',
+    };
+  },
+
+  async unassignDeliveryShops(
+    id: string,
+    shopIds: string[]
+  ): Promise<ApiResponse<DeliveryAssignment>> {
+    const { data } = await apiClient.delete<any>(
+      `/employees/${id}/delivery-shops`,
+      { data: { shopIds } }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Stores unassigned successfully',
+    };
+  },
+
+  // --- Collector assignment (agencies + per-store split) ---
+  // The per-store split reuses assignShops / unassignShops above
+  // (assignedEmployeeId); these manage the agency membership + default-fill.
+
+  async getCollectorAssignment(id: string): Promise<ApiResponse<CollectorAssignment>> {
+    const { data } = await apiClient.get<any>(`/employees/${id}/collector-assignment`);
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Collector assignment fetched successfully',
+    };
+  },
+
+  async assignCollectorAgencies(
+    id: string,
+    agencyIds: string[]
+  ): Promise<ApiResponse<CollectorAssignment>> {
+    const { data } = await apiClient.post<any>(
+      `/employees/${id}/collector-agencies`,
+      { agencyIds }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Agencies assigned successfully',
+    };
+  },
+
+  async unassignCollectorAgencies(
+    id: string,
+    agencyIds: string[]
+  ): Promise<ApiResponse<CollectorAssignment>> {
+    const { data } = await apiClient.delete<any>(
+      `/employees/${id}/collector-agencies`,
+      { data: { agencyIds } }
+    );
+    return {
+      success: true,
+      data: normalizeAgencyAssignment(data),
+      message: 'Agencies unassigned successfully',
+    };
+  },
+
+  // Today's collection totals for this employee (their recorded payments).
+  async getCollectionsToday(
+    id: string,
+    date?: string
+  ): Promise<ApiResponse<CollectionsTodayStats>> {
+    const { data } = await apiClient.get<any>(
+      `/employees/${id}/collections-today`,
+      { params: date ? { date } : undefined }
+    );
+    return {
+      success: true,
+      data: {
+        clearedToday: data?.clearedToday ?? 0,
+        cashAmount: data?.cashAmount ?? 0,
+        onlineAmount: data?.onlineAmount ?? 0,
+        chequeAmount: data?.chequeAmount ?? 0,
+        walletWithdraw: data?.walletWithdraw ?? 0,
+        walletDeposit: data?.walletDeposit ?? 0,
+      },
+      message: 'Collections fetched successfully',
     };
   },
 };

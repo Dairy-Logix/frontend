@@ -39,6 +39,7 @@ function normalizeAgency(raw: any): Agency {
     contactPerson: raw.contactPerson,
     phone: raw.phone,
     email: raw.email,
+    vehicleNumber: raw.vehicleNumber,
     isActive: raw.isActive ?? (raw.status === 'active'),
     isAcceptingOrders: raw.isAcceptingOrders ?? false,
     orderCycle: raw.orderCycle
@@ -71,6 +72,7 @@ function toBackendInput(input: CreateAgencyInput): Record<string, unknown> {
     contactPerson: input.contactPerson || '',
     phone: input.phone || '',
     email: input.email || undefined,
+    vehicleNumber: input.vehicleNumber || undefined,
     orderCycle: cleanOrderCycle(input.orderCycle),
   };
 }
@@ -83,6 +85,7 @@ function toBackendUpdate(input: UpdateAgencyInput): Record<string, unknown> {
   if (input.contactPerson !== undefined) payload.contactPerson = input.contactPerson;
   if (input.phone !== undefined) payload.phone = input.phone;
   if (input.email !== undefined) payload.email = input.email;
+  if (input.vehicleNumber !== undefined) payload.vehicleNumber = input.vehicleNumber;
   if (input.isActive !== undefined) payload.status = input.isActive ? 'active' : 'inactive';
   if (input.orderCycle !== undefined) payload.orderCycle = cleanOrderCycle(input.orderCycle);
   if (input.address) {

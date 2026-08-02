@@ -55,9 +55,6 @@ export * from './use-invoices';
 // Payment hooks
 export * from './use-payments';
 
-// Delivery hooks
-export * from './use-deliveries';
-
 // Purchase hooks
 export * from './use-purchases';
 
@@ -87,7 +84,6 @@ export { shopkeeperKeys } from './use-shopkeepers';
 export { employeeKeys } from './use-employees';
 export { invoiceKeys } from './use-invoices';
 export { paymentKeys } from './use-payments';
-export { deliveryKeys } from './use-deliveries';
 export { purchaseKeys } from './use-purchases';
 export { reportKeys } from './use-reports';
 export { settingsKeys } from './use-settings';

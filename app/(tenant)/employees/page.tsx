@@ -302,12 +302,34 @@ export default function EmployeesPage() {
       header: "Assigned Shops",
       sortable: true,
       className: "text-center",
-      cell: (row) => (
-        <span className="flex items-center justify-center gap-1 text-sm">
-          <Store className="h-3.5 w-3.5 text-muted-foreground" />
-          {row.assignedShopCount}
-        </span>
-      ),
+      cell: (row) => {
+        const showCollection =
+          row.employeeRole === "collector" || row.employeeRole === "both";
+        const showDelivery =
+          row.employeeRole === "delivery" || row.employeeRole === "both";
+        return (
+          <span className="flex items-center justify-center gap-3 text-sm">
+            {showCollection && (
+              <span
+                className="flex items-center gap-1"
+                title="Stores assigned for collection"
+              >
+                <Store className="h-3.5 w-3.5 text-muted-foreground" />
+                {row.assignedShopCount}
+              </span>
+            )}
+            {showDelivery && (
+              <span
+                className="flex items-center gap-1"
+                title="Stores assigned for delivery"
+              >
+                <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                {row.assignedDeliveryShopCount ?? 0}
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "phone",

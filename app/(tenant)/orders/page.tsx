@@ -81,6 +81,7 @@ export default function OrdersPage() {
   const [selectedDate, setSelectedDate] = useState(todayIST());
   const [transferWizardOpen, setTransferWizardOpen] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
 
   // Fetch data from all 4 sources
   const { data: agenciesData, isLoading: loadingAgencies, error: agenciesError } = useAgencies({ page: 1, pageSize: 50 });
@@ -186,6 +187,15 @@ export default function OrdersPage() {
       cell.shopName.toLowerCase().includes(searchShop.toLowerCase())
     );
   }, [matrixData.cells, searchShop]);
+
+  const pendingCells = useMemo(
+    () =>
+      matrixData.cells.filter(
+        (c) =>
+          c.orderId && (c.orderStatus === "placed" || c.orderStatus === "pending")
+      ),
+    [matrixData.cells]
+  );
 
   // --- Stats for selected agency ---
 
@@ -300,6 +310,11 @@ export default function OrdersPage() {
               shopId,
               agencyId: selectedAgencyId,
               items: newItems,
+              // Honour the date the admin is viewing/placing for, so the order
+              // is bucketed to that exact day regardless of the agency's
+              // order-cycle rollover (which would otherwise push a late order
+              // to the next day, as it does in the store mobile app).
+              orderForDate: selectedDate,
             })
           );
         }
@@ -341,20 +356,21 @@ export default function OrdersPage() {
     await deleteOrder.mutateAsync(orderId);
   }
 
-  async function handleConfirmAllPending() {
-    const pendingCells = matrixData.cells.filter(
-      (c) => c.orderId && (c.orderStatus === "placed" || c.orderStatus === "pending")
-    );
+  function handleConfirmAllPending() {
     if (pendingCells.length === 0) {
       toast.info("No pending orders to confirm");
       return;
     }
-    if (!window.confirm(`Confirm all ${pendingCells.length} pending orders for this agency?`)) return;
+    setConfirmAllOpen(true);
+  }
+
+  async function handleConfirmAllPendingConfirmed() {
     await Promise.all(
       pendingCells.map((c) =>
         updateOrderStatus.mutateAsync({ id: c.orderId!, status: "confirmed" })
       )
     );
+    setConfirmAllOpen(false);
   }
 
   function getCellValue(shopId: string, productId: string): number {
@@ -609,6 +625,18 @@ export default function OrdersPage() {
         variant="destructive"
         onConfirm={handleConfirmDiscard}
       />
+      <ConfirmDialog
+        open={confirmAllOpen}
+        onOpenChange={setConfirmAllOpen}
+        title="Confirm all pending orders?"
+        description={`This will confirm all ${pendingCells.length} pending order${
+          pendingCells.length === 1 ? "" : "s"
+        } for this agency. This action cannot be undone.`}
+        confirmLabel="Confirm all"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmAllPendingConfirmed}
+        isLoading={updateOrderStatus.isPending}
+      />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -727,7 +755,7 @@ export default function OrdersPage() {
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 z-10 bg-gradient-to-r from-red-500/10 to-orange-500/10 backdrop-blur">
               <tr className="border-b-2 border-primary/20">
-                <th className="text-left py-3 px-4 font-semibold text-foreground bg-gradient-to-r from-red-500/10 to-orange-500/10 sticky left-0 z-20 min-w-[200px] border-r border-border">
+                <th className="text-left py-3 px-4 font-semibold text-foreground bg-background bg-gradient-to-r from-red-500/10 to-orange-500/10 sticky left-0 z-20 min-w-[200px] border-r border-border">
                   Store Name
                 </th>
                 {matrixData.products.map((product) => (
@@ -746,7 +774,7 @@ export default function OrdersPage() {
                 <th className="text-center py-3 px-4 font-semibold text-foreground min-w-[130px] border-r border-border/50">
                   Status
                 </th>
-                <th className="text-right py-3 px-4 font-semibold text-foreground bg-gradient-to-r from-red-500/10 to-orange-500/10 min-w-[140px] sticky right-0 z-10 border-l-2 border-border">
+                <th className="text-right py-3 px-4 font-semibold text-foreground bg-background bg-gradient-to-r from-red-500/10 to-orange-500/10 min-w-[140px] sticky right-0 z-20 border-l-2 border-border">
                   <div className="flex items-center justify-end gap-1">
                     <IndianRupee className="h-3.5 w-3.5" />
                     Total Amount
@@ -781,7 +809,7 @@ export default function OrdersPage() {
                       rowIndex % 2 === 0 ? "bg-white/[0.02]" : ""
                     }`}
                   >
-                    <td className="py-2 px-4 font-medium bg-background/95 sticky left-0 z-10 border-r border-border">
+                    <td className="py-2 px-4 font-medium bg-background sticky left-0 z-10 border-r border-border">
                       {cell.shopName}
                     </td>
                     {matrixData.products.map((product) => {
