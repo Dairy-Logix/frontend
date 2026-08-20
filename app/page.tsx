@@ -27,11 +27,41 @@ import {
   Factory,
   Warehouse,
   Utensils,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { Footer } from "@/components/layout/footer";
+
+// Direct-download URLs for the two Android apps. The .apk files are too
+// large for Vercel's static hosting (>100 MB), so they live in a Cloudflare
+// R2 bucket behind downloads.beatmitra.com (free egress). Shipping an app
+// update = overwrite the same object key in R2; these URLs never change.
+const STORE_APK_URL =
+  process.env.NEXT_PUBLIC_STORE_APK_URL ??
+  "https://downloads.beatmitra.com/beatmitra-store.apk";
+const FIELD_APK_URL =
+  process.env.NEXT_PUBLIC_FIELD_APK_URL ??
+  "https://downloads.beatmitra.com/beatmitra-field.apk";
+
+// lucide-react carries no brand logos (its Apple icon is the fruit), so the
+// two marks are inlined.
+function AndroidLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M17.523 15.342a.998.998 0 1 1 .002-1.996.998.998 0 0 1-.002 1.996m-11.046 0a.998.998 0 1 1 .002-1.996.998.998 0 0 1-.002 1.996m11.405-6.02 1.997-3.46a.416.416 0 0 0-.152-.567.416.416 0 0 0-.568.152L17.13 8.955a12.53 12.53 0 0 0-5.13-1.08c-1.85 0-3.59.39-5.13 1.08L4.84 5.447a.416.416 0 0 0-.567-.152.416.416 0 0 0-.152.567l1.996 3.46C2.61 11.24.34 14.665 0 18.66h24c-.34-3.995-2.61-7.42-6.118-9.338" />
+    </svg>
+  );
+}
+
+function AppleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+    </svg>
+  );
+}
 
 export default function Home() {
   return (
@@ -226,6 +256,70 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Mobile App Downloads */}
+      <section className="relative z-10 container mx-auto px-4 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="flex justify-center mb-6">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center">
+                <Smartphone className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Get the BeatMitra Apps
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Two apps, one platform — a storefront app for your retailers and a
+              field app for your team on the ground.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {mobileApps.map((app, index) => (
+              <motion.div
+                key={app.name}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.5 }}
+                className="glass gradient-border rounded-2xl p-2"
+              >
+                <div className="relative overflow-hidden bg-card rounded-xl p-8 h-full">
+                  {/* Moving gradient wash behind the card content */}
+                  <div className="absolute inset-0 bg-gradient-animated opacity-20 pointer-events-none" />
+                  <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-gradient-primary opacity-25 blur-3xl pointer-events-none animate-pulse" />
+                  <div className="relative z-10 flex flex-col items-center text-center h-full">
+                  <div className="h-14 w-14 rounded-xl bg-gradient-primary flex items-center justify-center mb-4">
+                    <app.icon className="h-7 w-7 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-1">{app.name}</h3>
+                  <p className="text-sm font-medium text-primary mb-3">{app.audience}</p>
+                  <p className="text-muted-foreground mb-8 flex-1">{app.description}</p>
+                  <div className="flex flex-col items-center gap-3 w-full">
+                    <a href={app.apkUrl} download={app.apkFileName} className="w-full sm:w-auto">
+                      <Button size="lg" className="bg-gradient-primary hover-glow-primary shine w-full">
+                        <AndroidLogo className="mr-2 h-5 w-5" />
+                        Download for Android
+                      </Button>
+                    </a>
+                    <div
+                      className="glass-subtle inline-flex h-10 items-center gap-2 rounded-md border px-6 text-sm font-medium text-muted-foreground cursor-default select-none"
+                      aria-disabled="true"
+                    >
+                      <AppleLogo className="h-5 w-5" />
+                      iOS — Coming Soon
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Android 7.0+ · Direct download (.apk)
+                    </p>
+                  </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="relative z-10 container mx-auto px-4 py-20">
         <div className="max-w-3xl mx-auto text-center">
@@ -257,6 +351,27 @@ export default function Home() {
     </div>
   );
 }
+
+const mobileApps = [
+  {
+    name: "BeatMitra Store",
+    audience: "For stores & retailers",
+    description:
+      "Browse the product catalog, place orders, and track invoices and outstanding balance — right from the shop counter.",
+    icon: Store,
+    apkUrl: STORE_APK_URL,
+    apkFileName: "beatmitra-store.apk",
+  },
+  {
+    name: "BeatMitra Field",
+    audience: "For distributors & field managers",
+    description:
+      "Manage orders, deliveries, payment collection, and invoices on the go — everything your field team needs in one app.",
+    icon: Truck,
+    apkUrl: FIELD_APK_URL,
+    apkFileName: "beatmitra-field.apk",
+  },
+];
 
 const features = [
   {
