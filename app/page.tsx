@@ -283,11 +283,7 @@ export default function Home() {
                 transition={{ delay: 0.1 * index, duration: 0.5 }}
                 className="glass gradient-border rounded-2xl p-2"
               >
-                <div className="relative overflow-hidden bg-card rounded-xl p-8 h-full">
-                  {/* Moving gradient wash behind the card content */}
-                  <div className="absolute inset-0 bg-gradient-animated opacity-20 pointer-events-none" />
-                  <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-gradient-primary opacity-25 blur-3xl pointer-events-none animate-pulse" />
-                  <div className="relative z-10 flex flex-col items-center text-center h-full">
+                <div className="bg-card rounded-xl p-8 h-full flex flex-col items-center text-center">
                   <div className="h-14 w-14 rounded-xl bg-gradient-primary flex items-center justify-center mb-4">
                     <app.icon className="h-7 w-7 text-white" />
                   </div>
@@ -311,7 +307,6 @@ export default function Home() {
                     <p className="text-xs text-muted-foreground">
                       Android 7.0+ · Direct download (.apk)
                     </p>
-                  </div>
                   </div>
                 </div>
               </motion.div>
