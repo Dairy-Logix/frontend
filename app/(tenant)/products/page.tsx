@@ -20,6 +20,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
+import { PhotoAvatar } from "@/components/shared/photo-avatar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SearchInput } from "@/components/shared/search-input";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
@@ -287,9 +288,18 @@ export default function ProductsPage() {
       header: "Product Name",
       sortable: true,
       cell: (row) => (
-        <div className="min-w-[120px]">
-          <div className="font-semibold text-sm">{row.name}</div>
-          <div className="text-xs text-muted-foreground">{row.shortName}</div>
+        <div className="flex items-center gap-2.5 min-w-[120px]">
+          <PhotoAvatar
+            src={row.photoUrl}
+            alt={row.name}
+            icon={Package}
+            className="h-8 w-8 rounded-lg"
+            iconClassName="h-4 w-4"
+          />
+          <div>
+            <div className="font-semibold text-sm">{row.name}</div>
+            <div className="text-xs text-muted-foreground">{row.shortName}</div>
+          </div>
         </div>
       ),
     },
@@ -625,14 +635,12 @@ export default function ProductsPage() {
                     <div className="glass rounded-xl p-5 h-full flex flex-col">
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2 mb-3">
-                        {product.photoUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={product.photoUrl}
-                            alt={product.name}
-                            className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                          />
-                        )}
+                        <PhotoAvatar
+                          src={product.photoUrl}
+                          alt={product.name}
+                          icon={Package}
+                          className="h-10 w-10 rounded-lg"
+                        />
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-base truncate">
                             {product.name}

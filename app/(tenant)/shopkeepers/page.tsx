@@ -24,6 +24,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
+import { PhotoAvatar } from "@/components/shared/photo-avatar";
 import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -660,8 +661,13 @@ export default function ShopkeepersPage() {
                     )}
 
                     {/* Shop Avatar */}
-                    <div className="hidden sm:flex h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 items-center justify-center shrink-0">
-                      <Store className="h-5 w-5 text-blue-500" />
+                    <div className="hidden sm:block shrink-0">
+                      <PhotoAvatar
+                        src={shop.photoUrl}
+                        alt={shop.shopName}
+                        icon={Store}
+                        className="h-12 w-12 rounded-lg"
+                      />
                     </div>
 
                     {/* Shop Info */}

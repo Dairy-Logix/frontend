@@ -29,6 +29,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
 import { FormModal } from "@/components/shared/form-modal";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
+import { PhotoAvatar } from "@/components/shared/photo-avatar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -285,14 +286,13 @@ export default function EmployeesPage() {
       sortable: true,
       cell: (row) => (
         <div className="flex items-center gap-2.5 min-w-[140px]">
-          {row.photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={row.photoUrl}
-              alt={row.name}
-              className="h-8 w-8 shrink-0 rounded-full object-cover"
-            />
-          )}
+          <PhotoAvatar
+            src={row.photoUrl}
+            alt={row.name}
+            icon={Users}
+            className="h-8 w-8 rounded-full"
+            iconClassName="h-4 w-4"
+          />
           <div>
             <div className="font-semibold text-sm">{row.name}</div>
             {row.email && (
