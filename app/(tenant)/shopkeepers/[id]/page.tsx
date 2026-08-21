@@ -27,6 +27,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,6 +98,8 @@ export default function ShopkeeperDetailsPage() {
   const [formPincode, setFormPincode] = useState("");
   const [formArea, setFormArea] = useState("");
   const [formPassword, setFormPassword] = useState("");
+  // undefined = photo unchanged; string = newly uploaded key; null = removed
+  const [formPhotoKey, setFormPhotoKey] = useState<string | null | undefined>(undefined);
 
   // Credentials dialog state
   const [credentialsOpen, setCredentialsOpen] = useState(false);
@@ -217,6 +220,7 @@ export default function ShopkeeperDetailsPage() {
     setFormPincode(shop.address?.pincode ?? "");
     setFormArea(shop.area ?? "");
     setFormPassword("");
+    setFormPhotoKey(undefined);
     setEditOpen(true);
   }
 
@@ -259,6 +263,7 @@ export default function ShopkeeperDetailsPage() {
           },
           area: formArea,
           password: passwordBeingSet || undefined,
+          ...(formPhotoKey !== undefined ? { photoKey: formPhotoKey } : {}),
         },
       },
       {
@@ -312,7 +317,17 @@ export default function ShopkeeperDetailsPage() {
           className="glass rounded-xl p-6 lg:col-span-2"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">Shop Information</h3>
+            <div className="flex items-center gap-3">
+              {shop.photoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={shop.photoUrl}
+                  alt={shop.shopName}
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              )}
+              <h3 className="text-base font-semibold">Shop Information</h3>
+            </div>
             <StatusBadge
               status={shop.isActive ? "active" : "inactive"}
               colorMap={shopStatusMap}
@@ -524,6 +539,15 @@ export default function ShopkeeperDetailsPage() {
         className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <div className="space-y-4 py-2">
+          {/* Store Photo */}
+          <ImageUploadField
+            label="Store Photo"
+            purpose="shopkeeper"
+            currentUrl={shop.photoUrl}
+            onChange={setFormPhotoKey}
+            disabled={updateShopkeeper.isPending}
+          />
+
           {/* Agencies - AM and PM */}
           <div className="space-y-3">
             <div>

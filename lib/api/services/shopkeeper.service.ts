@@ -64,6 +64,7 @@ function normalizeShop(raw: any): Shop {
     walletBalance: raw.walletBalance ?? 0,
     isActive: raw.isActive ?? (raw.status === 'active'),
     hasLoginAccess: !!raw.userId,
+    photoUrl: raw.photoUrl ?? null,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

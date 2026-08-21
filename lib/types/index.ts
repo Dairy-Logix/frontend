@@ -426,6 +426,8 @@ export interface Product {
   isActive: boolean;
   tenantId: string;
   description?: string;
+  // Full CDN URL computed by the backend from photoKey; null when no photo
+  photoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -439,6 +441,8 @@ export interface CreateProductInput {
   purchasePricePerUnit: number;
   sellingPricePerUnit: number;
   description?: string;
+  // R2 object key from POST /uploads/presign; null clears the photo
+  photoKey?: string | null;
 }
 
 export interface UpdateProductInput {
@@ -451,6 +455,7 @@ export interface UpdateProductInput {
   sellingPricePerUnit?: number;
   isActive?: boolean;
   description?: string;
+  photoKey?: string | null;
 }
 
 export interface QueryProductsParams extends PaginationParams {
@@ -486,6 +491,8 @@ export interface Shop {
   walletBalance: number;
   isActive: boolean;
   hasLoginAccess: boolean;
+  // Full CDN URL computed by the backend from photoKey; null when no photo
+  photoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -516,6 +523,8 @@ export interface CreateShopkeeperInput {
   routeId?: string;
   openingBalance?: number;
   password?: string;
+  // R2 object key from POST /uploads/presign; null clears the photo
+  photoKey?: string | null;
 }
 
 export interface UpdateShopkeeperInput {
@@ -534,6 +543,7 @@ export interface UpdateShopkeeperInput {
   assignedEmployeeId?: string | null;
   isActive?: boolean;
   password?: string;
+  photoKey?: string | null;
 }
 
 export interface QueryShopkeepersParams extends PaginationParams {
@@ -569,6 +579,8 @@ export interface Employee {
   collectorAgencyIds?: string[];
   assignedDeliveryShopCount?: number;
   isActive: boolean;
+  // Full CDN URL computed by the backend from photoKey; null when no photo
+  photoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -611,6 +623,8 @@ export interface CreateEmployeeInput {
   email?: string;
   employeeRole: EmployeeRole;
   password: string;
+  // R2 object key from POST /uploads/presign; null clears the photo
+  photoKey?: string | null;
 }
 
 export interface UpdateEmployeeInput {
@@ -619,6 +633,7 @@ export interface UpdateEmployeeInput {
   email?: string;
   employeeRole?: EmployeeRole;
   isActive?: boolean;
+  photoKey?: string | null;
 }
 
 export interface QueryEmployeesParams extends PaginationParams {

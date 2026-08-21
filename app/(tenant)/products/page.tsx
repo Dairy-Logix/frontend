@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { SearchInput } from "@/components/shared/search-input";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
@@ -138,6 +139,8 @@ export default function ProductsPage() {
   const [formPurchasePrice, setFormPurchasePrice] = useState("");
   const [formSellingPrice, setFormSellingPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  // undefined = photo unchanged; string = newly uploaded key; null = removed
+  const [formPhotoKey, setFormPhotoKey] = useState<string | null | undefined>(undefined);
 
   // Delete dialog
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -175,6 +178,7 @@ export default function ProductsPage() {
     setFormPurchasePrice("");
     setFormSellingPrice("");
     setFormDescription("");
+    setFormPhotoKey(undefined);
     setFormOpen(true);
   }
 
@@ -188,6 +192,7 @@ export default function ProductsPage() {
     setFormPurchasePrice(String(product.purchasePricePerUnit));
     setFormSellingPrice(String(product.sellingPricePerUnit));
     setFormDescription(product.description ?? "");
+    setFormPhotoKey(undefined);
     setFormOpen(true);
   }
 
@@ -230,6 +235,7 @@ export default function ProductsPage() {
       purchasePricePerUnit: Number(formPurchasePrice),
       sellingPricePerUnit: Number(formSellingPrice),
       description: formDescription || undefined,
+      ...(formPhotoKey !== undefined ? { photoKey: formPhotoKey } : {}),
     };
 
     if (editingProduct) {
@@ -619,6 +625,14 @@ export default function ProductsPage() {
                     <div className="glass rounded-xl p-5 h-full flex flex-col">
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2 mb-3">
+                        {product.photoUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.photoUrl}
+                            alt={product.name}
+                            className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-base truncate">
                             {product.name}
@@ -746,6 +760,15 @@ export default function ProductsPage() {
         className="sm:max-w-lg"
       >
         <div className="space-y-4 py-2">
+          {/* Photo */}
+          <ImageUploadField
+            label="Product Photo"
+            purpose="product"
+            currentUrl={editingProduct?.photoUrl}
+            onChange={setFormPhotoKey}
+            disabled={isSubmitting}
+          />
+
           {/* Product Code */}
           <div className="space-y-1.5">
             <Label htmlFor="product-code">Product Code</Label>

@@ -21,6 +21,7 @@ function toBackendDto(input: Partial<CreateProductInput & UpdateProductInput>): 
   if (input.sellingPricePerUnit !== undefined) dto.mrp = input.sellingPricePerUnit;
   if ((input as UpdateProductInput).isActive !== undefined)
     dto.status = (input as UpdateProductInput).isActive ? 'active' : 'inactive';
+  if (input.photoKey !== undefined) dto.photoKey = input.photoKey;
   return dto;
 }
 
@@ -38,6 +39,7 @@ function mapProduct(raw: any): Product {
     isActive: raw.isActive ?? (raw.status === 'active'),
     tenantId: raw.tenantId || '',
     description: raw.description,
+    photoUrl: raw.photoUrl ?? null,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

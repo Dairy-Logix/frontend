@@ -28,6 +28,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type ColumnDef } from "@/components/shared/data-table";
 import { FormModal } from "@/components/shared/form-modal";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,8 @@ export default function EmployeesPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formRole, setFormRole] = useState<EmployeeRole>("collector");
   const [formPassword, setFormPassword] = useState("");
+  // undefined = photo unchanged; string = newly uploaded key; null = removed
+  const [formPhotoKey, setFormPhotoKey] = useState<string | null | undefined>(undefined);
 
   // Note: Filtering is now handled server-side via the API
   const filtered = employees;
@@ -137,6 +140,7 @@ export default function EmployeesPage() {
     setFormEmail("");
     setFormRole("collector");
     setFormPassword("");
+    setFormPhotoKey(undefined);
   }
 
   function openEditModal(employee: Employee) {
@@ -146,6 +150,7 @@ export default function EmployeesPage() {
     setFormEmail(employee.email || "");
     setFormRole(employee.employeeRole);
     setFormPassword("");
+    setFormPhotoKey(undefined);
     setEditModalOpen(true);
   }
 
@@ -187,6 +192,9 @@ export default function EmployeesPage() {
     };
     if (formPassword.trim()) {
       input.password = formPassword;
+    }
+    if (formPhotoKey !== undefined) {
+      input.photoKey = formPhotoKey;
     }
 
     const savedPassword = formPassword;
@@ -244,6 +252,7 @@ export default function EmployeesPage() {
       email: formEmail || undefined,
       employeeRole: formRole,
       password: formPassword,
+      ...(formPhotoKey !== undefined ? { photoKey: formPhotoKey } : {}),
     };
 
     const savedPassword = formPassword;
@@ -275,14 +284,24 @@ export default function EmployeesPage() {
       header: "Name",
       sortable: true,
       cell: (row) => (
-        <div className="min-w-[140px]">
-          <div className="font-semibold text-sm">{row.name}</div>
-          {row.email && (
-            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              <Mail className="h-3 w-3" />
-              {row.email}
-            </div>
+        <div className="flex items-center gap-2.5 min-w-[140px]">
+          {row.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={row.photoUrl}
+              alt={row.name}
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
           )}
+          <div>
+            <div className="font-semibold text-sm">{row.name}</div>
+            {row.email && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <Mail className="h-3 w-3" />
+                {row.email}
+              </div>
+            )}
+          </div>
         </div>
       ),
     },
@@ -541,6 +560,14 @@ export default function EmployeesPage() {
         description="Create a new field employee account"
       >
         <form onSubmit={handleAddEmployee} className="space-y-4">
+          <ImageUploadField
+            label="Profile Photo"
+            purpose="employee"
+            onChange={setFormPhotoKey}
+            shape="circle"
+            disabled={isSubmitting}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="emp-name">Full Name *</Label>
             <Input
@@ -641,6 +668,15 @@ export default function EmployeesPage() {
         description={`Update details for ${editingEmployee?.name ?? "employee"}`}
       >
         <form onSubmit={handleEditEmployee} className="space-y-4">
+          <ImageUploadField
+            label="Profile Photo"
+            purpose="employee"
+            currentUrl={editingEmployee?.photoUrl}
+            onChange={setFormPhotoKey}
+            shape="circle"
+            disabled={isSubmitting}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="edit-emp-name">Full Name *</Label>
             <Input

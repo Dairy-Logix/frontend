@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,8 @@ export default function EmployeeDetailsPage() {
   const [editEmail, setEditEmail] = useState(employee?.email || "");
   const [editRole, setEditRole] = useState(employee?.employeeRole || "");
   const [editPassword, setEditPassword] = useState("");
+  // undefined = photo unchanged; string = newly uploaded key; null = removed
+  const [editPhotoKey, setEditPhotoKey] = useState<string | null | undefined>(undefined);
 
   // Credentials dialog state (shown after password reset)
   const [credentialsOpen, setCredentialsOpen] = useState(false);
@@ -290,6 +293,9 @@ export default function EmployeeDetailsPage() {
     if (editPassword.trim()) {
       input.password = editPassword;
     }
+    if (editPhotoKey !== undefined) {
+      input.photoKey = editPhotoKey;
+    }
 
     const savedPassword = editPassword;
 
@@ -330,6 +336,7 @@ export default function EmployeeDetailsPage() {
     setEditEmail(employee.email || "");
     setEditRole(employee.employeeRole);
     setEditPassword("");
+    setEditPhotoKey(undefined);
     setEditModalOpen(true);
   };
 
@@ -935,6 +942,15 @@ export default function EmployeeDetailsPage() {
         description={`Update details for ${employee.name}`}
       >
         <form onSubmit={handleEditEmployee} className="space-y-4">
+          <ImageUploadField
+            label="Profile Photo"
+            purpose="employee"
+            currentUrl={employee.photoUrl}
+            onChange={setEditPhotoKey}
+            shape="circle"
+            disabled={updateEmployee.isPending}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="edit-name">Full Name *</Label>
             <Input

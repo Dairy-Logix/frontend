@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,6 +162,8 @@ export default function ShopkeepersPage() {
   const [formArea, setFormArea] = useState("");
   const [formOpeningBalance, setFormOpeningBalance] = useState("");
   const [formPassword, setFormPassword] = useState("");
+  // undefined = no photo chosen; string = uploaded R2 key
+  const [formPhotoKey, setFormPhotoKey] = useState<string | null | undefined>(undefined);
 
   // Credentials dialog state
   const [credentialsOpen, setCredentialsOpen] = useState(false);
@@ -246,6 +249,7 @@ export default function ShopkeepersPage() {
     setFormArea("");
     setFormOpeningBalance("");
     setFormPassword("");
+    setFormPhotoKey(undefined);
     setFormOpen(true);
   }
 
@@ -312,6 +316,7 @@ export default function ShopkeepersPage() {
       area: formArea,
       openingBalance: Number(formOpeningBalance) || 0,
       password: formPassword || undefined,
+      ...(formPhotoKey !== undefined ? { photoKey: formPhotoKey } : {}),
     };
 
     const savedPassword = formPassword;
@@ -731,6 +736,14 @@ export default function ShopkeepersPage() {
         className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <div className="space-y-4 py-2">
+          {/* Store Photo */}
+          <ImageUploadField
+            label="Store Photo"
+            purpose="shopkeeper"
+            onChange={setFormPhotoKey}
+            disabled={isSubmitting}
+          />
+
           {/* Agencies - AM and PM */}
           <div className="space-y-3">
             <div>
