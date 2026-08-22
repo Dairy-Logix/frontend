@@ -104,7 +104,12 @@ export default function LoginPage() {
                 <Checkbox
                   id="remember"
                   checked={formData.remember}
-                  onCheckedChange={(checked) => setFormData({ ...formData, remember: checked as boolean })}
+                  onCheckedChange={(checked) =>
+                    setFormData((current) => ({
+                      ...current,
+                      remember: checked === true,
+                    }))
+                  }
                 />
                 <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
                   Remember me
