@@ -598,7 +598,7 @@ export default function ProductsPage() {
 
       {/* Product List - Card View */}
       {viewMode === "card" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           <AnimatePresence mode="popLayout">
             {filteredProducts.length === 0 ? (
               <motion.div
@@ -632,34 +632,65 @@ export default function ProductsPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.04 }}
                   >
-                    <div className="glass rounded-xl p-5 h-full flex flex-col">
+                    <div className="glass group h-full rounded-xl p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10">
                       {/* Header */}
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <PhotoAvatar
-                          src={product.photoUrl}
-                          alt={product.name}
-                          icon={Package}
-                          className="h-10 w-10 rounded-lg"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-base truncate">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-orange-50 via-white to-red-50 shadow-sm ring-1 ring-border/60 dark:from-orange-950/20 dark:via-card dark:to-red-950/20">
+                          {product.photoUrl ? (
+                            <img
+                              src={product.photoUrl}
+                              alt={product.name}
+                              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-orange-500">
+                              <Package className="h-9 w-9" />
+                            </div>
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/35 to-transparent" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1.5 flex items-start justify-between gap-2">
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {product.productCode}
+                            </Badge>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <StatusBadge
+                                status={String(product.isActive)}
+                                colorMap={productStatusMap}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => openEditModal(product)}
+                                aria-label={`Edit ${product.name}`}
+                                className="h-7 w-7 rounded-lg bg-background/70"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => confirmDelete(product)}
+                                aria-label={`Delete ${product.name}`}
+                                className="h-7 w-7 rounded-lg bg-background/70 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <h3 className="truncate text-base font-semibold">
                             {product.name}
                           </h3>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="truncate text-xs text-muted-foreground">
                             {product.shortName}
                           </p>
                         </div>
-                        <StatusBadge
-                          status={String(product.isActive)}
-                          colorMap={productStatusMap}
-                        />
                       </div>
 
-                      {/* Product Code & Category */}
                       <div className="flex items-center gap-2 mb-3">
-                        <Badge variant="outline" className="text-xs font-mono">
-                          {product.productCode}
-                        </Badge>
                         <Badge
                           variant="secondary"
                           className={`text-xs ${
@@ -678,20 +709,41 @@ export default function ProductsPage() {
                         </Badge>
                       </div>
 
-                      {/* Quantity (only relevant for Crate) */}
-                      {product.category !== "Piece" && (
-                        <div className="mb-3">
-                          <p className="text-xs text-muted-foreground">
-                            Quantity per unit
+                      {/* Quantity and margin */}
+                      <div
+                        className={cn(
+                          "mb-3 grid gap-3",
+                          product.category !== "Piece" ? "grid-cols-2" : "grid-cols-1"
+                        )}
+                      >
+                        {product.category !== "Piece" && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Quantity per unit
+                            </p>
+                            <p className="text-sm font-semibold">
+                              {product.quantityPerUnit} pcs
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            Profit Margin
                           </p>
-                          <p className="text-sm font-medium">
-                            {product.quantityPerUnit} pcs
-                          </p>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-sm font-semibold",
+                              getMarginBgColor(margin)
+                            )}
+                          >
+                            {margin.toFixed(1)}%
+                          </Badge>
                         </div>
-                      )}
+                      </div>
 
                       {/* Prices */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
                         <div>
                           <p className="text-xs text-muted-foreground">
                             Purchase Price
@@ -708,43 +760,6 @@ export default function ProductsPage() {
                             {formatINR(product.sellingPricePerUnit)}
                           </p>
                         </div>
-                      </div>
-
-                      {/* Margin */}
-                      <div className="mb-4">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Profit Margin
-                        </p>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-sm font-semibold",
-                            getMarginBgColor(margin)
-                          )}
-                        >
-                          {margin.toFixed(1)}%
-                        </Badge>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 mt-auto pt-3 border-t border-border/30">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => openEditModal(product)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => confirmDelete(product)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
                     </div>
                   </motion.div>
