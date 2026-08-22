@@ -24,7 +24,41 @@ export interface UpdateInvoiceInput {
   notes?: string;
 }
 
-function toBackendParams(params?: InvoiceFilterParams): any {
+type BackendInvoiceParams = Omit<InvoiceFilterParams, 'pageSize' | 'shopId' | 'dateFrom' | 'dateTo'> & {
+  limit?: number;
+  shopkeeperId?: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+type BackendInvoiceItem = Partial<Invoice['items'][number]> & {
+  _id?: string;
+  price?: number;
+  subtotal?: number;
+  total?: number;
+  unit?: string;
+};
+
+type BackendInvoice = Partial<Invoice> & {
+  _id?: string;
+  shopkeeperId?: string | { _id?: string };
+  shopName?: string;
+  invoiceDate?: string;
+  paidDate?: string;
+  total?: number;
+  amount?: number;
+  amountPaid?: number;
+  amountDue?: number;
+  items?: BackendInvoiceItem[];
+};
+
+interface BackendInvoicesPage {
+  data: BackendInvoice[];
+  meta: PaginatedResponse<Invoice>['pagination'];
+  totals?: PaginatedResponse<Invoice>['totals'];
+}
+
+function toBackendParams(params?: InvoiceFilterParams): BackendInvoiceParams | undefined {
   if (!params) return undefined;
   const { pageSize, shopId, dateFrom, dateTo, ...rest } = params;
   return {
@@ -36,7 +70,7 @@ function toBackendParams(params?: InvoiceFilterParams): any {
   };
 }
 
-function normalizeItem(item: any): any {
+function normalizeItem(item: BackendInvoiceItem): Invoice['items'][number] {
   return {
     id: item._id || item.id || '',
     invoiceId: '',
@@ -50,11 +84,16 @@ function normalizeItem(item: any): any {
   };
 }
 
-function normalize(raw: any): any {
+function normalize(raw: BackendInvoice): Invoice {
+  const shopkeeperId =
+    typeof raw.shopkeeperId === 'string'
+      ? raw.shopkeeperId
+      : raw.shopkeeperId?._id;
+
   return {
     ...raw,
     id: raw._id || raw.id,
-    shopId: raw.shopkeeperId?._id || raw.shopkeeperId || raw.shopId,
+    shopId: shopkeeperId || raw.shopId || '',
     shopkeeperName: raw.shopkeeperName || raw.shopName || '',
     issuedAt: raw.invoiceDate || raw.issuedAt || raw.createdAt,
     paidAt: raw.paidDate || raw.paidAt,
@@ -65,12 +104,12 @@ function normalize(raw: any): any {
     source: raw.source || 'order',
     adjustments: raw.adjustments || [],
     items: (raw.items || []).map(normalizeItem),
-  };
+  } as Invoice;
 }
 
 export const invoiceService = {
   async getInvoices(params?: InvoiceFilterParams): Promise<ApiResponse<PaginatedResponse<Invoice>>> {
-    const { data } = await apiClient.get<{ data: any[]; meta: any; totals?: any }>(
+    const { data } = await apiClient.get<BackendInvoicesPage>(
       '/invoices',
       { params: toBackendParams(params) }
     );
@@ -86,7 +125,7 @@ export const invoiceService = {
   },
 
   async getInvoiceById(id: string): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.get<any>(`/invoices/${id}`);
+    const { data } = await apiClient.get<BackendInvoice>(`/invoices/${id}`);
     return {
       success: true,
       data: normalize(data),
@@ -95,7 +134,7 @@ export const invoiceService = {
   },
 
   async createInvoice(input: CreateInvoiceInput): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.post<any>('/invoices', input);
+    const { data } = await apiClient.post<BackendInvoice>('/invoices', input);
     return {
       success: true,
       data: normalize(data),
@@ -104,7 +143,7 @@ export const invoiceService = {
   },
 
   async generateFromOrder(orderId: string): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.post<any>(`/invoices/generate-from-order/${orderId}`);
+    const { data } = await apiClient.post<BackendInvoice>(`/invoices/generate-from-order/${orderId}`);
     return {
       success: true,
       data: normalize(data),
@@ -113,7 +152,7 @@ export const invoiceService = {
   },
 
   async updateInvoice(id: string, input: UpdateInvoiceInput): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.patch<any>(`/invoices/${id}`, input);
+    const { data } = await apiClient.patch<BackendInvoice>(`/invoices/${id}`, input);
     return {
       success: true,
       data: normalize(data),
@@ -122,20 +161,11 @@ export const invoiceService = {
   },
 
   async updateInvoiceStatus(id: string, status: InvoiceStatus): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.patch<any>(`/invoices/${id}`, { status });
+    const { data } = await apiClient.patch<BackendInvoice>(`/invoices/${id}`, { status });
     return {
       success: true,
       data: normalize(data),
       message: 'Invoice status updated successfully',
-    };
-  },
-
-  async recordPayment(id: string, amountPaid: number): Promise<ApiResponse<Invoice>> {
-    const { data } = await apiClient.patch<any>(`/invoices/${id}/payment`, { amountPaid });
-    return {
-      success: true,
-      data: normalize(data),
-      message: 'Payment recorded successfully',
     };
   },
 

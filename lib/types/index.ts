@@ -726,6 +726,8 @@ export interface InvoiceItem {
   invoiceId: string;
   productId: string;
   product?: Product;
+  productName?: string;
+  productCode?: string;
   quantity: number;
   quantityPerUnit?: number;
   unitPrice: number;
@@ -828,6 +830,7 @@ export interface Payment {
   collectedBy?: Employee;
   amount: number;
   paymentType: PaymentType;
+  collectionAmount?: number;
   referenceNumber?: string;
   transactionId?: string;
   notes?: string;

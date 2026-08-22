@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { InvoiceDetailDialog } from "@/components/invoices/invoice-detail-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FormModal } from "@/components/shared/form-modal";
@@ -39,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { Invoice } from "@/lib/types";
+import type { Invoice, InvoiceStatus } from "@/lib/types";
 import {
   useInvoices,
   useGenerateInvoiceFromOrder,
@@ -92,18 +93,12 @@ export default function InvoicesPage() {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize] = useState(20);
 
   // Fetch lookup data from API
   const { data: agenciesData } = useAgencies({ pageSize: 100 });
   const agencies = agenciesData?.data || [];
-
-  // Set initial agency once loaded (if not already set from URL)
-  useMemo(() => {
-    if (agencies.length > 0 && !selectedAgencyId) {
-      setSelectedAgencyId(agencies[0].id);
-    }
-  }, [agencies, selectedAgencyId]);
+  const effectiveAgencyId = selectedAgencyId || agencies[0]?.id || "";
 
   function handleAgencyChange(agencyId: string) {
     setSelectedAgencyId(agencyId);
@@ -126,8 +121,8 @@ export default function InvoicesPage() {
     page,
     pageSize,
     search: search || undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    agencyId: selectedAgencyId || undefined,
+    status: statusFilter !== "all" ? (statusFilter as InvoiceStatus) : undefined,
+    agencyId: effectiveAgencyId || undefined,
     startDate: dateFrom || undefined,
     endDate: dateTo || undefined,
   });
@@ -136,6 +131,15 @@ export default function InvoicesPage() {
   const generateFromOrder = useGenerateInvoiceFromOrder();
 
   const invoices = invoicesData?.data || [];
+
+  // Invoice detail quick-view dialog
+  const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  function openInvoiceDetail(invoiceId: string) {
+    setViewInvoiceId(invoiceId);
+    setDetailOpen(true);
+  }
 
   // Generate invoice modal
   const [formOpen, setFormOpen] = useState(false);
@@ -292,7 +296,7 @@ export default function InvoicesPage() {
           className="glass rounded-xl p-1"
         >
           <Tabs
-            value={selectedAgencyId}
+            value={effectiveAgencyId}
             onValueChange={handleAgencyChange}
           >
             <TabsList className="w-full bg-muted/30 justify-start p-1">
@@ -372,7 +376,7 @@ export default function InvoicesPage() {
       {/* Invoices Table */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={selectedAgencyId}
+          key={effectiveAgencyId}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -417,7 +421,7 @@ export default function InvoicesPage() {
                     <tr
                       key={invoice.id ?? `invoice-${index}`}
                       className="border-b border-border/30 last:border-0 cursor-pointer hover:bg-white/5 transition-colors"
-                      onClick={() => router.push(`/invoices/${invoice.id}`)}
+                      onClick={() => openInvoiceDetail(invoice.id)}
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
@@ -458,7 +462,7 @@ export default function InvoicesPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={(e) => { e.stopPropagation(); router.push(`/invoices/${invoice.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); openInvoiceDetail(invoice.id); }}
                         >
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -501,6 +505,13 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+
+      {/* Invoice Detail Quick-View Dialog */}
+      <InvoiceDetailDialog
+        invoiceId={viewInvoiceId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
 
       {/* Generate Invoice Modal */}
       <FormModal

@@ -1,7 +1,7 @@
 import { apiClient } from '@/lib/api/client';
 import { prepareImageForUpload } from '@/lib/image';
 
-export type UploadPurpose = 'product' | 'shopkeeper' | 'employee';
+export type UploadPurpose = 'product' | 'shopkeeper' | 'employee' | 'branding';
 
 interface PresignResponse {
   uploadId: string;

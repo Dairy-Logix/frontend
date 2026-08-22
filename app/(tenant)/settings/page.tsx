@@ -47,12 +47,17 @@ import {
 import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers, useChangePassword } from "@/lib/hooks";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl } from "@/lib/utils";
+import { handleApiError } from "@/lib/api/client";
+import { uploadService } from "@/lib/api/services/upload.service";
+import { validatePhotoFile } from "@/lib/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import type {
   OrderPrintTemplate,
   PrintOrientation,
   NotificationEventType,
   AdminNotificationPref,
+  Tenant,
+  UpdateTenantInput,
 } from "@/lib/types";
 import { useTranslations } from "@/components/providers/intl-provider";
 
@@ -111,6 +116,30 @@ interface ProfileData {
   state: string;
   pincode: string;
 }
+
+type SettingsTenantProfile = Tenant & {
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+};
+
+type TenantProfileUpdateInput = UpdateTenantInput & {
+  companyName: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
 
 // --- Main Page ---
 
@@ -185,7 +214,7 @@ export default function SettingsPage() {
   // Sync tenant profile data into form
   useEffect(() => {
     if (tenantData) {
-      const t = tenantData as any;
+      const t = tenantData as SettingsTenantProfile;
       setProfile({
         businessName: t.companyName || t.name || "",
         contactPerson: t.ownerName || t.contactPerson || "",
@@ -279,12 +308,9 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setLogoError(null);
-    if (!file.type.match(/^image\/(jpeg|jpg|png|svg\+xml)$/)) {
-      setLogoError("Only JPEG, PNG, or SVG images are allowed.");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setLogoError("File must be under 2MB.");
+    const validationError = validatePhotoFile(file);
+    if (validationError) {
+      setLogoError(validationError);
       return;
     }
     setLogoFile(file);
@@ -298,45 +324,17 @@ export default function SettingsPage() {
     if (logoInputRef.current) logoInputRef.current.value = "";
   }
 
-  function resizeAndEncodeImage(file: File, maxPx = 128): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        let { width, height } = img;
-        if (width > maxPx || height > maxPx) {
-          if (width >= height) {
-            height = Math.round((height * maxPx) / width);
-            width = maxPx;
-          } else {
-            width = Math.round((width * maxPx) / height);
-            height = maxPx;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-        // Use JPEG at 80% quality — much smaller than PNG for photos/complex logos
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
-      };
-      img.onerror = reject;
-      img.src = objectUrl;
-    });
-  }
-
   async function handleSaveProfile() {
     if (!tenantId) return;
     setLogoError(null);
 
-    let logoBase64: string | undefined;
+    let uploadedLogo: { key: string; publicUrl: string } | undefined;
     if (logoFile) {
       setIsUploadingLogo(true);
       try {
-        logoBase64 = await resizeAndEncodeImage(logoFile);
-      } catch {
-        setLogoError("Failed to process logo image.");
+        uploadedLogo = await uploadService.uploadImage("branding", logoFile);
+      } catch (error) {
+        setLogoError(handleApiError(error));
         setIsUploadingLogo(false);
         return;
       }
@@ -354,12 +352,12 @@ export default function SettingsPage() {
         city: profile.city,
         state: profile.state,
         pincode: profile.pincode,
-        ...(logoBase64 ? { logo: logoBase64 } : {}),
-      } as any,
+        ...(uploadedLogo ? { logo: uploadedLogo.key } : {}),
+      } satisfies TenantProfileUpdateInput,
     }, {
       onSuccess: () => {
-        if (logoBase64) {
-          setLogoUrl(logoBase64);
+        if (uploadedLogo) {
+          setLogoUrl(uploadedLogo.publicUrl);
           setLogoFile(null);
           setLogoPreview(null);
           if (logoInputRef.current) logoInputRef.current.value = "";
@@ -741,7 +739,7 @@ export default function SettingsPage() {
               <input
                 ref={logoInputRef}
                 type="file"
-                accept="image/jpeg,image/jpg,image/png,image/svg+xml"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
                 className="hidden"
                 onChange={handleLogoFileChange}
               />
@@ -776,7 +774,7 @@ export default function SettingsPage() {
                     {logoUrl && !logoPreview ? "Logo uploaded" : "Upload your business logo"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    PNG, JPG or SVG. Max 2MB. Recommended: 256×256px
+                    PNG, JPG or WebP. Recommended: 256×256px
                   </p>
                 </div>
 
@@ -798,7 +796,7 @@ export default function SettingsPage() {
 
                 {logoFile && (
                   <p className="text-xs text-muted-foreground">
-                    {isUploadingLogo ? "Processing…" : `${logoFile.name} — will save with profile`}
+                    {isUploadingLogo ? "Uploading to R2…" : `${logoFile.name} — will save with profile`}
                   </p>
                 )}
               </div>

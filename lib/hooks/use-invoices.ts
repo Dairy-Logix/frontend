@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData} from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { invoiceService } from '@/lib/api/services/invoice.service';
+import { paymentService } from '@/lib/api/services/payment.service';
 import { handleApiError } from '@/lib/api/client';
 import { orderKeys } from './use-orders';
 import type { InvoiceFilterParams, UpdateInvoiceInput, PendingStoreBalance } from '@/lib/api/services/invoice.service';
@@ -161,12 +162,9 @@ export function useUpdateInvoiceStatus() {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
 
       const statusLabels: Record<InvoiceStatus, string> = {
-        draft: 'Draft',
-        sent: 'Sent',
-        paid: 'Paid',
+        unpaid: 'Unpaid',
         partially_paid: 'Partially Paid',
-        overdue: 'Overdue',
-        cancelled: 'Cancelled',
+        paid: 'Paid',
       };
 
       toast.success(`Invoice marked as ${statusLabels[variables.status]}`);
@@ -197,6 +195,9 @@ export function useGenerateInvoiceFromOrder() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      // Refresh order lists so the just-invoiced order drops out of the
+      // "needs invoice" picker in the generate-invoice modal.
+      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       if (data.orderId) {
         queryClient.invalidateQueries({ queryKey: orderKeys.detail(data.orderId) });
       }
@@ -217,15 +218,21 @@ export function useRecordPayment() {
 
   return useMutation({
     mutationFn: async ({ id, amountPaid }: { id: string; amountPaid: number }) => {
-      const response = await invoiceService.recordPayment(id, amountPaid);
+      const response = await paymentService.recordInvoicePayment({
+        invoiceId: id,
+        amount: amountPaid,
+        paymentType: 'cash',
+        notes: 'Recorded from invoice detail',
+      });
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to record payment');
       }
       return response.data;
     },
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData(invoiceKeys.detail(variables.id), data);
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
       toast.success('Payment recorded successfully');
     },
     onError: (error) => {

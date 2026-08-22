@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IndianRupee,
@@ -41,16 +41,17 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import type { Payment, GroupedCollection } from "@/lib/types";
 import { useGroupedCollections, useDayStats } from "@/lib/hooks";
 import { usePendingByStore, invoiceKeys } from "@/lib/hooks/use-invoices";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { handleApiError } from "@/lib/api/client";
 import { paymentService } from "@/lib/api/services/payment.service";
 import { todayIST } from "@/lib/utils";
 import type { PendingStoreBalance } from "@/lib/api/services/invoice.service";
 import { useTranslations } from "@/components/providers/intl-provider";
+import { PaymentCorrectionReview } from "@/components/payments/payment-correction-review";
 
 // --- Color maps ---
 const paymentTypeColorMap: Record<
@@ -88,18 +89,6 @@ function formatTime(dateStr?: string): string {
   });
 }
 
-function isThisMonth(dateStr?: string): boolean {
-  if (!dateStr) return false;
-  const date = new Date(dateStr);
-  const now = new Date();
-  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-}
-
-function isOverdueDate(dateStr?: string): boolean {
-  if (!dateStr) return false;
-  return new Date(dateStr) < new Date();
-}
-
 // --- Main Page ---
 export default function PaymentsPage() {
   const tPage = useTranslations("pages.payments");
@@ -115,7 +104,7 @@ export default function PaymentsPage() {
   const [paySearch, setPaySearch] = useState("");
   const [payTypeFilter, setPayTypeFilter] = useState("all");
   const [payCollectorId, setPayCollectorId] = useState("all");
-  const [payDate, setPayDate] = useState("");
+  const [payDate, setPayDate] = useState(() => todayIST());
   const [payPage, setPayPage] = useState(1);
   const [expandedPayId, setExpandedPayId] = useState<string | null>(null);
 
@@ -125,18 +114,15 @@ export default function PaymentsPage() {
   const agencies = agenciesData?.data || [];
   const employees = employeesData?.data || [];
   const currentUser = useAuthStore((s) => s.user);
-  const currentUserId = currentUser?.id || (currentUser as any)?._id?.toString();
+  const currentUserId = currentUser?.id;
 
-  function getCollectedBy(payment: Payment): string {
-    if (!payment.collectedById) return "—";
-    if (currentUserId && payment.collectedById === currentUserId) return "You";
-    return employees.find((e) => e.id === payment.collectedById)?.name ?? "—";
-  }
+  const isCollectedByYou = useCallback((collectedById?: string) => {
+    return !collectedById || (currentUserId && collectedById === currentUserId);
+  }, [currentUserId]);
 
   function getCollectorName(collectedById?: string, collectedByName?: string): string {
-    if (!collectedById) return "—";
-    if (currentUserId && collectedById === currentUserId) return "You";
-    return employees.find((e) => e.id === collectedById)?.name ?? collectedByName ?? "—";
+    if (isCollectedByYou(collectedById)) return "You";
+    return employees.find((e) => e.userId === collectedById || e.id === collectedById)?.name ?? collectedByName ?? "—";
   }
 
   // Pending payments (by store)
@@ -152,38 +138,34 @@ export default function PaymentsPage() {
   });
 
   // Payment history — grouped by collection event
+  const groupedCollectionParams = useMemo(() => ({
+    page: payPage,
+    pageSize: 20,
+    search: paySearch || undefined,
+    paymentType: payTypeFilter === "all" ? undefined : payTypeFilter,
+    collectedById: payCollectorId === "all" ? undefined : payCollectorId,
+    dateFrom: payDate || undefined,
+    dateTo: payDate || undefined,
+  }), [payPage, paySearch, payTypeFilter, payCollectorId, payDate]);
+
   const {
     data: collectionsData,
     isLoading: paymentsLoading,
     error: paymentsError,
     refetch: refetchPayments,
-  } = useGroupedCollections({
-    page: payPage,
-    pageSize: 20,
-    dateFrom: payDate || undefined,
-    dateTo: payDate || undefined,
-  });
+  } = useGroupedCollections(groupedCollectionParams);
 
   // Today's aggregated stats
   const todayStr = useMemo(() => todayIST(), []);
   const { data: dayStats } = useDayStats(todayStr);
 
-  const stores = pendingStores || [];
-  const collections = collectionsData?.data || [];
+  const stores = useMemo(() => pendingStores || [], [pendingStores]);
+  const collections = useMemo(() => collectionsData?.data || [], [collectionsData]);
 
-  const filteredCollections = useMemo(() => {
-    return collections.filter((c) => {
-      const matchesSearch =
-        paySearch === "" ||
-        (c.shopkeeperName ?? "").toLowerCase().includes(paySearch.toLowerCase());
-      const matchesType = payTypeFilter === "all" || c.paymentType === payTypeFilter;
-      const matchesCollector = payCollectorId === "all" || c.collectedById === payCollectorId;
-      return matchesSearch && matchesType && matchesCollector;
-    });
-  }, [collections, paySearch, payTypeFilter, payCollectorId]);
+  const filteredCollections = collections;
 
   // Stats
-  const stats = useMemo(() => {
+  const pendingStats = useMemo(() => {
     const outstanding = stores.reduce((sum, s) => sum + s.totalDue, 0);
     const overdueAmount = stores.reduce((sum, s) => sum + s.overdueAmount, 0);
     const dueAmount = stores.reduce((sum, s) => sum + s.dueAmount, 0);
@@ -197,6 +179,24 @@ export default function PaymentsPage() {
       walletDeposit: dayStats?.walletDeposit ?? 0,
     };
   }, [stores, dayStats]);
+
+  const historyStats = useMemo(() => {
+    const summary = collectionsData?.summary;
+    return {
+      outstanding: summary?.actualReceived ?? 0,
+      dueAmount: summary?.cash ?? 0,
+      overdueAmount: summary?.upi ?? 0,
+      pendingCount: summary?.sessionCount ?? 0,
+      clearedToday: summary?.cheque ?? 0,
+      cashAmount: summary?.cash ?? 0,
+      onlineAmount: summary?.upi ?? 0,
+      chequeAmount: summary?.cheque ?? 0,
+      walletWithdraw: summary?.walletUsed ?? 0,
+      walletDeposit: summary?.walletCredited ?? 0,
+    };
+  }, [collectionsData?.summary]);
+
+  const stats = activeTab === "history" ? historyStats : pendingStats;
 
   // --- Collect Modal ---
   const [formOpen, setFormOpen] = useState(false);
@@ -266,8 +266,8 @@ export default function PaymentsPage() {
         refetchPending();
         refetchPayments();
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to collect payment");
+    } catch (err: unknown) {
+      toast.error(handleApiError(err) || "Failed to collect payment");
     } finally {
       setIsSubmitting(false);
     }
@@ -280,107 +280,111 @@ export default function PaymentsPage() {
         description={tPage("description")}
       />
 
+      <PaymentCorrectionReview />
+
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard
-          title="Total Outstanding"
-          value={formatINR(stats.outstanding)}
-          description="Due + Overdue combined"
-          icon={IndianRupee}
-          className="xl:col-span-1"
-        />
-        <StatCard
-          title="Due"
-          value={formatINR(stats.dueAmount)}
-          description="Within grace period"
-          icon={Clock}
-          className="xl:col-span-1"
-        />
-        <StatCard
-          title="Overdue"
-          value={formatINR(stats.overdueAmount)}
-          description="Past grace period"
-          icon={AlertTriangle}
-          className="xl:col-span-1"
-        />
-        <StatCard
-          title="Cleared Today"
-          value={formatINR(stats.clearedToday)}
-          description="Total invoices cleared today"
-          icon={CheckCircle2}
-          className="xl:col-span-1"
-        />
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            title={activeTab === "history" ? "Total Collected" : "Total Outstanding"}
+            value={formatINR(stats.outstanding)}
+            description={activeTab === "history" ? "Matching current filters" : "Due + overdue combined"}
+            icon={IndianRupee}
+          />
+          <StatCard
+            title={activeTab === "history" ? "Cash" : "Due"}
+            value={formatINR(stats.dueAmount)}
+            description={activeTab === "history" ? "Cash collections" : "Within grace period"}
+            icon={activeTab === "history" ? IndianRupee : Clock}
+          />
+          <StatCard
+            title={activeTab === "history" ? "Online / UPI" : "Overdue"}
+            value={formatINR(stats.overdueAmount)}
+            description={activeTab === "history" ? "Digital collections" : "Past grace period"}
+            icon={activeTab === "history" ? CreditCard : AlertTriangle}
+          />
+          <StatCard
+            title={activeTab === "history" ? "Cheque" : "Cleared Today"}
+            value={formatINR(stats.clearedToday)}
+            description={activeTab === "history" ? "Cheque collections" : "Invoices cleared today"}
+            icon={CheckCircle2}
+          />
+        </div>
 
-        {/* Total Payment Received */}
-        <motion.div
-          whileHover={{ y: -2, scale: 1.01 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="glass rounded-xl p-5 flex flex-col gap-3 xl:col-span-1"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">Total Payment <br /> Received</p>
-            <div className="bg-gradient-primary rounded-lg p-2 text-white">
-              <CreditCard className="h-4 w-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Total Payment Received */}
+          <motion.div
+            whileHover={{ y: -2, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="glass rounded-xl p-5 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Total Payment <br /> Received</p>
+              <div className="bg-gradient-primary rounded-lg p-2 text-white">
+                <CreditCard className="h-4 w-4" />
+              </div>
             </div>
-          </div>
-          <p className="text-2xl font-bold tracking-tight">
-            {formatINR(stats.cashAmount + stats.onlineAmount + stats.chequeAmount)}
-          </p>
-          <div className="space-y-1.5 border-t border-border/40 pt-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Cash</span>
-              <span className="font-medium">{formatINR(stats.cashAmount)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Online</span>
-              <span className="font-medium">{formatINR(stats.onlineAmount)}</span>
-            </div>
-            {stats.chequeAmount > 0 && (
+            <p className="text-2xl font-bold tracking-tight">
+              {formatINR(stats.cashAmount + stats.onlineAmount + stats.chequeAmount)}
+            </p>
+            <div className="space-y-1.5 border-t border-border/40 pt-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Cheque</span>
-                <span className="font-medium">{formatINR(stats.chequeAmount)}</span>
+                <span className="text-muted-foreground">Cash</span>
+                <span className="font-medium">{formatINR(stats.cashAmount)}</span>
               </div>
-            )}
-          </div>
-        </motion.div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Online</span>
+                <span className="font-medium">{formatINR(stats.onlineAmount)}</span>
+              </div>
+              {stats.chequeAmount > 0 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Cheque</span>
+                  <span className="font-medium">{formatINR(stats.chequeAmount)}</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
 
-        {/* Wallet Amount */}
-        {(() => {
-          const net = stats.walletDeposit - stats.walletWithdraw;
-          const isPositive = net >= 0;
-          return (
-            <motion.div
-              whileHover={{ y: -2, scale: 1.01 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="glass rounded-xl p-5 flex flex-col gap-3 xl:col-span-1"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">Wallet Movement</p>
-                <div className="bg-gradient-primary rounded-lg p-2 text-white">
-                  <Wallet className="h-4 w-4" />
+          {/* Wallet Amount */}
+          {(() => {
+            const net = stats.walletDeposit - stats.walletWithdraw;
+            const isPositive = net >= 0;
+            return (
+              <motion.div
+                whileHover={{ y: -2, scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="glass rounded-xl p-5 flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">Wallet Movement</p>
+                  <div className="bg-gradient-primary rounded-lg p-2 text-white">
+                    <Wallet className="h-4 w-4" />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <p className={`text-2xl font-bold tracking-tight ${isPositive ? "text-[var(--success,#22c55e)]" : "text-destructive"}`}>
-                  {isPositive ? "+" : "-"}{formatINR(Math.abs(net))}
-                </p>
-                <p className={`text-xs mt-0.5 ${isPositive ? "text-[var(--success,#22c55e)]" : "text-destructive"}`}>
-                  {isPositive ? "Net deposited today" : "Net withdrawn today"}
-                </p>
-              </div>
-              <div className="space-y-1.5 border-t border-border/40 pt-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Today Withdrawn</span>
-                  <span className="font-medium text-destructive">{formatINR(stats.walletWithdraw)}</span>
+                <div>
+                  <p className={`text-2xl font-bold tracking-tight ${isPositive ? "text-[var(--success,#22c55e)]" : "text-destructive"}`}>
+                    {isPositive ? "+" : "-"}{formatINR(Math.abs(net))}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isPositive ? "text-[var(--success,#22c55e)]" : "text-destructive"}`}>
+                    {activeTab === "history"
+                      ? isPositive ? "Net credited in filtered records" : "Net used in filtered records"
+                      : isPositive ? "Net deposited today" : "Net withdrawn today"}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Today Deposited</span>
-                  <span className="font-medium text-[var(--success,#22c55e)]">{formatINR(stats.walletDeposit)}</span>
+                <div className="space-y-1.5 border-t border-border/40 pt-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{activeTab === "history" ? "Wallet Used" : "Today Withdrawn"}</span>
+                    <span className="font-medium text-destructive">{formatINR(stats.walletWithdraw)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{activeTab === "history" ? "Wallet Credited" : "Today Deposited"}</span>
+                    <span className="font-medium text-[var(--success,#22c55e)]">{formatINR(stats.walletDeposit)}</span>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          );
-        })()}
+              </motion.div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Tab switcher */}
@@ -576,11 +580,11 @@ export default function PaymentsPage() {
             <div className="flex flex-wrap gap-3">
               <SearchInput
                 value={paySearch}
-                onChange={setPaySearch}
+                onChange={(value) => { setPaySearch(value); setPayPage(1); }}
                 placeholder="Search by store name..."
                 className="flex-1 min-w-[180px]"
               />
-              <Select value={payTypeFilter} onValueChange={setPayTypeFilter}>
+              <Select value={payTypeFilter} onValueChange={(value) => { setPayTypeFilter(value); setPayPage(1); }}>
                 <SelectTrigger className="w-[155px]">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -592,14 +596,15 @@ export default function PaymentsPage() {
                   <SelectItem value="wallet">Wallet</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={payCollectorId} onValueChange={setPayCollectorId}>
+              <Select value={payCollectorId} onValueChange={(value) => { setPayCollectorId(value); setPayPage(1); }}>
                 <SelectTrigger className="w-[175px]">
                   <SelectValue placeholder="All Collectors" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Collectors</SelectItem>
+                  <SelectItem value="you">You</SelectItem>
                   {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    <SelectItem key={emp.id} value={emp.userId || emp.id}>{emp.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
