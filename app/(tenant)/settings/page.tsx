@@ -67,6 +67,27 @@ function makeId(): string {
   return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function invoiceNumberPreview(prefix: string, format: string): string {
+  const now = new Date();
+  const yyyy = now.getFullYear().toString();
+  const yy = yyyy.slice(-2);
+  const mm = (now.getMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getDate().toString().padStart(2, "0");
+  const normalizedPrefix = (prefix || "INV").trim().replace(/[-/]+$/g, "") || "INV";
+  const normalizedFormat = (format || "YYYY-NNNN").trim() || "YYYY-NNNN";
+  const formatWithSequence = /N+/.test(normalizedFormat)
+    ? normalizedFormat
+    : `${normalizedFormat}-NNNN`;
+  const rendered = formatWithSequence
+    .replace(/YYYY/g, yyyy)
+    .replace(/YY/g, yy)
+    .replace(/MM/g, mm)
+    .replace(/DD/g, dd)
+    .replace(/N+/g, (token) => "1".padStart(token.length, "0"));
+
+  return `${normalizedPrefix}-${rendered}`;
+}
+
 // --- Admin notification purposes ---
 // In-app web alerts the tenant's staff receive as a live toast and/or a navbar
 // bell entry (NOT mobile push). Every alert is triggered by an action taken by
@@ -849,7 +870,7 @@ export default function SettingsPage() {
                   onChange={(e) => setInvoiceNumberFormat(e.target.value)}
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  YYYY = Year, NNNN = Sequential number (e.g. SKD-INV-2025-0001)
+                  Supports YYYY, YY, MM, DD, and NNNN sequence tokens
                 </p>
               </div>
             </div>
@@ -873,10 +894,7 @@ export default function SettingsPage() {
             <div className="glass-subtle rounded-lg p-4">
               <p className="text-xs font-medium mb-2">Invoice Number Preview</p>
               <p className="text-sm font-mono text-muted-foreground">
-                {invoicePrefix}-
-                {invoiceNumberFormat
-                  .replace("YYYY", "2025")
-                  .replace("NNNN", "0001")}
+                {invoiceNumberPreview(invoicePrefix, invoiceNumberFormat)}
               </p>
             </div>
 
