@@ -33,17 +33,8 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { Footer } from "@/components/layout/footer";
-
-// Direct-download URLs for the two Android apps. The .apk files are too
-// large for Vercel's static hosting (>100 MB), so they live in a Cloudflare
-// R2 bucket behind downloads.beatmitra.com (free egress). Shipping an app
-// update = overwrite the same object key in R2; these URLs never change.
-const STORE_APK_URL =
-  process.env.NEXT_PUBLIC_STORE_APK_URL ??
-  "https://downloads.beatmitra.com/beatmitra-store.apk";
-const FIELD_APK_URL =
-  process.env.NEXT_PUBLIC_FIELD_APK_URL ??
-  "https://downloads.beatmitra.com/beatmitra-field.apk";
+import { useQuery } from "@tanstack/react-query";
+import { mobileAppsService } from "@/lib/api/services/mobile-apps.service";
 
 // lucide-react carries no brand logos (its Apple icon is the fruit), so the
 // two marks are inlined.
@@ -64,6 +55,9 @@ function AppleLogo({ className }: { className?: string }) {
 }
 
 export default function Home() {
+  const { data: publishedApps = {} } = useQuery({
+    queryKey: ["public-mobile-apps"], queryFn: mobileAppsService.publicList, staleTime: 60_000,
+  });
   return (
     <div className="min-h-screen relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-animated opacity-10 pointer-events-none" />
@@ -275,7 +269,10 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {mobileApps.map((app, index) => (
+            {mobileApps.map((app, index) => {
+              const android = publishedApps[app.androidSlot];
+              const ios = publishedApps[app.iosSlot];
+              return (
               <motion.div
                 key={app.name}
                 initial={{ opacity: 0, y: 20 }}
@@ -291,26 +288,24 @@ export default function Home() {
                   <p className="text-sm font-medium text-primary mb-3">{app.audience}</p>
                   <p className="text-muted-foreground mb-8 flex-1">{app.description}</p>
                   <div className="flex flex-col items-center gap-3 w-full">
-                    <a href={app.apkUrl} download={app.apkFileName} className="w-full sm:w-auto">
-                      <Button size="lg" className="bg-gradient-primary hover-glow-primary shine w-full">
+                    <a href={android?.downloadUrl} className={`w-full sm:w-auto ${!android ? "pointer-events-none" : ""}`}>
+                      <Button disabled={!android} size="lg" className="bg-gradient-primary hover-glow-primary shine w-full">
                         <AndroidLogo className="mr-2 h-5 w-5" />
-                        Download for Android
+                        {android ? `Android · v${android.version}` : "Android — Coming Soon"}
                       </Button>
                     </a>
-                    <div
-                      className="glass-subtle inline-flex h-10 items-center gap-2 rounded-md border px-6 text-sm font-medium text-muted-foreground cursor-default select-none"
-                      aria-disabled="true"
-                    >
+                    <a href={ios?.downloadUrl} className={!ios ? "pointer-events-none" : ""}>
+                    <Button disabled={!ios} variant="outline" className="glass-subtle">
                       <AppleLogo className="h-5 w-5" />
-                      iOS — Coming Soon
-                    </div>
+                      {ios ? `iOS · v${ios.version}` : "iOS — Coming Soon"}
+                    </Button></a>
                     <p className="text-xs text-muted-foreground">
                       Android 7.0+ · Direct download (.apk)
                     </p>
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              </motion.div>);
+            })}
           </div>
         </div>
       </section>
@@ -354,8 +349,8 @@ const mobileApps = [
     description:
       "Browse the product catalog, place orders, and track invoices and outstanding balance — right from the shop counter.",
     icon: Store,
-    apkUrl: STORE_APK_URL,
-    apkFileName: "beatmitra-store.apk",
+    androidSlot: "store-android" as const,
+    iosSlot: "store-ios" as const,
   },
   {
     name: "BeatMitra Field",
@@ -363,8 +358,8 @@ const mobileApps = [
     description:
       "Manage orders, deliveries, payment collection, and invoices on the go — everything your field team needs in one app.",
     icon: Truck,
-    apkUrl: FIELD_APK_URL,
-    apkFileName: "beatmitra-field.apk",
+    androidSlot: "field-android" as const,
+    iosSlot: "field-ios" as const,
   },
 ];
 

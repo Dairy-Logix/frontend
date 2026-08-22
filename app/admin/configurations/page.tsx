@@ -197,6 +197,13 @@ export default function ConfigurationsPage() {
           {/* Pointer to Plans (where limits/features actually live) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <Card className="glass">
+              <CardHeader><CardTitle className="text-lg">Mobile App Downloads</CardTitle><CardDescription>Manage Store and Field app files in R2</CardDescription></CardHeader>
+              <CardContent><Button asChild variant="outline" className="w-full"><Link href="/admin/mobile-apps">Manage Mobile Apps<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <Card className="glass">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
