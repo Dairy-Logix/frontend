@@ -65,6 +65,7 @@ function normalizeShop(raw: any): Shop {
     isActive: raw.isActive ?? (raw.status === 'active'),
     hasLoginAccess: !!raw.userId,
     photoUrl: raw.photoUrl ?? null,
+    displayOrders: raw.displayOrders ?? undefined,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -155,6 +156,27 @@ export const shopkeeperService = {
     return {
       success: true,
       message: 'Shopkeeper deleted successfully',
+    };
+  },
+
+  /**
+   * Persist a manual list order; startIndex = (page - 1) * pageSize.
+   * Each agency keeps its own order — pass the agencyId the list was filtered
+   * by, or omit it for the unscoped list.
+   */
+  async reorderShopkeepers(
+    shopkeeperIds: string[],
+    startIndex = 0,
+    agencyId?: string
+  ): Promise<ApiResponse<{ requested: number; updated: number }>> {
+    const { data } = await apiClient.patch<{ requested: number; updated: number }>(
+      '/shopkeepers/reorder',
+      { shopkeeperIds, startIndex, ...(agencyId ? { agencyId } : {}) }
+    );
+    return {
+      success: true,
+      data,
+      message: 'Store order saved successfully',
     };
   },
 

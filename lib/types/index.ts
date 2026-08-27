@@ -494,6 +494,9 @@ export interface Shop {
   hasLoginAccess: boolean;
   // Full CDN URL computed by the backend from photoKey; null when no photo
   photoUrl?: string | null;
+  // Per-agency manual list ranks ({ [agencyId]: rank }, '_global' for the
+  // unscoped list). Higher rank = earlier; stores without a rank sort last.
+  displayOrders?: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }

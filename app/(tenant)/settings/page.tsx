@@ -47,7 +47,7 @@ import {
 
 import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers, useChangePassword } from "@/lib/hooks";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import { getLogoUrl } from "@/lib/utils";
+import { getLogoUrl, sortShopsByAgencyOrder } from "@/lib/utils";
 import { handleApiError } from "@/lib/api/client";
 import { uploadService } from "@/lib/api/services/upload.service";
 import { validatePhotoFile } from "@/lib/image";
@@ -1257,10 +1257,14 @@ export default function SettingsPage() {
                                 </TabsList>
 
                                 {printAgencies.map((agency) => {
-                                  const stores = printShopkeepers.filter(
-                                    (s) =>
-                                      s.amAgencyId === agency.id ||
-                                      s.pmAgencyId === agency.id,
+                                  // Same per-agency order as the Stores page and print matrix
+                                  const stores = sortShopsByAgencyOrder(
+                                    printShopkeepers.filter(
+                                      (s) =>
+                                        s.amAgencyId === agency.id ||
+                                        s.pmAgencyId === agency.id,
+                                    ),
+                                    agency.id,
                                   );
                                   const enabledStores =
                                     template.enabledStoresByAgency[agency.id] ?? [];

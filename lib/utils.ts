@@ -31,3 +31,21 @@ export function dateToIST(date: Date | string | number): string {
 export function isTodayIST(dateStr: string): boolean {
   return dateToIST(new Date(dateStr)) === todayIST();
 }
+
+/**
+ * Order shops by the tenant's saved per-agency list order (Shop.displayOrders
+ * ranks, higher = earlier). Stable: shops without a rank for this agency keep
+ * their incoming relative order, after the ranked ones — matching the
+ * backend's displayOrders sort. Use wherever an agency-scoped store list is
+ * built from an unscoped fetch (e.g. print-template pickers).
+ */
+export function sortShopsByAgencyOrder<
+  T extends { displayOrders?: Record<string, number> },
+>(shops: T[], agencyId: string): T[] {
+  // Ranks are always positive, so 0 marks "no rank" and keeps unranked pairs
+  // at difference 0 (stable) instead of NaN.
+  return [...shops].sort(
+    (a, b) =>
+      (b.displayOrders?.[agencyId] ?? 0) - (a.displayOrders?.[agencyId] ?? 0)
+  );
+}

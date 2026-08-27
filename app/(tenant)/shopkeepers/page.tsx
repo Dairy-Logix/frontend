@@ -44,6 +44,7 @@ import {
   useCreateShopkeeper,
   useUpdateShopkeeper,
   useDeleteShopkeeper,
+  useReorderShopkeepers,
   useTotalWalletBalance,
 } from "@/lib/hooks";
 import { useAgencies } from "@/lib/hooks/use-agencies";
@@ -185,6 +186,7 @@ export default function ShopkeepersPage() {
   const createShopkeeper = useCreateShopkeeper();
   const updateShopkeeper = useUpdateShopkeeper();
   const deleteShopkeeper = useDeleteShopkeeper();
+  const reorderShopkeepers = useReorderShopkeepers();
   const { data: totalWalletBalance = 0 } = useTotalWalletBalance();
 
   const shopkeepers = shopkeepersData?.data || [];
@@ -424,10 +426,25 @@ export default function ShopkeepersPage() {
   }
 
   function saveOrder() {
-    toast.success(`Order saved! ${customOrder.length} stores reordered.`);
-    setIsReorderMode(false);
-    // Here you would typically save to backend/localStorage
-    // localStorage.setItem('shopkeeper-order', JSON.stringify(customOrder));
+    if (customOrder.length === 0) {
+      setIsReorderMode(false);
+      return;
+    }
+    reorderShopkeepers.mutate(
+      // Offset by the current page so reordering page 2 doesn't collide with
+      // page 1; the order is saved per agency tab.
+      {
+        shopkeeperIds: customOrder,
+        startIndex: (page - 1) * pageSize,
+        agencyId: activeAgencyTab || undefined,
+      },
+      {
+        onSuccess: () => {
+          setIsReorderMode(false);
+          setCustomOrder([]);
+        },
+      }
+    );
   }
 
   // --- Loading State ---
@@ -489,8 +506,13 @@ export default function ShopkeepersPage() {
                 <Button
                   className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
                   onClick={saveOrder}
+                  disabled={reorderShopkeepers.isPending}
                 >
-                  <Save className="h-4 w-4 mr-2" />
+                  {reorderShopkeepers.isPending ? (
+                    <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
                   Save Order
                 </Button>
               </>

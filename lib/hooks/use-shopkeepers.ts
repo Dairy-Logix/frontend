@@ -207,3 +207,39 @@ export function useDeleteShopkeeper() {
     },
   });
 }
+
+/**
+ * Hook to persist the manual store list order
+ */
+export function useReorderShopkeepers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      shopkeeperIds,
+      startIndex = 0,
+      agencyId,
+    }: {
+      shopkeeperIds: string[];
+      startIndex?: number;
+      agencyId?: string;
+    }) => {
+      const response = await shopkeeperService.reorderShopkeepers(
+        shopkeeperIds,
+        startIndex,
+        agencyId
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to save store order');
+      }
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: shopkeeperKeys.lists() });
+      toast.success(`Store order saved (${data.updated} stores)`);
+    },
+    onError: (error) => {
+      toast.error(handleApiError(error));
+    },
+  });
+}
