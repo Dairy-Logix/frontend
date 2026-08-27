@@ -424,6 +424,7 @@ export interface Product {
   purchasePricePerUnit: number;
   sellingPricePerUnit: number;
   isActive: boolean;
+  sortOrder?: number;
   tenantId: string;
   description?: string;
   // Full CDN URL computed by the backend from photoKey; null when no photo

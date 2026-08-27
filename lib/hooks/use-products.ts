@@ -3,17 +3,16 @@ import { toast } from 'sonner';
 import { productService } from '@/lib/api/services/product.service';
 import { handleApiError } from '@/lib/api/client';
 import type {
-  PaginationParams,
+  QueryProductsParams,
   CreateProductInput,
   UpdateProductInput,
-  Product,
 } from '@/lib/types';
 
 // Query keys
 export const productKeys = {
   all: ['products'] as const,
   lists: () => [...productKeys.all, 'list'] as const,
-  list: (params?: PaginationParams) => [...productKeys.lists(), params] as const,
+  list: (params?: QueryProductsParams) => [...productKeys.lists(), params] as const,
   details: () => [...productKeys.all, 'detail'] as const,
   detail: (id: string) => [...productKeys.details(), id] as const,
 };
@@ -21,7 +20,7 @@ export const productKeys = {
 /**
  * Hook to fetch paginated products
  */
-export function useProducts(params?: PaginationParams) {
+export function useProducts(params?: QueryProductsParams) {
   return useQuery({
     queryKey: productKeys.list(params),
     placeholderData: keepPreviousData,
@@ -133,6 +132,28 @@ export function useDeleteProduct() {
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
 
       toast.success('Product deleted successfully');
+    },
+    onError: (error) => {
+      const message = handleApiError(error);
+      toast.error(message);
+    },
+  });
+}
+
+export function useReorderProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (products: Array<{ id: string; sortOrder: number }>) => {
+      const response = await productService.reorderProducts(products);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to reorder products');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      toast.success('Product order updated');
     },
     onError: (error) => {
       const message = handleApiError(error);

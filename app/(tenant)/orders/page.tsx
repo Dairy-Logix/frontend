@@ -85,7 +85,7 @@ export default function OrdersPage() {
 
   // Fetch data from all 4 sources
   const { data: agenciesData, isLoading: loadingAgencies, error: agenciesError } = useAgencies({ page: 1, pageSize: 50 });
-  const { data: productsData, isLoading: loadingProducts, error: productsError } = useProducts({ page: 1, pageSize: 100 });
+  const { data: productsData, isLoading: loadingProducts, error: productsError } = useProducts({ page: 1, pageSize: 1000 });
   const { data: shopkeepersData, isLoading: loadingShopkeepers, error: shopkeepersError } = useShopkeepers({
     page: 1,
     pageSize: 500,

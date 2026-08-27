@@ -135,7 +135,7 @@ export default function OrderDetailPage() {
   // Fetch lookups
   const { data: shopkeepersData } = useShopkeepers({ pageSize: 200 });
   const { data: agenciesData } = useAgencies({ pageSize: 200 });
-  const { data: productsData } = useProducts({ pageSize: 200 });
+  const { data: productsData } = useProducts({ pageSize: 1000 });
 
   const shopkeepers = useMemo(() => shopkeepersData?.data ?? [], [shopkeepersData]);
   const agencies = useMemo(() => agenciesData?.data ?? [], [agenciesData]);

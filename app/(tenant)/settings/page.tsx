@@ -213,7 +213,7 @@ export default function SettingsPage() {
 
   // --- Order Print config state ---
   const { data: agenciesData } = useAgencies({ page: 1, pageSize: 50 });
-  const { data: productsData } = useProducts({ page: 1, pageSize: 200 });
+  const { data: productsData } = useProducts({ page: 1, pageSize: 1000 });
   const { data: shopkeepersData } = useShopkeepers({ page: 1, pageSize: 1000 });
   const printAgencies = (agenciesData?.data ?? []).filter((a) => a.isActive);
   const printProducts = (productsData?.data ?? []).filter((p) => p.isActive);

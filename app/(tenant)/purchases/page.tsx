@@ -68,7 +68,7 @@ export default function PurchasesPage() {
     data: productsPage,
     isLoading: productsLoading,
     error: productsError,
-  } = useProducts({ pageSize: 200 });
+  } = useProducts({ pageSize: 1000 });
   const { data: recentPurchasesPage } = usePurchases({ pageSize: 10 });
   const createBulk = useCreatePurchasesBulk();
 
@@ -616,4 +616,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-

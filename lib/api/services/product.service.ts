@@ -2,10 +2,10 @@ import { apiClient } from '@/lib/api/client';
 import type {
   ApiResponse,
   PaginatedResponse,
-  PaginationParams,
   Product,
   CreateProductInput,
   UpdateProductInput,
+  QueryProductsParams,
 } from '@/lib/types';
 
 // Transform frontend input to backend DTO field names
@@ -37,6 +37,7 @@ function mapProduct(raw: any): Product {
     purchasePricePerUnit: raw.purchasePricePerUnit ?? raw.price ?? 0,
     sellingPricePerUnit: raw.sellingPricePerUnit ?? raw.mrp ?? raw.price ?? 0,
     isActive: raw.isActive ?? (raw.status === 'active'),
+    sortOrder: raw.sortOrder ?? 0,
     tenantId: raw.tenantId || '',
     description: raw.description,
     photoUrl: raw.photoUrl ?? null,
@@ -46,8 +47,21 @@ function mapProduct(raw: any): Product {
 }
 
 export const productService = {
-  async getProducts(params?: PaginationParams): Promise<ApiResponse<PaginatedResponse<Product>>> {
-    const mapped = params ? { ...params, limit: params.pageSize, pageSize: undefined } : undefined;
+  async getProducts(params?: QueryProductsParams): Promise<ApiResponse<PaginatedResponse<Product>>> {
+    const mapped = params
+      ? {
+          ...params,
+          limit: params.pageSize,
+          pageSize: undefined,
+          status:
+            params.isActive === undefined
+              ? undefined
+              : params.isActive
+                ? 'active'
+                : 'inactive',
+          isActive: undefined,
+        }
+      : undefined;
     const { data } = await apiClient.get<{ products: any[]; pagination: any }>(
       '/products',
       { params: mapped }
@@ -98,6 +112,20 @@ export const productService = {
     return {
       success: true,
       message: 'Product deleted successfully',
+    };
+  },
+
+  async reorderProducts(
+    products: Array<{ id: string; sortOrder: number }>
+  ): Promise<ApiResponse<{ message: string; modifiedCount: number }>> {
+    const { data } = await apiClient.patch<{ message: string; modifiedCount: number }>(
+      '/products/reorder',
+      { products }
+    );
+    return {
+      success: true,
+      data,
+      message: data.message || 'Products reordered successfully',
     };
   },
 };

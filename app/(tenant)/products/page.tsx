@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { type DragEvent, useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
@@ -12,6 +12,9 @@ import {
   Table as TableIcon,
   Archive,
   Tag,
+  ArrowUpDown,
+  GripVertical,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +51,7 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useReorderProducts,
 } from "@/lib/hooks";
 import { Loader2 as LoaderIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -91,6 +95,15 @@ function getMarginBgColor(margin: number): string {
 
 type ViewMode = "card" | "table";
 
+interface ProductListState {
+  viewMode: ViewMode;
+  page: number;
+  pageSize: number;
+  search: string;
+  categoryFilter: string;
+  statusFilter: string;
+}
+
 export default function ProductsPage() {
   const tPage = useTranslations("pages.products");
   // View mode
@@ -104,6 +117,13 @@ export default function ProductsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Reorder mode state
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [customOrder, setCustomOrder] = useState<string[]>([]);
+  const [preReorderListState, setPreReorderListState] =
+    useState<ProductListState | null>(null);
 
   // Data fetching with real API
   const {
@@ -123,6 +143,7 @@ export default function ProductsPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const reorderProducts = useReorderProducts();
 
   const products = productsData?.data || [];
 
@@ -147,8 +168,38 @@ export default function ProductsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
-  // Note: Filtering is now handled server-side via the API
-  const filteredProducts = products;
+  const filteredProducts = useMemo(() => {
+    if (!isReorderMode || customOrder.length === 0) return products;
+
+    return [...products].sort((a, b) => {
+      const indexA = customOrder.indexOf(a.id);
+      const indexB = customOrder.indexOf(b.id);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }, [products, customOrder, isReorderMode]);
+
+  useEffect(() => {
+    if (!isReorderMode || products.length === 0) return;
+
+    setCustomOrder((currentOrder) => {
+      const productIds = products.map((product) => product.id);
+      const productIdSet = new Set(productIds);
+      const retainedOrder = currentOrder.filter((id) => productIdSet.has(id));
+      const missingIds = productIds.filter((id) => !retainedOrder.includes(id));
+      const nextOrder = [...retainedOrder, ...missingIds];
+
+      if (
+        nextOrder.length === currentOrder.length &&
+        nextOrder.every((id, index) => id === currentOrder[index])
+      ) {
+        return currentOrder;
+      }
+      return nextOrder;
+    });
+  }, [isReorderMode, products]);
 
   // --- Stats ---
 
@@ -278,6 +329,81 @@ export default function ProductsPage() {
         setDeletingProduct(null);
       },
     });
+  }
+
+  function toggleReorderMode() {
+    if (!isReorderMode) {
+      setPreReorderListState({
+        viewMode,
+        page,
+        pageSize,
+        search,
+        categoryFilter,
+        statusFilter,
+      });
+      setPage(1);
+      setPageSize(1000);
+      setViewMode("card");
+      setSearch("");
+      setCategoryFilter("all");
+      setStatusFilter("all");
+      setCustomOrder([]);
+    } else {
+      setCustomOrder([]);
+    }
+    setIsReorderMode(!isReorderMode);
+  }
+
+  function exitReorderMode() {
+    if (preReorderListState) {
+      setViewMode(preReorderListState.viewMode);
+      setPage(preReorderListState.page);
+      setPageSize(preReorderListState.pageSize);
+      setSearch(preReorderListState.search);
+      setCategoryFilter(preReorderListState.categoryFilter);
+      setStatusFilter(preReorderListState.statusFilter);
+    }
+    setPreReorderListState(null);
+    setIsReorderMode(false);
+    setDraggedIndex(null);
+    setCustomOrder([]);
+  }
+
+  function cancelReorderMode() {
+    exitReorderMode();
+  }
+
+  function handleDragStart(index: number) {
+    setDraggedIndex(index);
+  }
+
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newOrder = [...customOrder];
+    const draggedId = newOrder[draggedIndex];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(index, 0, draggedId);
+
+    setCustomOrder(newOrder);
+    setDraggedIndex(index);
+  }
+
+  function handleDragEnd() {
+    setDraggedIndex(null);
+  }
+
+  function saveOrder() {
+    if (customOrder.length === 0 || reorderProducts.isPending) return;
+    reorderProducts.mutate(
+      customOrder.map((id, index) => ({ id, sortOrder: index })),
+      {
+        onSuccess: () => {
+          exitReorderMode();
+        },
+      },
+    );
   }
 
   // --- Table Columns ---
@@ -478,13 +604,41 @@ export default function ProductsPage() {
         title="Products"
         description="Manage your product catalog"
         action={
-          <Button
-            className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-            onClick={openAddModal}
-          >
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Button>
+          <div className="flex items-center gap-2">
+            {isReorderMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={cancelReorderMode}
+                  disabled={reorderProducts.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                  onClick={saveOrder}
+                  disabled={reorderProducts.isPending || customOrder.length === 0}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {reorderProducts.isPending ? "Saving..." : "Save Order"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={toggleReorderMode}>
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  Reorder
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                  onClick={openAddModal}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Product
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
 
@@ -511,83 +665,161 @@ export default function ProductsPage() {
         />
       </div>
 
-      {/* Filter Row */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="glass-subtle rounded-xl p-4"
-      >
-        <div className="flex flex-col sm:flex-row gap-3">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search products..."
-            className="flex-1"
-          />
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {PRODUCT_CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {PRODUCT_CATEGORY_LABELS[cat]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+      {!isReorderMode && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="glass-subtle rounded-xl p-4"
+        >
+          <div className="flex flex-col sm:flex-row gap-3">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search products..."
+              className="flex-1"
+            />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {PRODUCT_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {PRODUCT_CATEGORY_LABELS[cat]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 glass-subtle rounded-lg p-1">
-            <Button
-              variant={viewMode === "table" ? "default" : "ghost"}
-              size="icon-sm"
-              onClick={() => setViewMode("table")}
-              className={cn(
-                viewMode === "table" &&
-                  "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-              )}
-            >
-              <TableIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "card" ? "default" : "ghost"}
-              size="icon-sm"
-              onClick={() => setViewMode("card")}
-              className={cn(
-                viewMode === "card" &&
-                  "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-              )}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1 glass-subtle rounded-lg p-1">
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="icon-sm"
+                onClick={() => setViewMode("table")}
+                className={cn(
+                  viewMode === "table" &&
+                    "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                )}
+              >
+                <TableIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "card" ? "default" : "ghost"}
+                size="icon-sm"
+                onClick={() => setViewMode("card")}
+                className={cn(
+                  viewMode === "card" &&
+                    "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+        </motion.div>
+      )}
+
+      {isReorderMode && (
+        <div className="space-y-3">
+          <AnimatePresence mode="popLayout">
+            {filteredProducts.length === 0 ? (
+              <motion.div
+                key="empty-reorder"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass rounded-xl p-12 text-center"
+              >
+                <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground text-lg font-medium">
+                  No products found
+                </p>
+              </motion.div>
+            ) : (
+              filteredProducts.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, delay: index * 0.03 }}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className="cursor-move"
+                >
+                  <div
+                    className={cn(
+                      "glass rounded-xl overflow-hidden border-2 border-dashed border-primary/50 transition-colors",
+                      draggedIndex === index && "opacity-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="flex items-center justify-center shrink-0">
+                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <span className="w-8 text-sm font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <PhotoAvatar
+                        src={product.photoUrl}
+                        alt={product.name}
+                        icon={Package}
+                        className="h-12 w-12 rounded-lg"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-sm truncate">
+                            {product.name}
+                          </h3>
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {product.productCode}
+                          </Badge>
+                          <StatusBadge
+                            status={String(product.isActive)}
+                            colorMap={productStatusMap}
+                          />
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <span>{product.shortName}</span>
+                          <span>{product.category}</span>
+                          <span>{formatINR(product.sellingPricePerUnit)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </div>
-      </motion.div>
+      )}
 
       {/* Product List - Table View */}
-      {viewMode === "table" && (
+      {!isReorderMode && viewMode === "table" && (
         <DataTable
           columns={tableColumns as unknown as ColumnDef<Record<string, unknown>>[]}
           data={filteredProducts as unknown as Record<string, unknown>[]}
           pagination={
             productsData
               ? {
-                  page: productsData.page,
-                  pageSize: productsData.pageSize,
-                  total: productsData.total,
+                  page: productsData.page ?? page,
+                  pageSize: productsData.pageSize ?? pageSize,
+                  total: productsData.total ?? products.length,
                   onPageChange: setPage,
                   onPageSizeChange: setPageSize,
                 }
@@ -597,7 +829,7 @@ export default function ProductsPage() {
       )}
 
       {/* Product List - Card View */}
-      {viewMode === "card" && (
+      {!isReorderMode && viewMode === "card" && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           <AnimatePresence mode="popLayout">
             {filteredProducts.length === 0 ? (
@@ -653,10 +885,10 @@ export default function ProductsPage() {
 
                         <div className="min-w-0 flex-1">
                           <div className="mb-1.5 flex items-start justify-between gap-2">
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {product.productCode}
-                            </Badge>
-                            <div className="flex shrink-0 items-center gap-1">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {product.productCode}
+                        </Badge>
+                        <div className="flex shrink-0 items-center gap-1">
                               <StatusBadge
                                 status={String(product.isActive)}
                                 colorMap={productStatusMap}

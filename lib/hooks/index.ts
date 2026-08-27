@@ -22,6 +22,7 @@ export {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useReorderProducts,
   productKeys,
 } from './use-products';
 
