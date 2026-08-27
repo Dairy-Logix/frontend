@@ -24,6 +24,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -226,6 +227,7 @@ export default function SettingsPage() {
   const [activeStoreTabByTemplate, setActiveStoreTabByTemplate] = useState<Record<string, string>>({});
   // collapse/expand per template id
   const [expandedTemplateIds, setExpandedTemplateIds] = useState<Set<string>>(new Set());
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
   // --- Admin notification preferences state ---
   const [adminNotif, setAdminNotif] = useState<AdminNotifState>(() => seedAdminNotif());
@@ -477,13 +479,19 @@ export default function SettingsPage() {
   }
 
   function deleteTemplate(id: string) {
-    if (!window.confirm("Delete this print template? This cannot be undone.")) return;
+    setTemplateToDelete(id);
+  }
+
+  function confirmDeleteTemplate() {
+    if (!templateToDelete) return;
+    const id = templateToDelete;
     setPrintTemplates((prev) => prev.filter((t) => t.id !== id));
     setExpandedTemplateIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+    setTemplateToDelete(null);
   }
 
   function toggleTemplateExpanded(id: string) {
@@ -1553,6 +1561,18 @@ export default function SettingsPage() {
           </motion.div>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={templateToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setTemplateToDelete(null);
+        }}
+        title="Delete print template?"
+        description={`"${printTemplates.find((t) => t.id === templateToDelete)?.name ?? "This template"}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteTemplate}
+      />
     </div>
   );
 }

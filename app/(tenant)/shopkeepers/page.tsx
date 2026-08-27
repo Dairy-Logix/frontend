@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +16,7 @@ import {
   GripVertical,
   Save,
   Wallet,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -66,22 +67,71 @@ function formatINR(value: number): string {
   return `INR ${value.toLocaleString("en-IN")}`;
 }
 
+// Read a listing-state param from the URL (used as useState initializer so the
+// agency tab / page / filters survive the round-trip to a store detail page).
+function getUrlParam(key: string): string {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get(key) ?? "";
+}
+
 // --- Main Page ---
 
 export default function ShopkeepersPage() {
   const tPage = useTranslations("pages.stores");
   const router = useRouter();
 
-  // Filter state
-  const [search, setSearch] = useState("");
-  const [activeAgencyTab, setActiveAgencyTab] = useState("");
-  const [agencyTypeFilter, setAgencyTypeFilter] = useState("all");
-  const [areaFilter, setAreaFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // Filter state — initialized straight from the URL so Back from a detail
+  // page lands on the same agency tab / page / filters instead of resetting.
+  const [search, setSearch] = useState(() => getUrlParam("q"));
+  const [activeAgencyTab, setActiveAgencyTab] = useState(() => getUrlParam("agency"));
+  const [agencyTypeFilter, setAgencyTypeFilter] = useState(() => getUrlParam("type") || "all");
+  const [areaFilter, setAreaFilter] = useState(() => getUrlParam("area") || "all");
+  const [statusFilter, setStatusFilter] = useState(() => getUrlParam("status") || "all");
 
   // Pagination state
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(getUrlParam("page")) || 1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Store that was just edited on the detail page — highlighted + scrolled into view
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState<string | null>(null);
+  const scrolledToUpdatedRef = useRef(false);
+
+  useEffect(() => {
+    // Pick up the store edited on the detail page (set there on successful save)
+    try {
+      const raw = sessionStorage.getItem("recently-updated-store");
+      if (raw) {
+        sessionStorage.removeItem("recently-updated-store");
+        const { id, ts } = JSON.parse(raw) as { id?: string; ts?: number };
+        if (id && ts && Date.now() - ts < 5 * 60 * 1000) {
+          setRecentlyUpdatedId(id);
+        }
+      }
+    } catch {
+      // ignore malformed storage
+    }
+  }, []);
+
+  // Mirror listing state into the URL (replace, no navigation) so it survives
+  // the round-trip to a store detail page.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeAgencyTab) params.set("agency", activeAgencyTab);
+    if (page > 1) params.set("page", String(page));
+    if (search) params.set("q", search);
+    if (agencyTypeFilter !== "all") params.set("type", agencyTypeFilter);
+    if (areaFilter !== "all") params.set("area", areaFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [activeAgencyTab, page, search, agencyTypeFilter, areaFilter, statusFilter]);
+
+  // Fade the "Just updated" highlight out after a few seconds
+  useEffect(() => {
+    if (!recentlyUpdatedId) return;
+    const timer = setTimeout(() => setRecentlyUpdatedId(null), 8000);
+    return () => clearTimeout(timer);
+  }, [recentlyUpdatedId]);
 
   // Fetch agencies from API
   const { data: agenciesData } = useAgencies({ pageSize: 100 });
@@ -630,7 +680,9 @@ export default function ShopkeepersPage() {
               </p>
             </motion.div>
           ) : (
-            filteredShopkeepers.map((shop, index) => (
+            filteredShopkeepers.map((shop, index) => {
+              const isRecentlyUpdated = shop.id === recentlyUpdatedId;
+              return (
               <motion.div
                 key={shop.id ?? `shop-${index}`}
                 layout
@@ -645,11 +697,19 @@ export default function ShopkeepersPage() {
                 className={isReorderMode ? "cursor-move" : ""}
               >
                 <div
-                  className={`glass rounded-xl overflow-hidden transition-colors ${
+                  ref={(el) => {
+                    if (el && isRecentlyUpdated && !scrolledToUpdatedRef.current) {
+                      scrolledToUpdatedRef.current = true;
+                      setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+                    }
+                  }}
+                  className={`glass rounded-xl overflow-hidden transition-all duration-700 ${
                     isReorderMode
                       ? "cursor-move border-2 border-dashed border-primary/50"
                       : "cursor-pointer hover:bg-white/5"
-                  } ${draggedIndex === index ? "opacity-50" : ""}`}
+                  } ${draggedIndex === index ? "opacity-50" : ""} ${
+                    isRecentlyUpdated ? "ring-2 ring-primary/60 bg-primary/5" : ""
+                  }`}
                   onClick={() => !isReorderMode && router.push(`/shopkeepers/${shop.id}`)}
                 >
                   <div className="flex items-center gap-4 p-4">
@@ -680,6 +740,16 @@ export default function ShopkeepersPage() {
                           status={shop.isActive ? "active" : "inactive"}
                           colorMap={shopStatusMap}
                         />
+                        {isRecentlyUpdated && (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            Just updated
+                          </motion.span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         <span className="inline-flex items-center gap-1">
@@ -714,7 +784,8 @@ export default function ShopkeepersPage() {
                   </div>
                 </div>
               </motion.div>
-            ))
+              );
+            })
           )}
         </AnimatePresence>
       </div>

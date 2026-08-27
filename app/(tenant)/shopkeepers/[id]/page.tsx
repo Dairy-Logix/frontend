@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Store,
   UserCircle,
@@ -84,6 +85,16 @@ export default function ShopkeeperDetailsPage() {
   // Edit modal state
   const [editOpen, setEditOpen] = useState(false);
 
+  // Go back to the stores listing, preserving its agency tab / page / filters
+  // (the listing mirrors that state into its URL, so history.back restores it).
+  function goBackToStores() {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/shopkeepers");
+    }
+  }
+
   // Edit form fields
   const [formAmAgencyId, setFormAmAgencyId] = useState("");
   const [formPmAgencyId, setFormPmAgencyId] = useState("");
@@ -162,7 +173,7 @@ export default function ShopkeeperDetailsPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/shopkeepers")}>
+          <Button variant="ghost" size="sm" onClick={goBackToStores}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
@@ -185,7 +196,7 @@ export default function ShopkeeperDetailsPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/shopkeepers")}>
+          <Button variant="ghost" size="sm" onClick={goBackToStores}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
@@ -228,11 +239,11 @@ export default function ShopkeeperDetailsPage() {
     if (!formShopName.trim() || !formOwnerName.trim() || !formPhone.trim()) return;
     // Email is the store's mobile-app login — required.
     if (!formEmail.trim()) {
-      alert("Email is required — the store uses it to log in to the mobile app");
+      toast.error("Email is required — the store uses it to log in to the mobile app");
       return;
     }
     if (!formAmAgencyId && !formPmAgencyId) {
-      alert("Please select at least one agency (AM or PM)");
+      toast.error("Please select at least one agency (AM or PM)");
       return;
     }
 
@@ -269,6 +280,15 @@ export default function ShopkeeperDetailsPage() {
       {
         onSuccess: () => {
           setEditOpen(false);
+          // Let the stores listing highlight + scroll to this store on Back
+          try {
+            sessionStorage.setItem(
+              "recently-updated-store",
+              JSON.stringify({ id: shopId, ts: Date.now() })
+            );
+          } catch {
+            // storage unavailable — highlight is a nice-to-have only
+          }
           if (passwordBeingSet) {
             setCredentialsPassword(passwordBeingSet);
             setShowCredPassword(false);
@@ -286,7 +306,7 @@ export default function ShopkeeperDetailsPage() {
     <div className="space-y-6">
       {/* Back Link */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/shopkeepers")}>
+        <Button variant="ghost" size="sm" onClick={goBackToStores}>
           <ArrowLeft className="h-4 w-4" />
           Back to Stores
         </Button>
