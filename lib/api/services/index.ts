@@ -20,5 +20,8 @@ export type {
   SalesReportData,
   CollectionReportData,
   FinancialReportData,
+  CustomerReportData,
+  InventoryReportData,
+  PurchasesReportData,
   ExportFormat,
 } from './report.service';

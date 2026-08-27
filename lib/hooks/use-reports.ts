@@ -8,6 +8,9 @@ export const reportKeys = {
   sales: (filters: ReportFilter) => [...reportKeys.all, 'sales', filters] as const,
   collection: (filters: ReportFilter) => [...reportKeys.all, 'collection', filters] as const,
   financial: (filters: ReportFilter) => [...reportKeys.all, 'financial', filters] as const,
+  customers: (filters: ReportFilter) => [...reportKeys.all, 'customers', filters] as const,
+  inventory: () => [...reportKeys.all, 'inventory'] as const,
+  purchases: (filters: ReportFilter) => [...reportKeys.all, 'purchases', filters] as const,
 };
 
 /**
@@ -56,6 +59,59 @@ export function useFinancialReport(filters: ReportFilter) {
       const response = await reportService.getFinancialReport(filters);
       if (!response.success) {
         throw new Error(response.message || 'Failed to generate financial report');
+      }
+      return response.data;
+    },
+    enabled: !!filters.dateFrom && !!filters.dateTo,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch customer report (top stores by revenue)
+ */
+export function useCustomerReport(filters: ReportFilter) {
+  return useQuery({
+    queryKey: reportKeys.customers(filters),
+    queryFn: async () => {
+      const response = await reportService.getCustomerReport(filters);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to generate customer report');
+      }
+      return response.data;
+    },
+    enabled: !!filters.dateFrom && !!filters.dateTo,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch inventory report (current stock snapshot — not date-filtered)
+ */
+export function useInventoryReport() {
+  return useQuery({
+    queryKey: reportKeys.inventory(),
+    queryFn: async () => {
+      const response = await reportService.getInventoryReport();
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to generate inventory report');
+      }
+      return response.data;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch purchases report
+ */
+export function usePurchasesReport(filters: ReportFilter) {
+  return useQuery({
+    queryKey: reportKeys.purchases(filters),
+    queryFn: async () => {
+      const response = await reportService.getPurchasesReport(filters);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to generate purchases report');
       }
       return response.data;
     },

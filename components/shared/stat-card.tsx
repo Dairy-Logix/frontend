@@ -36,7 +36,7 @@ const TONE_CLASSES: Record<
     ring: "from-primary/30 to-primary/10",
     iconBg: "bg-gradient-primary text-primary-foreground",
     text: "text-gradient-primary",
-    sparkStroke: "hsl(var(--primary))",
+    sparkStroke: "var(--primary)",
   },
   cyan: {
     ring: "from-cyan-500/30 to-blue-500/10",
