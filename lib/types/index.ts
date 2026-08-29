@@ -1418,6 +1418,8 @@ export interface QueryExpensesParams extends PaginationParams {
   agencyId?: string;
   startDate?: string;
   endDate?: string;
+  /** Filter by recording user (Expense.createdById is always a User id) */
+  createdById?: string;
 }
 
 export interface ExpenseSummary {

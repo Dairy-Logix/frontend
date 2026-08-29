@@ -47,6 +47,7 @@ import {
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { todayIST } from "@/lib/utils";
 import {
   useExpenses,
   useExpenseSummary,
@@ -139,8 +140,10 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [agencyFilter, setAgencyFilter] = useState<string>("all");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [spentByFilter, setSpentByFilter] = useState<string>("all");
+  // Default to today's expenses; clear either date to widen the range
+  const [startDate, setStartDate] = useState<string>(todayIST());
+  const [endDate, setEndDate] = useState<string>(todayIST());
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -151,6 +154,8 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const currentUserId = useAuthStore((s) => s.user)?.id;
 
   // Data
   const {
@@ -166,6 +171,12 @@ export default function ExpensesPage() {
     agencyId: agencyFilter !== "all" ? agencyFilter : undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
+    createdById:
+      spentByFilter === "all"
+        ? undefined
+        : spentByFilter === "me"
+          ? currentUserId
+          : spentByFilter,
   });
 
   const { data: summary } = useExpenseSummary({
@@ -177,7 +188,6 @@ export default function ExpensesPage() {
   // "You" for the signed-in user, employee name for field-app entries.
   const { data: employeesData } = useEmployees({ pageSize: 200 });
   const employeesList = employeesData?.data || [];
-  const currentUserId = useAuthStore((s) => s.user)?.id;
 
   function getRecorderName(createdById?: string, createdByName?: string): string {
     if (createdById && currentUserId && createdById === currentUserId) return "You";
@@ -377,7 +387,7 @@ export default function ExpensesPage() {
             Filters
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -409,6 +419,22 @@ export default function ExpensesPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={spentByFilter} onValueChange={setSpentByFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Spent by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Spent by anyone</SelectItem>
+              <SelectItem value="me">You</SelectItem>
+              {employeesList
+                .filter((e) => e.userId && e.userId !== currentUserId)
+                .map((e) => (
+                  <SelectItem key={e.id} value={e.userId as string}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
           <Input
             type="date"
             value={startDate}
@@ -434,9 +460,11 @@ export default function ExpensesPage() {
         {expenses.length === 0 ? (
           <div className="p-12 text-center">
             <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-lg font-medium">No expenses yet</p>
+            <p className="text-lg font-medium">No expenses found</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Hit “Add Expense” to record your first one.
+              {startDate || endDate || spentByFilter !== "all" || categoryFilter !== "all"
+                ? "Nothing matches the current filters — clear the dates or filters to see older expenses."
+                : "Hit “Add Expense” to record your first one."}
             </p>
           </div>
         ) : (
