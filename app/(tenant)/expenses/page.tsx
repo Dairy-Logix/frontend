@@ -397,11 +397,12 @@ export default function ExpensesPage() {
             Filters
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-3">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search description, vendor…"
+            className="md:col-span-3 xl:col-span-2"
           />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-full">
@@ -434,7 +435,7 @@ export default function ExpensesPage() {
               <SelectValue placeholder="Spent by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Spent by anyone</SelectItem>
+              <SelectItem value="all">Anyone</SelectItem>
               <SelectItem value="me">You</SelectItem>
               {employeesList
                 .filter((e) => e.userId && e.userId !== currentUserId)
