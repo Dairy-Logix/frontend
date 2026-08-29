@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { todayIST, dateToIST } from "@/lib/utils";
+import { todayIST, dateToIST, getLogoUrl } from "@/lib/utils";
+import { useTenantStore } from "@/lib/stores/tenant-store";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { ChartCard } from "@/components/shared/chart-card";
@@ -129,6 +131,135 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   wallet: "Wallet",
   other: "Other",
 };
+
+// --- Print sheet (branded A4 report rendered only by the print engine) ---
+
+function formatFullDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function PrintStats({ items }: { items: { label: string; value: string }[] }) {
+  return (
+    <div className="pr-stats">
+      {items.map((s) => (
+        <div key={s.label} className="pr-stat">
+          <div className="pr-stat-label">{s.label}</div>
+          <div className="pr-stat-value">{s.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrintTable({
+  title,
+  headers,
+  rows,
+  align,
+}: {
+  title: string;
+  headers: string[];
+  rows: (string | number)[][];
+  align?: ("l" | "r")[];
+}) {
+  const cls = (i: number) =>
+    (align ? align[i] : i === 0 ? "l" : "r") === "r" ? "num" : undefined;
+  return (
+    <div className="pr-section">
+      <div className="pr-section-title">{title}</div>
+      <table className="pr-table">
+        <thead>
+          <tr>
+            {headers.map((h, i) => (
+              <th key={h} className={cls(i)}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => (
+                <td key={ci} className={cls(ci)}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Portals a branded print layout to <body>: invisible on screen, and the only
+ * thing the print engine renders (globals.css hides all other body children
+ * in @media print). Each tab mounts its own sheet with its cached data, so
+ * Print/PDF captures exactly the report being viewed.
+ */
+function ReportPrintSheet({
+  title,
+  filters,
+  children,
+}: {
+  title: string;
+  filters: ReportFilter;
+  children: React.ReactNode;
+}) {
+  const tenant = useTenantStore((s) => s.tenant);
+  // SSR-safe mount check: false during server render, true on the client
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  if (!ready) return null;
+
+  const logo = getLogoUrl(tenant?.logo);
+  return createPortal(
+    <div className="print-sheet pr-root">
+      <div className="pr-header">
+        <div className="pr-brand">
+          {logo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="" className="pr-logo" />
+          )}
+          <div>
+            <div className="pr-company">{tenant?.name ?? ""}</div>
+            <div className="pr-report-title">{title}</div>
+          </div>
+        </div>
+        <div className="pr-meta">
+          <div>
+            <b>Period:</b> {formatFullDate(filters.dateFrom)} –{" "}
+            {formatFullDate(filters.dateTo)}
+          </div>
+          <div>
+            <b>Generated:</b>{" "}
+            {new Date().toLocaleString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        </div>
+      </div>
+      {children}
+      <div className="pr-footer">
+        {tenant?.name ?? ""} · {title} · Generated with BeatMitra
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 // --- Shared states ---
 
@@ -464,6 +595,62 @@ function SalesTab({ filters }: { filters: ReportFilter }) {
           ])}
         />
       )}
+
+      <ReportPrintSheet title="Sales Report" filters={filters}>
+        <PrintStats
+          items={[
+            { label: "Total Revenue", value: formatINR(data.totalSales) },
+            {
+              label: "Fulfilled Orders",
+              value: `${data.totalOrders} / ${allOrderCount}`,
+            },
+            { label: "Avg Order Value", value: formatINR(data.averageOrderValue) },
+          ]}
+        />
+        {pipeline.length > 0 && (
+          <PrintTable
+            title="Order Pipeline"
+            headers={["Status", "Orders", "Value"]}
+            rows={pipeline.map((p) => [p.label, p.count, formatINR(p.value)])}
+          />
+        )}
+        {data.dailyBreakdown.length > 0 && (
+          <PrintTable
+            title="Daily Sales"
+            headers={["Date", "Orders", "Revenue"]}
+            rows={data.dailyBreakdown.map((d) => [
+              formatFullDate(d.date),
+              d.orders,
+              formatINR(d.revenue),
+            ])}
+          />
+        )}
+        {data.topProducts.length > 0 && (
+          <PrintTable
+            title="Top Products"
+            headers={["Product", "Quantity", "Revenue"]}
+            rows={data.topProducts.map((p) => [
+              p.productName,
+              p.quantity,
+              formatINR(p.revenue),
+            ])}
+          />
+        )}
+        {data.topShops.length > 0 && (
+          <PrintTable
+            title="Top Stores by Revenue"
+            headers={["Store", "Orders", "Revenue", "Share"]}
+            rows={data.topShops.map((s) => [
+              s.shopName,
+              s.orderCount,
+              formatINR(s.revenue),
+              data.totalSales > 0
+                ? `${((s.revenue / data.totalSales) * 100).toFixed(1)}%`
+                : "—",
+            ])}
+          />
+        )}
+      </ReportPrintSheet>
     </div>
   );
 }
@@ -650,6 +837,61 @@ function CollectionsTab({ filters }: { filters: ReportFilter }) {
           />
         )}
       </div>
+
+      <ReportPrintSheet title="Collections Report" filters={filters}>
+        <PrintStats
+          items={[
+            { label: "Total Collected", value: formatINR(data.totalCollected) },
+            { label: "Outstanding", value: formatINR(data.totalOutstanding) },
+            { label: "Collection Rate", value: `${data.collectionRate.toFixed(1)}%` },
+            { label: "Payments", value: String(data.totalPayments ?? 0) },
+          ]}
+        />
+        {data.dailyBreakdown.length > 0 && (
+          <PrintTable
+            title="Daily Collections"
+            headers={["Date", "Payments", "Collected"]}
+            rows={data.dailyBreakdown.map((d) => [
+              formatFullDate(d.date),
+              d.count ?? 0,
+              formatINR(d.collected),
+            ])}
+          />
+        )}
+        {(data.paymentTypeBreakdown ?? []).length > 0 && (
+          <PrintTable
+            title="Collections by Payment Mode"
+            headers={["Payment Mode", "Payments", "Collected"]}
+            rows={(data.paymentTypeBreakdown ?? []).map((p) => [
+              PAYMENT_TYPE_LABELS[p.paymentType] ?? p.paymentType,
+              p.count,
+              formatINR(p.collected),
+            ])}
+          />
+        )}
+        {(data.employeeBreakdown ?? []).length > 0 && (
+          <PrintTable
+            title="Collections by Employee"
+            headers={["Employee", "Payments", "Collected"]}
+            rows={(data.employeeBreakdown ?? []).map((e) => [
+              e.employeeName,
+              e.paymentCount,
+              formatINR(e.collected),
+            ])}
+          />
+        )}
+        {(data.shopkeeperBreakdown ?? []).length > 0 && (
+          <PrintTable
+            title="Top Paying Stores"
+            headers={["Store", "Payments", "Paid"]}
+            rows={(data.shopkeeperBreakdown ?? []).map((s) => [
+              s.shopkeeperName,
+              s.paymentCount,
+              formatINR(s.collected),
+            ])}
+          />
+        )}
+      </ReportPrintSheet>
     </div>
   );
 }
@@ -746,6 +988,42 @@ function FinancialTab({ filters }: { filters: ReportFilter }) {
           ])}
         />
       )}
+
+      <ReportPrintSheet title="Financial Report" filters={filters}>
+        <PrintStats
+          items={[
+            { label: "Total Revenue", value: formatINR(data.totalRevenue) },
+            { label: "Purchase Expenses", value: formatINR(data.totalExpenses) },
+            { label: "Net Profit", value: formatINR(data.netProfit) },
+            { label: "Profit Margin", value: `${data.profitMargin.toFixed(1)}%` },
+          ]}
+        />
+        {data.monthlyBreakdown.length > 0 && (
+          <PrintTable
+            title="Monthly Profit & Loss"
+            headers={["Month", "Revenue", "Expenses", "Net Profit"]}
+            rows={data.monthlyBreakdown.map((m) => [
+              formatMonthLabel(m.month),
+              formatINR(m.revenue),
+              formatINR(m.expenses),
+              formatINR(m.profit),
+            ])}
+          />
+        )}
+        {data.revenueByProduct.length > 0 && (
+          <PrintTable
+            title="Revenue by Product"
+            headers={["Product", "Revenue", "Share"]}
+            rows={data.revenueByProduct.map((p) => [
+              p.productName,
+              formatINR(p.revenue),
+              data.totalRevenue > 0
+                ? `${((p.revenue / data.totalRevenue) * 100).toFixed(1)}%`
+                : "—",
+            ])}
+          />
+        )}
+      </ReportPrintSheet>
     </div>
   );
 }
@@ -838,6 +1116,33 @@ function CustomersTab({ filters }: { filters: ReportFilter }) {
           formatINR(c.averageOrderValue),
         ])}
       />
+
+      <ReportPrintSheet title="Store Performance Report" filters={filters}>
+        <PrintStats
+          items={[
+            { label: "Active Stores", value: String(data.activeCustomers) },
+            { label: "Revenue", value: formatINR(data.totalRevenue) },
+            {
+              label: "Avg Revenue / Store",
+              value: formatINR(
+                data.activeCustomers > 0
+                  ? data.totalRevenue / data.activeCustomers
+                  : 0
+              ),
+            },
+          ]}
+        />
+        <PrintTable
+          title="Store Performance"
+          headers={["Store", "Orders", "Revenue", "Avg Order"]}
+          rows={data.topCustomers.map((c) => [
+            c.shopkeeperName,
+            c.totalOrders,
+            formatINR(c.totalRevenue),
+            formatINR(c.averageOrderValue),
+          ])}
+        />
+      </ReportPrintSheet>
     </div>
   );
 }
@@ -940,6 +1245,32 @@ function PurchasesTab({ filters }: { filters: ReportFilter }) {
           />
         </>
       )}
+
+      <ReportPrintSheet title="Purchases Report" filters={filters}>
+        <PrintStats
+          items={[
+            { label: "Purchases", value: String(summary.count) },
+            { label: "Basic Amount", value: formatINR(summary.basicAmount) },
+            { label: "Tax", value: formatINR(summary.taxAmount) },
+            { label: "Subsidy", value: formatINR(summary.subsidy) },
+            { label: "Net Spend", value: formatINR(summary.netAmount) },
+          ]}
+        />
+        {data.byAgency.length > 0 && (
+          <PrintTable
+            title="Agency Purchase Details"
+            headers={["Agency", "Purchases", "Basic", "Tax", "Subsidy", "Net"]}
+            rows={data.byAgency.map((a) => [
+              a.agencyName || "Unassigned",
+              a.count,
+              formatINR(a.basicAmount),
+              formatINR(a.taxAmount),
+              formatINR(a.subsidy),
+              formatINR(a.netAmount),
+            ])}
+          />
+        )}
+      </ReportPrintSheet>
     </div>
   );
 }
@@ -1007,6 +1338,21 @@ export default function ReportsPage() {
   const applyPreset = (key: string, days?: number) => {
     setDateTo(todayIST());
     setDateFrom(key === "month" ? monthStartIST() : daysAgoIST(days ?? 30));
+  };
+
+  // The active tab portals a branded .print-sheet to <body>; print CSS in
+  // globals.css hides everything else. Inject @page here (like the orders
+  // page) so reports don't impose a global page rule on other print flows.
+  const handlePrint = () => {
+    const styleId = "reports-print-style";
+    let el = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement("style");
+      el.id = styleId;
+      document.head.appendChild(el);
+    }
+    el.textContent = "@page { size: A4 portrait; margin: 12mm; }";
+    window.print();
   };
 
   const handleExportCSV = () => {
@@ -1129,7 +1475,7 @@ export default function ReportsPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-muted/60 transition-colors"
             >
               <FileText className="h-4 w-4" />

@@ -723,3 +723,112 @@
   .print-sheet-table tfoot { display: table-footer-group !important; }
   .print-sheet-table tr    { page-break-inside: avoid !important; }
 }
+
+/* ==========================================================================
+   Reports page print sheet (.pr-*) — branded A4 report via browser print.
+   Shares the .print-sheet visibility mechanics defined above.
+   ========================================================================== */
+@media print {
+  .pr-root {
+    font-size: 9pt !important;
+    line-height: 1.35 !important;
+  }
+  .pr-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-bottom: 2px solid #000 !important;
+    padding: 0 0 8px 0 !important;
+    margin: 0 0 10px 0 !important;
+  }
+  .pr-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .pr-logo {
+    height: 40px !important;
+    width: 40px !important;
+    object-fit: contain !important;
+    border-radius: 6px !important;
+  }
+  .pr-company {
+    font-size: 15pt !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+  }
+  .pr-report-title {
+    font-size: 10pt !important;
+    color: #444 !important;
+    margin-top: 2px !important;
+  }
+  .pr-meta {
+    text-align: right !important;
+    font-size: 8pt !important;
+    line-height: 1.5 !important;
+    color: #222 !important;
+  }
+  .pr-stats {
+    display: flex !important;
+    gap: 8px !important;
+    margin: 0 0 4px 0 !important;
+  }
+  .pr-stat {
+    flex: 1 1 0 !important;
+    border: 1px solid #bbb !important;
+    border-radius: 4px !important;
+    padding: 6px 9px !important;
+  }
+  .pr-stat-label {
+    font-size: 7pt !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: #555 !important;
+  }
+  .pr-stat-value {
+    font-size: 12pt !important;
+    font-weight: 700 !important;
+    margin-top: 1px !important;
+  }
+  .pr-section {
+    margin-top: 12px !important;
+  }
+  .pr-section-title {
+    font-size: 9.5pt !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 4px !important;
+  }
+  .pr-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+  .pr-table th,
+  .pr-table td {
+    border: 1px solid #ccc !important;
+    padding: 3px 6px !important;
+    text-align: left !important;
+    color: #000 !important;
+  }
+  .pr-table thead th {
+    background: #f1f1f1 !important;
+    font-weight: 700 !important;
+  }
+  .pr-table .num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+  .pr-table thead { display: table-header-group !important; }
+  .pr-table tr { page-break-inside: avoid !important; }
+  .pr-section { page-break-inside: auto !important; }
+  .pr-footer {
+    margin-top: 16px !important;
+    padding-top: 4px !important;
+    border-top: 1px solid #ccc !important;
+    font-size: 7pt !important;
+    color: #666 !important;
+    text-align: center !important;
+  }
+}
