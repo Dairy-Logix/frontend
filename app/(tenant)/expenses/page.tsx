@@ -184,6 +184,13 @@ export default function ExpensesPage() {
     endDate: endDate || undefined,
   });
 
+  // Current calendar month — independent of every filter on the page
+  const monthStart = `${todayIST().slice(0, 7)}-01`;
+  const { data: monthSummary } = useExpenseSummary({
+    startDate: monthStart,
+    endDate: todayIST(),
+  });
+
   // Who recorded each expense — same convention as payment collections:
   // no author (recorded at the desk, incl. pre-audit rows) or the signed-in
   // user → "You"; employee name for field-app entries.
@@ -345,14 +352,14 @@ export default function ExpensesPage() {
           value={formatINR(stats.total)}
           icon={IndianRupee}
           tone="primary"
-          description={`${stats.count} expense${stats.count === 1 ? "" : "s"}`}
+          description={`${stats.count} expense${stats.count === 1 ? "" : "s"} in selected dates`}
         />
         <StatCard
           title="Filtered Total"
           value={formatINR(filteredTotal)}
           icon={TrendingDown}
           tone="amber"
-          description={`${pagination?.total ?? 0} matching`}
+          description={`${pagination?.total ?? 0} matching all filters`}
         />
         <StatCard
           title="Top Category"
@@ -367,11 +374,13 @@ export default function ExpensesPage() {
         />
         <StatCard
           title="This Month"
-          value={formatINR(
-            (summary?.byMonth || []).slice(-1)[0]?.totalAmount || 0,
-          )}
+          value={formatINR(monthSummary?.totalAmount || 0)}
           icon={Calendar}
           tone="emerald"
+          description={new Date().toLocaleDateString("en-IN", {
+            month: "long",
+            year: "numeric",
+          })}
         />
       </div>
 
