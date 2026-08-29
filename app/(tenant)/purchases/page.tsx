@@ -95,23 +95,37 @@ export default function PurchasesPage() {
     // keepPreviousData shows the old date's list while the new one loads —
     // never prefill from that placeholder.
     if (!dayPurchasesPage || isPlaceholderData) return;
-    if (loadedDateKey === purchaseDate) return;
+
+    const refId = (v: unknown): string =>
+      typeof v === "object" && v !== null ? (v as { _id: string })._id : (v as string);
+
+    if (loadedDateKey === purchaseDate) {
+      // Already initialized for this date. After a save the list refetches;
+      // only backfill auto-generated purchase numbers — never overwrite what
+      // the user typed (their values ARE the saved values).
+      setMatrix((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const p of dayPurchasesPage.data) {
+          const agencyId = refId(p.agencyId);
+          const cur = next[agencyId];
+          if (cur && !cur.purchaseNumber && p.purchaseNumber) {
+            next[agencyId] = { ...cur, purchaseNumber: p.purchaseNumber };
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      return;
+    }
 
     const next: Record<string, AgencyEntry> = {};
     for (const p of dayPurchasesPage.data) {
-      const agencyId =
-        typeof p.agencyId === "object" && p.agencyId !== null
-          ? (p.agencyId as { _id: string })._id
-          : (p.agencyId as string);
       const qty: Record<string, string> = {};
       for (const item of p.items) {
-        const productId =
-          typeof item.productId === "object" && item.productId !== null
-            ? (item.productId as { _id: string })._id
-            : (item.productId as string);
-        qty[productId] = String(item.quantity);
+        qty[refId(item.productId)] = String(item.quantity);
       }
-      next[agencyId] = {
+      next[refId(p.agencyId)] = {
         qty,
         tax: p.taxAmount ? String(p.taxAmount) : "",
         subsidy: p.subsidy ? String(p.subsidy) : "",
@@ -216,9 +230,8 @@ export default function PurchasesPage() {
     }
     try {
       await createBulk.mutateAsync({ purchases });
-      // Re-init the sheet from the refetched (upserted) data so saved values
-      // stay visible for review instead of clearing to a blank sheet.
-      setLoadedDateKey(null);
+      // Keep the sheet as typed — those values are exactly what was saved.
+      // The invalidated refetch only backfills generated purchase numbers.
     } catch {
       // hook already toasts
     }
