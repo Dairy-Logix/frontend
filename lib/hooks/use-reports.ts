@@ -9,7 +9,6 @@ export const reportKeys = {
   collection: (filters: ReportFilter) => [...reportKeys.all, 'collection', filters] as const,
   financial: (filters: ReportFilter) => [...reportKeys.all, 'financial', filters] as const,
   customers: (filters: ReportFilter) => [...reportKeys.all, 'customers', filters] as const,
-  inventory: () => [...reportKeys.all, 'inventory'] as const,
   purchases: (filters: ReportFilter) => [...reportKeys.all, 'purchases', filters] as const,
 };
 
@@ -82,23 +81,6 @@ export function useCustomerReport(filters: ReportFilter) {
     },
     enabled: !!filters.dateFrom && !!filters.dateTo,
     staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * Hook to fetch inventory report (current stock snapshot — not date-filtered)
- */
-export function useInventoryReport() {
-  return useQuery({
-    queryKey: reportKeys.inventory(),
-    queryFn: async () => {
-      const response = await reportService.getInventoryReport();
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to generate inventory report');
-      }
-      return response.data;
-    },
-    staleTime: 2 * 60 * 1000,
   });
 }
 

@@ -8,7 +8,6 @@ import { StatCard } from "@/components/shared/stat-card";
 import { ChartCard } from "@/components/shared/chart-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   BarChart3,
@@ -18,7 +17,6 @@ import {
   Download,
   Calendar,
   Users,
-  Package,
   ShoppingCart,
   Truck,
   Wallet,
@@ -26,7 +24,6 @@ import {
   Loader2,
   AlertCircle as AlertCircleIcon,
   Receipt,
-  Boxes,
   AlertTriangle,
 } from "lucide-react";
 import {
@@ -50,7 +47,6 @@ import {
   useCollectionReport,
   useFinancialReport,
   useCustomerReport,
-  useInventoryReport,
   usePurchasesReport,
   reportKeys,
 } from "@/lib/hooks";
@@ -60,7 +56,6 @@ import type {
   CollectionReportData,
   FinancialReportData,
   CustomerReportData,
-  InventoryReportData,
   PurchasesReportData,
 } from "@/lib/api/services";
 import { useTranslations } from "@/components/providers/intl-provider";
@@ -847,152 +842,6 @@ function CustomersTab({ filters }: { filters: ReportFilter }) {
   );
 }
 
-// --- Inventory Tab ---
-
-function InventoryTab() {
-  const { data, isLoading, error } = useInventoryReport();
-
-  if (isLoading) return <LoadingState label="Loading inventory report..." />;
-  if (error) return <ErrorState label="Failed to load inventory report." error={error} />;
-  if (!data || data.summary.totalProducts === 0)
-    return <EmptyState label="No products found for this business." />;
-
-  const { summary } = data;
-  // Seeded/new tenants often have no stock values yet — fall back to quantity,
-  // and drop the chart entirely when both metrics are all-zero.
-  const hasValue = data.categoryStats.some((c) => c.totalValue > 0);
-  const hasQuantity = data.categoryStats.some((c) => c.totalStockQuantity > 0);
-  const categoryMetric = hasValue
-    ? ("totalValue" as const)
-    : hasQuantity
-      ? ("totalStockQuantity" as const)
-      : null;
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Products"
-          value={summary.totalProducts.toLocaleString("en-IN")}
-          description="in catalogue"
-          icon={Package}
-          tone="primary"
-        />
-        <StatCard
-          title="Stock Value"
-          value={formatINRShort(summary.totalInventoryValue)}
-          description="at selling price"
-          icon={Boxes}
-          tone="emerald"
-        />
-        <StatCard
-          title="Low Stock"
-          value={summary.lowStockCount.toLocaleString("en-IN")}
-          description="at or below minimum level"
-          icon={AlertTriangle}
-          tone="amber"
-        />
-        <StatCard
-          title="Out of Stock"
-          value={summary.outOfStockCount.toLocaleString("en-IN")}
-          description="need restocking"
-          icon={Truck}
-          tone="cyan"
-        />
-      </div>
-
-      {categoryMetric && data.categoryStats.length > 0 && (
-        <ChartCard
-          title={hasValue ? "Stock Value by Category" : "Stock Quantity by Category"}
-          description="Current snapshot (not date-filtered)"
-        >
-          <ResponsiveContainer width="100%" height={Math.max(200, data.categoryStats.length * 40)}>
-            <BarChart
-              data={data.categoryStats}
-              layout="vertical"
-              margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-              <XAxis
-                type="number"
-                tick={axisTick}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => (hasValue ? formatAxisINR(Number(v)) : String(v))}
-              />
-              <YAxis
-                type="category"
-                dataKey="_id"
-                tick={axisTick}
-                tickLine={false}
-                axisLine={false}
-                width={120}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-                formatter={(value, _name, item) => [
-                  `${
-                    hasValue ? formatINR(Number(value)) : `${value} units`
-                  } · ${item?.payload?.totalProducts ?? 0} products`,
-                  hasValue ? "Stock value" : "Stock quantity",
-                ]}
-              />
-              <Bar dataKey={categoryMetric} fill={CHART.blue} radius={[0, 4, 4, 0]} maxBarSize={20} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      {data.lowStockProducts && data.lowStockProducts.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="glass rounded-xl p-6"
-        >
-          <h3 className="text-base font-semibold mb-4">Low Stock Alerts</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">Product</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground">In Stock</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground">Min Level</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.lowStockProducts.map((p) => (
-                  <tr
-                    key={p._id}
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="py-3 px-2 font-medium">{p.name}</td>
-                    <td className="py-3 px-2 text-right tabular-nums">
-                      {p.stockQuantity} {p.unit ?? ""}
-                    </td>
-                    <td className="py-3 px-2 text-right tabular-nums">{p.minStockLevel}</td>
-                    <td className="py-3 px-2 text-right">
-                      {p.stockQuantity === 0 ? (
-                        <Badge variant="destructive">Out of stock</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-[var(--chart-4)] text-foreground">
-                          Low
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
 // --- Purchases Tab ---
 
 function PurchasesTab({ filters }: { filters: ReportFilter }) {
@@ -1133,7 +982,7 @@ function downloadCSV(filename: string, headers: string[], rows: (string | number
 
 // --- Main Reports Page ---
 
-type TabKey = "sales" | "collections" | "financial" | "customers" | "inventory" | "purchases";
+type TabKey = "sales" | "collections" | "financial" | "customers" | "purchases";
 
 export default function ReportsPage() {
   const tPage = useTranslations("pages.reports");
@@ -1198,14 +1047,6 @@ export default function ReportsPage() {
           r.totalRevenue,
           Math.round(r.averageOrderValue),
         ])
-      );
-    } else if (activeTab === "inventory") {
-      const d = queryClient.getQueryData<InventoryReportData>(reportKeys.inventory());
-      if (!d) return toast.error("Inventory data is still loading — try again in a moment.");
-      downloadCSV(
-        `inventory-report_${todayIST()}.csv`,
-        ["Category", "Products", "Stock Quantity", "Stock Value"],
-        d.categoryStats.map((r) => [r._id, r.totalProducts, r.totalStockQuantity, r.totalValue])
       );
     } else {
       const d = queryClient.getQueryData<PurchasesReportData>(reportKeys.purchases(filters));
@@ -1324,10 +1165,6 @@ export default function ReportsPage() {
             <Users className="h-4 w-4" />
             Stores
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="gap-1.5">
-            <Package className="h-4 w-4" />
-            Inventory
-          </TabsTrigger>
           <TabsTrigger value="purchases" className="gap-1.5">
             <Truck className="h-4 w-4" />
             Purchases
@@ -1345,9 +1182,6 @@ export default function ReportsPage() {
         </TabsContent>
         <TabsContent value="customers" className="mt-6">
           <CustomersTab filters={filters} />
-        </TabsContent>
-        <TabsContent value="inventory" className="mt-6">
-          <InventoryTab />
         </TabsContent>
         <TabsContent value="purchases" className="mt-6">
           <PurchasesTab filters={filters} />

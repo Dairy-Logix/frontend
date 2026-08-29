@@ -38,29 +38,6 @@ export interface CustomerReportData {
   }[];
 }
 
-export interface InventoryReportData {
-  summary: {
-    totalProducts: number;
-    lowStockCount: number;
-    outOfStockCount: number;
-    overStockCount: number;
-    totalInventoryValue: number;
-  };
-  lowStockProducts: {
-    _id: string;
-    name: string;
-    stockQuantity: number;
-    minStockLevel: number;
-    unit?: string;
-  }[];
-  categoryStats: {
-    _id: string;
-    totalProducts: number;
-    totalStockQuantity: number;
-    totalValue: number;
-  }[];
-}
-
 export interface PurchasesReportData {
   summary: {
     count: number;
@@ -127,11 +104,6 @@ export const reportService = {
       { params: toApiParams(filters) }
     );
     return { success: true, data, message: 'Customer report fetched successfully' };
-  },
-
-  async getInventoryReport(): Promise<ApiResponse<InventoryReportData>> {
-    const { data } = await apiClient.get<InventoryReportData>('/reports/inventory');
-    return { success: true, data, message: 'Inventory report fetched successfully' };
   },
 
   async getPurchasesReport(filters: ReportFilter): Promise<ApiResponse<PurchasesReportData>> {
