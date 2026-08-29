@@ -33,6 +33,26 @@ export function isTodayIST(dateStr: string): boolean {
 }
 
 /**
+ * wa.me share link. With a phone the chat opens directly with that contact;
+ * without one WhatsApp falls back to its contact picker. Indian numbers:
+ * strips punctuation and any leading 0, prefixes country code 91 to bare
+ * 10-digit numbers, keeps already-prefixed ones.
+ */
+export function whatsappUrl(text: string, phone?: string | null): string {
+  const encoded = encodeURIComponent(text);
+  const digits = (phone ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  const number =
+    digits.length === 10
+      ? `91${digits}`
+      : digits.length === 12 && digits.startsWith("91")
+        ? digits
+        : "";
+  return number
+    ? `https://wa.me/${number}?text=${encoded}`
+    : `https://wa.me/?text=${encoded}`;
+}
+
+/**
  * Order shops by the tenant's saved per-agency list order (Shop.displayOrders
  * ranks, higher = earlier). Stable: shops without a rank for this agency keep
  * their incoming relative order, after the ranked ones — matching the

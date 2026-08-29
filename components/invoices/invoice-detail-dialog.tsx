@@ -33,6 +33,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
+import { useShopkeeper } from "@/lib/hooks/use-shopkeepers";
+import { whatsappUrl } from "@/lib/utils";
 import { printDocument } from "@/components/shared/print-sheet";
 import { InvoicePrintSheet } from "@/components/invoices/invoice-print-sheet";
 import type { InvoiceAdjustment, InvoiceAdjustmentItem } from "@/lib/types";
@@ -85,6 +87,9 @@ export function InvoiceDetailDialog({
 }: InvoiceDetailDialogProps) {
   const { data: invoice, isLoading, error } = useInvoice(invoiceId ?? "");
 
+  // Store record for the WhatsApp number (invoice payload has no phone)
+  const { data: shop } = useShopkeeper(invoice?.shopId ?? "");
+
   const recordPaymentMutation = useRecordPayment();
 
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -119,12 +124,12 @@ export function InvoiceDetailDialog({
   }
 
   function handleShareWhatsApp() {
-    if (invoice) {
-      const message = encodeURIComponent(
-        `Invoice ${invoice.invoiceNumber}\nStore: ${invoice.shopkeeperName}\nTotal: ${formatINR(invoice.totalAmount)}\nDue: ${formatINR(invoice.dueAmount)}`
-      );
-      window.open(`https://wa.me/?text=${message}`, "_blank");
+    if (!invoice) return;
+    const message = `Invoice ${invoice.invoiceNumber}\nStore: ${invoice.shopkeeperName}\nTotal: ${formatINR(invoice.totalAmount)}\nDue: ${formatINR(invoice.dueAmount)}`;
+    if (!shop?.phone) {
+      toast.info("No phone number on file for this store — pick a contact in WhatsApp.");
     }
+    window.open(whatsappUrl(message, shop?.phone), "_blank");
   }
 
   const canRecordPayment =

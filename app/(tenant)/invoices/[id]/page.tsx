@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
+import { useShopkeeper } from "@/lib/hooks/use-shopkeepers";
+import { whatsappUrl } from "@/lib/utils";
 import { Loader2 as LoaderIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -75,6 +77,9 @@ export default function InvoiceDetailPage() {
   // Fetch invoice from API
   const { data: invoice, isLoading: invoiceLoading, error: invoiceError } = useInvoice(invoiceId);
 
+  // Store record for the WhatsApp number (invoice payload has no phone)
+  const { data: shop } = useShopkeeper(invoice?.shopId ?? "");
+
   // Mutations
   const recordPaymentMutation = useRecordPayment();
 
@@ -110,12 +115,12 @@ export default function InvoiceDetailPage() {
   }
 
   function handleShareWhatsApp() {
-    if (invoice) {
-      const message = encodeURIComponent(
-        `Invoice ${invoice.invoiceNumber}\nStore: ${invoice.shopkeeperName}\nTotal: ${formatINR(invoice.totalAmount)}\nDue: ${formatINR(invoice.dueAmount)}`
-      );
-      window.open(`https://wa.me/?text=${message}`, "_blank");
+    if (!invoice) return;
+    const message = `Invoice ${invoice.invoiceNumber}\nStore: ${invoice.shopkeeperName}\nTotal: ${formatINR(invoice.totalAmount)}\nDue: ${formatINR(invoice.dueAmount)}`;
+    if (!shop?.phone) {
+      toast.info("No phone number on file for this store — pick a contact in WhatsApp.");
     }
+    window.open(whatsappUrl(message, shop?.phone), "_blank");
   }
 
   // --- Loading ---
