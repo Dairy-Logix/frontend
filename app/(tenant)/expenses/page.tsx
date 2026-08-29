@@ -185,12 +185,13 @@ export default function ExpensesPage() {
   });
 
   // Who recorded each expense — same convention as payment collections:
-  // "You" for the signed-in user, employee name for field-app entries.
+  // no author (recorded at the desk, incl. pre-audit rows) or the signed-in
+  // user → "You"; employee name for field-app entries.
   const { data: employeesData } = useEmployees({ pageSize: 200 });
   const employeesList = employeesData?.data || [];
 
   function getRecorderName(createdById?: string, createdByName?: string): string {
-    if (createdById && currentUserId && createdById === currentUserId) return "You";
+    if (!createdById || (currentUserId && createdById === currentUserId)) return "You";
     return (
       employeesList.find((e) => e.userId === createdById || e.id === createdById)
         ?.name ??
