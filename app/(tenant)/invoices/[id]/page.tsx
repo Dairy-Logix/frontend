@@ -19,18 +19,13 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/shared/status-badge";
-import {
-  PrintSheet,
-  PrintSection,
-  PrintTable,
-  printDocument,
-} from "@/components/shared/print-sheet";
+import { printDocument } from "@/components/shared/print-sheet";
+import { InvoicePrintSheet } from "@/components/invoices/invoice-print-sheet";
 import { FormModal } from "@/components/shared/form-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import type { Invoice, InvoiceStatus } from "@/lib/types";
 import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
 import { Loader2 as LoaderIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -113,10 +108,6 @@ export default function InvoiceDetailPage() {
   function handleDownloadPDF() {
     printDocument();
   }
-
-  const orderRef =
-    (invoice as (Invoice & { orderNumber?: string }) | undefined)?.orderNumber ||
-    invoice?.orderId;
 
   function handleShareWhatsApp() {
     if (invoice) {
@@ -686,72 +677,8 @@ export default function InvoiceDetailPage() {
         </div>
       </FormModal>
 
-      {/* Branded print/PDF layout — same header/footer as every other
-          printable document; internal notes are intentionally excluded. */}
-      <PrintSheet
-        title={`Invoice ${invoice.invoiceNumber}`}
-        meta={[
-          { label: "Invoice No", value: invoice.invoiceNumber },
-          { label: "Invoice Date", value: formatDate(invoice.issuedAt) },
-          ...(invoice.dueDate
-            ? [{ label: "Due Date", value: formatDate(invoice.dueDate) }]
-            : []),
-          {
-            label: "Status",
-            value: invoiceStatusColorMap[invoice.status]?.label ?? invoice.status,
-          },
-        ]}
-      >
-        <PrintSection title="Bill To">
-          <div>
-            <b>{invoice.shopkeeperName || "—"}</b>
-            {orderRef ? <div>Order ref: {orderRef}</div> : null}
-          </div>
-        </PrintSection>
-        {invoice.items.length > 0 && (
-          <PrintTable
-            title="Invoice Items"
-            headers={["#", "Product", "Qty", "Unit Price", "Amount"]}
-            align={["l", "l", "r", "r", "r"]}
-            rows={invoice.items.map((item, i) => {
-              const qtyPerUnit = item.quantityPerUnit ?? 1;
-              const piecePrice = item.unitPrice ?? 0;
-              const linePrice = item.pricePerUnit ?? piecePrice * qtyPerUnit;
-              return [
-                i + 1,
-                item.productName || "Unknown Product",
-                item.quantity,
-                formatINR(linePrice),
-                formatINR(item.totalPrice),
-              ];
-            })}
-          />
-        )}
-        {(invoice.adjustments ?? []).length > 0 && (
-          <PrintTable
-            title="Transfer Adjustments"
-            headers={["Transfer", "Type", "Counterparty", "Amount"]}
-            align={["l", "l", "l", "r"]}
-            rows={(invoice.adjustments ?? []).map((adj) => [
-              adj.transferNumber,
-              adj.type === "transfer_in" ? "Transfer In" : "Transfer Out",
-              adj.counterpartyShopkeeperName,
-              formatINR(adj.amount),
-            ])}
-          />
-        )}
-        <PrintTable
-          title="Payment Summary"
-          headers={["", "Amount"]}
-          align={["l", "r"]}
-          rows={[
-            ["Subtotal", formatINR(invoice.subtotal)],
-            ["Total Amount", formatINR(invoice.totalAmount)],
-            ["Paid", formatINR(invoice.paidAmount)],
-            ["Amount Due", formatINR(invoice.dueAmount)],
-          ]}
-        />
-      </PrintSheet>
+      {/* Branded print/PDF layout shared with the invoice preview dialog */}
+      <InvoicePrintSheet invoice={invoice} />
     </div>
   );
 }

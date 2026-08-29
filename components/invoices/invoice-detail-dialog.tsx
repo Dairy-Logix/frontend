@@ -33,6 +33,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
+import { printDocument } from "@/components/shared/print-sheet";
+import { InvoicePrintSheet } from "@/components/invoices/invoice-print-sheet";
 import type { InvoiceAdjustment, InvoiceAdjustmentItem } from "@/lib/types";
 
 // --- Invoice Status Color Map ---
@@ -113,7 +115,7 @@ export function InvoiceDetailDialog({
   }
 
   function handleDownloadPDF() {
-    toast.info("PDF download coming soon");
+    printDocument();
   }
 
   function handleShareWhatsApp() {
@@ -131,6 +133,7 @@ export function InvoiceDetailDialog({
 
   return (
     <>
+      {open && invoice && <InvoicePrintSheet invoice={invoice} />}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-4xl max-h-[88vh] overflow-y-auto">
           <DialogHeader>
