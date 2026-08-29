@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Save,
   Loader2,
   AlertCircle,
-  Receipt,
   Package,
   IndianRupee,
   Calendar,
@@ -14,7 +13,6 @@ import {
   PlusCircle,
   Sparkles,
   Building2,
-  ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,7 +29,7 @@ import {
   useCreatePurchasesBulk,
   usePurchases,
 } from "@/lib/hooks/use-purchases";
-import type { Agency, Product, CreatePurchaseInput, Purchase } from "@/lib/types";
+import type { Agency, Product, CreatePurchaseInput } from "@/lib/types";
 import { useTranslations } from "@/components/providers/intl-provider";
 
 function formatINR(n: number): string {
@@ -69,7 +67,14 @@ export default function PurchasesPage() {
     isLoading: productsLoading,
     error: productsError,
   } = useProducts({ pageSize: 1000 });
-  const { data: recentPurchasesPage } = usePurchases({ pageSize: 10 });
+  // The day's saved purchases — used to prefill the sheet so an already
+  // recorded day can be reviewed and corrected (backend upserts per
+  // agency + day, so re-saving updates instead of duplicating).
+  const { data: dayPurchasesPage, isPlaceholderData } = usePurchases({
+    pageSize: 100,
+    startDate: purchaseDate,
+    endDate: purchaseDate,
+  });
   const createBulk = useCreatePurchasesBulk();
 
   const agencies: Agency[] = useMemo(
@@ -82,6 +87,40 @@ export default function PurchasesPage() {
   );
 
   const [matrix, setMatrix] = useState<Record<string, AgencyEntry>>({});
+  // Which date the matrix was last initialized for; null forces a re-init
+  // from the next fetched data (set on date change and after save).
+  const [loadedDateKey, setLoadedDateKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // keepPreviousData shows the old date's list while the new one loads —
+    // never prefill from that placeholder.
+    if (!dayPurchasesPage || isPlaceholderData) return;
+    if (loadedDateKey === purchaseDate) return;
+
+    const next: Record<string, AgencyEntry> = {};
+    for (const p of dayPurchasesPage.data) {
+      const agencyId =
+        typeof p.agencyId === "object" && p.agencyId !== null
+          ? (p.agencyId as { _id: string })._id
+          : (p.agencyId as string);
+      const qty: Record<string, string> = {};
+      for (const item of p.items) {
+        const productId =
+          typeof item.productId === "object" && item.productId !== null
+            ? (item.productId as { _id: string })._id
+            : (item.productId as string);
+        qty[productId] = String(item.quantity);
+      }
+      next[agencyId] = {
+        qty,
+        tax: p.taxAmount ? String(p.taxAmount) : "",
+        subsidy: p.subsidy ? String(p.subsidy) : "",
+        purchaseNumber: p.purchaseNumber || "",
+      };
+    }
+    setMatrix(next);
+    setLoadedDateKey(purchaseDate);
+  }, [dayPurchasesPage, isPlaceholderData, purchaseDate, loadedDateKey]);
 
   function getEntry(agencyId: string): AgencyEntry {
     return matrix[agencyId] || emptyEntry;
@@ -177,7 +216,9 @@ export default function PurchasesPage() {
     }
     try {
       await createBulk.mutateAsync({ purchases });
-      setMatrix({});
+      // Re-init the sheet from the refetched (upserted) data so saved values
+      // stay visible for review instead of clearing to a blank sheet.
+      setLoadedDateKey(null);
     } catch {
       // hook already toasts
     }
@@ -520,99 +561,6 @@ export default function PurchasesPage() {
         )}
       </motion.div>
 
-      {/* Recent Purchases */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-        className="glass rounded-2xl overflow-hidden"
-      >
-        <div className="px-6 py-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-b border-border/40 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center text-primary-foreground">
-              <Receipt className="h-4 w-4" />
-            </div>
-            <h3 className="font-semibold">Recent Purchases</h3>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {(recentPurchasesPage?.data || []).length} entries
-          </span>
-        </div>
-        <div className="p-4">
-          {(recentPurchasesPage?.data || []).length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <ShoppingBag className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p>No purchases recorded yet</p>
-              <p className="text-xs mt-1">
-                Enter quantities above and hit Save to record your first purchase.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(recentPurchasesPage?.data || []).map((p: Purchase, idx: number) => {
-                const agency =
-                  typeof p.agencyId === "object" ? p.agencyId : null;
-                const net =
-                  (p.basicAmount || 0) + (p.taxAmount || 0) - (p.subsidy || 0);
-                return (
-                  <motion.div
-                    key={p._id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: idx * 0.03 }}
-                    className="group relative overflow-hidden rounded-xl border border-border/50 bg-background/40 hover:bg-background/70 hover:border-primary/40 transition-all p-4"
-                  >
-                    <div className="absolute inset-y-0 left-0 w-1 bg-gradient-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">
-                            {p.purchaseNumber}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(p.purchaseDate).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-1.5 text-sm">
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-medium truncate">
-                            {agency?.name || "—"}
-                          </span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="text-muted-foreground">
-                            {p.items.length} item{p.items.length === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                          <span>Basic {formatINR(p.basicAmount)}</span>
-                          <span className="text-amber-600">
-                            − {formatINR(p.subsidy)}
-                          </span>
-                          <span className="text-emerald-600">
-                            + {formatINR(p.taxAmount)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                          Net
-                        </div>
-                        <div className="text-lg font-bold text-gradient-primary tabular-nums">
-                          {formatINR(net)}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </motion.div>
     </div>
   );
 }
