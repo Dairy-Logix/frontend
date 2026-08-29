@@ -69,7 +69,7 @@ export function AnalyticsSection() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <ChartCard
-              title="Daily Orders Trend"
+              title="Orders Trend"
               description="Order volume over the selected period"
             >
               {data.dailyOrders.some((d) => d.orders > 0) ? (
