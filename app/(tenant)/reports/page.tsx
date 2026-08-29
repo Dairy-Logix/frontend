@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { todayIST, dateToIST, getLogoUrl } from "@/lib/utils";
-import { useTenantStore } from "@/lib/stores/tenant-store";
+import { todayIST, dateToIST } from "@/lib/utils";
+import {
+  PrintSheet,
+  PrintStats,
+  PrintTable,
+  printDocument,
+} from "@/components/shared/print-sheet";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { ChartCard } from "@/components/shared/chart-card";
@@ -140,125 +144,6 @@ function formatFullDate(iso: string): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function PrintStats({ items }: { items: { label: string; value: string }[] }) {
-  return (
-    <div className="pr-stats">
-      {items.map((s) => (
-        <div key={s.label} className="pr-stat">
-          <div className="pr-stat-label">{s.label}</div>
-          <div className="pr-stat-value">{s.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PrintTable({
-  title,
-  headers,
-  rows,
-  align,
-}: {
-  title: string;
-  headers: string[];
-  rows: (string | number)[][];
-  align?: ("l" | "r")[];
-}) {
-  const cls = (i: number) =>
-    (align ? align[i] : i === 0 ? "l" : "r") === "r" ? "num" : undefined;
-  return (
-    <div className="pr-section">
-      <div className="pr-section-title">{title}</div>
-      <table className="pr-table">
-        <thead>
-          <tr>
-            {headers.map((h, i) => (
-              <th key={h} className={cls(i)}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {row.map((cell, ci) => (
-                <td key={ci} className={cls(ci)}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/**
- * Portals a branded print layout to <body>: invisible on screen, and the only
- * thing the print engine renders (globals.css hides all other body children
- * in @media print). Each tab mounts its own sheet with its cached data, so
- * Print/PDF captures exactly the report being viewed.
- */
-function ReportPrintSheet({
-  title,
-  filters,
-  children,
-}: {
-  title: string;
-  filters: ReportFilter;
-  children: React.ReactNode;
-}) {
-  const tenant = useTenantStore((s) => s.tenant);
-  // SSR-safe mount check: false during server render, true on the client
-  const ready = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-  if (!ready) return null;
-
-  const logo = getLogoUrl(tenant?.logo);
-  return createPortal(
-    <div className="print-sheet pr-root">
-      <div className="pr-header">
-        <div className="pr-brand">
-          {logo && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt="" className="pr-logo" />
-          )}
-          <div>
-            <div className="pr-company">{tenant?.name ?? ""}</div>
-            <div className="pr-report-title">{title}</div>
-          </div>
-        </div>
-        <div className="pr-meta">
-          <div>
-            <b>Period:</b> {formatFullDate(filters.dateFrom)} –{" "}
-            {formatFullDate(filters.dateTo)}
-          </div>
-          <div>
-            <b>Generated:</b>{" "}
-            {new Date().toLocaleString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </div>
-        </div>
-      </div>
-      {children}
-      <div className="pr-footer">
-        {tenant?.name ?? ""} · {title} · Generated with BeatMitra
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 // --- Shared states ---
@@ -596,7 +481,13 @@ function SalesTab({ filters }: { filters: ReportFilter }) {
         />
       )}
 
-      <ReportPrintSheet title="Sales Report" filters={filters}>
+      <PrintSheet title="Sales Report" meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+        ]}
+      >
         <PrintStats
           items={[
             { label: "Total Revenue", value: formatINR(data.totalSales) },
@@ -650,7 +541,7 @@ function SalesTab({ filters }: { filters: ReportFilter }) {
             ])}
           />
         )}
-      </ReportPrintSheet>
+      </PrintSheet>
     </div>
   );
 }
@@ -838,7 +729,13 @@ function CollectionsTab({ filters }: { filters: ReportFilter }) {
         )}
       </div>
 
-      <ReportPrintSheet title="Collections Report" filters={filters}>
+      <PrintSheet title="Collections Report" meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+        ]}
+      >
         <PrintStats
           items={[
             { label: "Total Collected", value: formatINR(data.totalCollected) },
@@ -891,7 +788,7 @@ function CollectionsTab({ filters }: { filters: ReportFilter }) {
             ])}
           />
         )}
-      </ReportPrintSheet>
+      </PrintSheet>
     </div>
   );
 }
@@ -989,7 +886,13 @@ function FinancialTab({ filters }: { filters: ReportFilter }) {
         />
       )}
 
-      <ReportPrintSheet title="Financial Report" filters={filters}>
+      <PrintSheet title="Financial Report" meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+        ]}
+      >
         <PrintStats
           items={[
             { label: "Total Revenue", value: formatINR(data.totalRevenue) },
@@ -1023,7 +926,7 @@ function FinancialTab({ filters }: { filters: ReportFilter }) {
             ])}
           />
         )}
-      </ReportPrintSheet>
+      </PrintSheet>
     </div>
   );
 }
@@ -1117,7 +1020,13 @@ function CustomersTab({ filters }: { filters: ReportFilter }) {
         ])}
       />
 
-      <ReportPrintSheet title="Store Performance Report" filters={filters}>
+      <PrintSheet title="Store Performance Report" meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+        ]}
+      >
         <PrintStats
           items={[
             { label: "Active Stores", value: String(data.activeCustomers) },
@@ -1142,7 +1051,7 @@ function CustomersTab({ filters }: { filters: ReportFilter }) {
             formatINR(c.averageOrderValue),
           ])}
         />
-      </ReportPrintSheet>
+      </PrintSheet>
     </div>
   );
 }
@@ -1246,7 +1155,13 @@ function PurchasesTab({ filters }: { filters: ReportFilter }) {
         </>
       )}
 
-      <ReportPrintSheet title="Purchases Report" filters={filters}>
+      <PrintSheet title="Purchases Report" meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+        ]}
+      >
         <PrintStats
           items={[
             { label: "Purchases", value: String(summary.count) },
@@ -1270,7 +1185,7 @@ function PurchasesTab({ filters }: { filters: ReportFilter }) {
             ])}
           />
         )}
-      </ReportPrintSheet>
+      </PrintSheet>
     </div>
   );
 }
@@ -1340,20 +1255,6 @@ export default function ReportsPage() {
     setDateFrom(key === "month" ? monthStartIST() : daysAgoIST(days ?? 30));
   };
 
-  // The active tab portals a branded .print-sheet to <body>; print CSS in
-  // globals.css hides everything else. Inject @page here (like the orders
-  // page) so reports don't impose a global page rule on other print flows.
-  const handlePrint = () => {
-    const styleId = "reports-print-style";
-    let el = document.getElementById(styleId) as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement("style");
-      el.id = styleId;
-      document.head.appendChild(el);
-    }
-    el.textContent = "@page { size: A4 portrait; margin: 12mm; }";
-    window.print();
-  };
 
   const handleExportCSV = () => {
     const range = `${dateFrom}_to_${dateTo}`;
@@ -1475,7 +1376,7 @@ export default function ReportsPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrint}
+              onClick={() => printDocument()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-muted/60 transition-colors"
             >
               <FileText className="h-4 w-4" />
