@@ -45,6 +45,8 @@ import {
 } from "@/components/ui/select";
 
 import { useAgencies } from "@/lib/hooks/use-agencies";
+import { useEmployees } from "@/lib/hooks/use-employees";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import {
   useExpenses,
   useExpenseSummary,
@@ -170,6 +172,22 @@ export default function ExpensesPage() {
     startDate: startDate || undefined,
     endDate: endDate || undefined,
   });
+
+  // Who recorded each expense — same convention as payment collections:
+  // "You" for the signed-in user, employee name for field-app entries.
+  const { data: employeesData } = useEmployees({ pageSize: 200 });
+  const employeesList = employeesData?.data || [];
+  const currentUserId = useAuthStore((s) => s.user)?.id;
+
+  function getRecorderName(createdById?: string, createdByName?: string): string {
+    if (createdById && currentUserId && createdById === currentUserId) return "You";
+    return (
+      employeesList.find((e) => e.userId === createdById || e.id === createdById)
+        ?.name ??
+      createdByName ??
+      "—"
+    );
+  }
 
   const { data: agenciesPage } = useAgencies({ pageSize: 100 });
   const agencies = useMemo(
@@ -434,6 +452,9 @@ export default function ExpensesPage() {
                   </th>
                   <th className="text-left py-3 px-4 font-semibold">Agency</th>
                   <th className="text-left py-3 px-4 font-semibold">Mode</th>
+                  <th className="text-left py-3 px-4 font-semibold">
+                    Recorded By
+                  </th>
                   <th className="text-right py-3 px-4 font-semibold">Amount</th>
                   <th className="text-right py-3 px-4 font-semibold">Actions</th>
                 </tr>
@@ -488,6 +509,20 @@ export default function ExpensesPage() {
                       </td>
                       <td className="py-2 px-4 capitalize text-muted-foreground">
                         {e.paymentMode}
+                      </td>
+                      <td className="py-2 px-4 whitespace-nowrap">
+                        {(() => {
+                          const recorder = getRecorderName(e.createdById, e.createdByName);
+                          return recorder === "You" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              You
+                            </span>
+                          ) : recorder === "—" ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <span className="text-muted-foreground">{recorder}</span>
+                          );
+                        })()}
                       </td>
                       <td className="py-2 px-4 text-right font-semibold tabular-nums">
                         {formatINR(e.amount)}
