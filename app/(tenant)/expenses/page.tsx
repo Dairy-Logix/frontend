@@ -404,7 +404,7 @@ export default function ExpensesPage() {
             placeholder="Search description, vendor…"
           />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
@@ -417,7 +417,7 @@ export default function ExpensesPage() {
             </SelectContent>
           </Select>
           <Select value={agencyFilter} onValueChange={setAgencyFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="All agencies" />
             </SelectTrigger>
             <SelectContent>
@@ -430,7 +430,7 @@ export default function ExpensesPage() {
             </SelectContent>
           </Select>
           <Select value={spentByFilter} onValueChange={setSpentByFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Spent by" />
             </SelectTrigger>
             <SelectContent>
