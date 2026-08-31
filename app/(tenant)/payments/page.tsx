@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IndianRupee,
@@ -89,24 +89,61 @@ function formatTime(dateStr?: string): string {
   });
 }
 
+
+// Read a listing-state param from the URL (used as useState initializer so
+// filters survive navigating away and Back).
+function getUrlParam(key: string): string {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get(key) ?? "";
+}
+
 // --- Main Page ---
 export default function PaymentsPage() {
   const tPage = useTranslations("pages.payments");
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history">(
+    () => (getUrlParam("tab") === "history" ? "history" : "pending")
+  );
   const queryClient = useQueryClient();
 
   // Pending filters
-  const [pendingSearch, setPendingSearch] = useState("");
-  const [pendingAgencyId, setPendingAgencyId] = useState("");
-  const [groupByAgency, setGroupByAgency] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState(() => getUrlParam("q"));
+  const [pendingAgencyId, setPendingAgencyId] = useState(() => getUrlParam("agency"));
+  const [groupByAgency, setGroupByAgency] = useState(() => getUrlParam("group") === "1");
 
   // History filters
-  const [paySearch, setPaySearch] = useState("");
-  const [payTypeFilter, setPayTypeFilter] = useState("all");
-  const [payCollectorId, setPayCollectorId] = useState("all");
-  const [payDate, setPayDate] = useState(() => todayIST());
-  const [payPage, setPayPage] = useState(1);
+  const [paySearch, setPaySearch] = useState(() => getUrlParam("hq"));
+  const [payTypeFilter, setPayTypeFilter] = useState(() => getUrlParam("type") || "all");
+  const [payCollectorId, setPayCollectorId] = useState(() => getUrlParam("collector") || "all");
+  const [payDate, setPayDate] = useState(() => getUrlParam("date") || todayIST());
+  const [payPage, setPayPage] = useState(() => Number(getUrlParam("page")) || 1);
   const [expandedPayId, setExpandedPayId] = useState<string | null>(null);
+
+  // Mirror listing state into the URL (replace, no navigation) so it
+  // survives navigating away and Back.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeTab !== "pending") params.set("tab", activeTab);
+    if (pendingSearch) params.set("q", pendingSearch);
+    if (pendingAgencyId) params.set("agency", pendingAgencyId);
+    if (groupByAgency) params.set("group", "1");
+    if (paySearch) params.set("hq", paySearch);
+    if (payTypeFilter !== "all") params.set("type", payTypeFilter);
+    if (payCollectorId !== "all") params.set("collector", payCollectorId);
+    if (payDate !== todayIST()) params.set("date", payDate);
+    if (payPage > 1) params.set("page", String(payPage));
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [
+    activeTab,
+    pendingSearch,
+    pendingAgencyId,
+    groupByAgency,
+    paySearch,
+    payTypeFilter,
+    payCollectorId,
+    payDate,
+    payPage,
+  ]);
 
   // Shared lookups
   const { data: agenciesData } = useAgencies({ pageSize: 100 });

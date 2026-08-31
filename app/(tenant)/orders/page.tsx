@@ -70,18 +70,37 @@ interface MatrixCell {
 
 // --- Main Page ---
 
+
+// Read a listing-state param from the URL (used as useState initializer so
+// filters survive navigating away and Back).
+function getUrlParam(key: string): string {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get(key) ?? "";
+}
+
 export default function OrdersPage() {
   const tPage = useTranslations("pages.orders");
   // State
-  const [selectedAgencyId, setSelectedAgencyId] = useState<string>("");
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string>(() => getUrlParam("agency"));
   const [isEditMode, setIsEditMode] = useState(false);
-  const [searchShop, setSearchShop] = useState("");
+  const [searchShop, setSearchShop] = useState(() => getUrlParam("q"));
   const [editedQuantities, setEditedQuantities] = useState<Record<string, Record<string, number>>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(todayIST());
+  const [selectedDate, setSelectedDate] = useState(() => getUrlParam("date") || todayIST());
   const [transferWizardOpen, setTransferWizardOpen] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
+
+  // Mirror listing state into the URL (replace, no navigation) so it
+  // survives navigating away and Back.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedAgencyId) params.set("agency", selectedAgencyId);
+    if (searchShop) params.set("q", searchShop);
+    if (selectedDate !== todayIST()) params.set("date", selectedDate);
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [selectedAgencyId, searchShop, selectedDate]);
 
   // Fetch data from all 4 sources
   const { data: agenciesData, isLoading: loadingAgencies, error: agenciesError } = useAgencies({ page: 1, pageSize: 50 });
