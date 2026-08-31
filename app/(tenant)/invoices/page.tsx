@@ -195,7 +195,7 @@ export default function InvoicesPage() {
     setFormOpen(true);
   }
 
-  function handleFormSubmit() {
+  async function handleFormSubmit() {
     if (!formAgencyId) {
       toast.error("Please select an agency");
       return;
@@ -207,15 +207,33 @@ export default function InvoicesPage() {
 
     setIsSubmitting(true);
 
-    Promise.all(formSelectedOrderIds.map((orderId) => generateFromOrder.mutateAsync(orderId)))
-      .then(() => {
-        const count = formSelectedOrderIds.length;
-        toast.success(`Successfully generated ${count} invoice${count > 1 ? "s" : ""}`);
-        setFormOpen(false);
-        setFormSelectedOrderIds([]);
-      })
-      .catch(() => {})
-      .finally(() => setIsSubmitting(false));
+    // Generate sequentially: invoice numbers are allocated per request, and
+    // firing them in parallel made every request race for the same number
+    // (only one invoice survived the unique-index check).
+    let generated = 0;
+    const failed: string[] = [];
+    for (const orderId of formSelectedOrderIds) {
+      try {
+        await generateFromOrder.mutateAsync(orderId);
+        generated++;
+      } catch {
+        failed.push(orderId);
+      }
+    }
+
+    setIsSubmitting(false);
+    if (generated > 0) {
+      toast.success(`Generated ${generated} invoice${generated > 1 ? "s" : ""}`);
+    }
+    if (failed.length > 0) {
+      toast.error(
+        `${failed.length} order${failed.length > 1 ? "s" : ""} could not be invoiced — they stay selected, try again.`
+      );
+      setFormSelectedOrderIds(failed);
+      return;
+    }
+    setFormOpen(false);
+    setFormSelectedOrderIds([]);
   }
 
   function toggleOrderSelection(orderId: string) {
