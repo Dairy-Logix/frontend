@@ -289,6 +289,8 @@ export interface InvoiceSettings {
   invoicePrefix: string;
   invoiceNumberFormat: string;
   termsAndConditions?: string;
+  /** Days after invoice generation until the invoice is due (Net N). */
+  dueDays?: number;
 }
 
 export interface TaxSettings {

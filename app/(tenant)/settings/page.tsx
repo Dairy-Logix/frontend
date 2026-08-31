@@ -181,6 +181,7 @@ export default function SettingsPage() {
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceNumberFormat, setInvoiceNumberFormat] = useState("YYYY-NNNN");
   const [termsAndConditions, setTermsAndConditions] = useState("");
+  const [invoiceDueDays, setInvoiceDueDays] = useState("30");
 
   // Tax (GST) settings
   const [taxEnabled, setTaxEnabled] = useState(false);
@@ -261,6 +262,7 @@ export default function SettingsPage() {
         setInvoicePrefix(settings.config.invoiceSettings.invoicePrefix || "INV");
         setInvoiceNumberFormat(settings.config.invoiceSettings.invoiceNumberFormat || "YYYY-NNNN");
         setTermsAndConditions(settings.config.invoiceSettings.termsAndConditions || "");
+        setInvoiceDueDays(String(settings.config.invoiceSettings.dueDays ?? 30));
       }
 
       // Tax settings
@@ -430,6 +432,7 @@ export default function SettingsPage() {
         invoicePrefix,
         invoiceNumberFormat,
         termsAndConditions,
+        dueDays: Math.max(0, Number(invoiceDueDays) || 30),
       },
       tax: {
         enabled: taxEnabled,
@@ -881,6 +884,22 @@ export default function SettingsPage() {
                   Supports YYYY, YY, MM, DD, and NNNN sequence tokens
                 </p>
               </div>
+            </div>
+
+            {/* Payment due days */}
+            <div className="space-y-1.5 md:max-w-[240px]">
+              <Label htmlFor="invoice-due-days">Payment Due Days</Label>
+              <Input
+                id="invoice-due-days"
+                type="number"
+                min={0}
+                placeholder="30"
+                value={invoiceDueDays}
+                onChange={(e) => setInvoiceDueDays(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Due date = invoice generation date + this many days (Net N)
+              </p>
             </div>
 
             {/* Terms & Conditions */}
