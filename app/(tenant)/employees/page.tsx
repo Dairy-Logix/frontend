@@ -408,10 +408,14 @@ export default function EmployeesPage() {
     const total = employees.length;
     const active = employees.filter((e) => e.isActive).length;
     const collectors = employees.filter(
-      (e) => e.employeeRole === "collector" || e.employeeRole === "both"
+      (e) =>
+        (e.employeeRole === "collector" || e.employeeRole === "both") &&
+        (e.assignedShopCount ?? 0) > 0
     ).length;
     const deliveryAgents = employees.filter(
-      (e) => e.employeeRole === "delivery" || e.employeeRole === "both"
+      (e) =>
+        (e.employeeRole === "delivery" || e.employeeRole === "both") &&
+        (e.assignedDeliveryShopCount ?? 0) > 0
     ).length;
 
     return { total, active, collectors, deliveryAgents };
@@ -485,13 +489,13 @@ export default function EmployeesPage() {
         <StatCard
           title="Collectors"
           value={stats.collectors}
-          description="collection agents"
+          description="with collection stores assigned"
           icon={Shield}
         />
         <StatCard
           title="Delivery Agents"
           value={stats.deliveryAgents}
-          description="delivery personnel"
+          description="with delivery stores assigned"
           icon={Truck}
         />
       </div>
