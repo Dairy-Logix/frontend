@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Invoice, Tenant } from "@/lib/types";
-import { getLogoUrl, whatsappUrl } from "@/lib/utils";
+import { getLogoUrl } from "@/lib/utils";
 
 /**
  * Client-side generator for the branded invoice PDF — the downloadable /
@@ -210,35 +210,4 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-/**
- * Share the invoice PDF to WhatsApp. On platforms with file sharing (mobile
- * browsers) the native share sheet opens with the PDF attached — the user
- * picks WhatsApp and the store contact. Elsewhere the PDF downloads and the
- * store's WhatsApp chat opens so it can be attached there.
- */
-export async function shareInvoicePdfViaWhatsApp(
-  invoice: Invoice,
-  tenant: Tenant | null | undefined,
-  phone: string | null | undefined,
-  summaryText: string
-): Promise<"shared" | "fallback"> {
-  const { blob, filename } = await generateInvoicePdf(invoice, tenant);
-  const file = new File([blob], filename, { type: "application/pdf" });
-  const nav = navigator as Navigator & {
-    canShare?: (data: ShareData) => boolean;
-  };
-  if (nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({ files: [file], text: summaryText, title: filename });
-      return "shared";
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return "shared"; // user closed the sheet
-      // fall through to download + chat
-    }
-  }
-  downloadBlob(blob, filename);
-  window.open(whatsappUrl(summaryText, phone), "_blank");
-  return "fallback";
 }

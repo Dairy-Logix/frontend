@@ -19,11 +19,9 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/shared/status-badge";
-import {
-  generateInvoicePdf,
-  downloadBlob,
-  shareInvoicePdfViaWhatsApp,
-} from "@/components/invoices/invoice-pdf";
+import { generateInvoicePdf, downloadBlob } from "@/components/invoices/invoice-pdf";
+import { buildInvoiceWhatsAppMessage } from "@/components/invoices/invoice-message";
+import { whatsappUrl } from "@/lib/utils";
 import { useTenantStore } from "@/lib/stores/tenant-store";
 import { FormModal } from "@/components/shared/form-modal";
 import { Button } from "@/components/ui/button";
@@ -120,22 +118,13 @@ export default function InvoiceDetailPage() {
     downloadBlob(blob, filename);
   }
 
-  async function handleShareWhatsApp() {
+  function handleShareWhatsApp() {
     if (!invoice) return;
-    const message = `Invoice ${invoice.invoiceNumber}\nStore: ${invoice.shopkeeperName}\nTotal: ${formatINR(invoice.totalAmount)}\nDue: ${formatINR(invoice.dueAmount)}`;
-    const result = await shareInvoicePdfViaWhatsApp(
-      invoice,
-      tenant,
-      shop?.phone,
-      message
-    );
-    if (result === "fallback") {
-      toast.info(
-        shop?.phone
-          ? "PDF downloaded — attach it in the WhatsApp chat that just opened."
-          : "PDF downloaded — no phone on file for this store, pick a contact in WhatsApp and attach it."
-      );
+    const message = buildInvoiceWhatsAppMessage(invoice, tenant?.name);
+    if (!shop?.phone) {
+      toast.info("No phone number on file for this store — pick a contact in WhatsApp.");
     }
+    window.open(whatsappUrl(message, shop?.phone), "_blank");
   }
 
   // --- Loading ---
