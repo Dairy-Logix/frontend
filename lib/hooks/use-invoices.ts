@@ -51,6 +51,25 @@ export function useInvoices(params?: InvoiceFilterParams) {
 /**
  * Hook to fetch a single invoice by ID
  */
+/**
+ * Get-or-create the invoice's public share token (used for the WhatsApp
+ * PDF-download link). Idempotent on the backend, so a query is safe.
+ */
+export function useInvoiceShareLink(id: string) {
+  return useQuery({
+    queryKey: [...invoiceKeys.detail(id), 'share-link'] as const,
+    queryFn: async () => {
+      const response = await invoiceService.getShareLink(id);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to create share link');
+      }
+      return response.data.token;
+    },
+    enabled: !!id,
+    staleTime: Infinity,
+  });
+}
+
 export function useInvoice(id: string) {
   return useQuery({
     queryKey: invoiceKeys.detail(id),

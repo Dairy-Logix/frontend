@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
+import { useInvoice, useInvoiceShareLink, useRecordPayment } from "@/lib/hooks/use-invoices";
 import { useShopkeeper } from "@/lib/hooks/use-shopkeepers";
 import { Loader2 as LoaderIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -81,6 +81,8 @@ export default function InvoiceDetailPage() {
   // Store record for the WhatsApp number (invoice payload has no phone)
   const { data: shop } = useShopkeeper(invoice?.shopId ?? "");
   const tenant = useTenantStore((s) => s.tenant);
+  // Public share token for the PDF-download link in the WhatsApp message
+  const { data: shareToken } = useInvoiceShareLink(invoice?.id ?? "");
 
   // Mutations
   const recordPaymentMutation = useRecordPayment();
@@ -120,7 +122,10 @@ export default function InvoiceDetailPage() {
 
   function handleShareWhatsApp() {
     if (!invoice) return;
-    const message = buildInvoiceWhatsAppMessage(invoice, tenant?.name);
+    let message = buildInvoiceWhatsAppMessage(invoice, tenant?.name);
+    if (shareToken) {
+      message += `\n\nDownload PDF: ${window.location.origin}/i/${shareToken}`;
+    }
     if (!shop?.phone) {
       toast.info("No phone number on file for this store — pick a contact in WhatsApp.");
     }

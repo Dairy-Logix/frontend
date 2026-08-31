@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { useInvoice, useRecordPayment } from "@/lib/hooks/use-invoices";
+import { useInvoice, useInvoiceShareLink, useRecordPayment } from "@/lib/hooks/use-invoices";
 import { useShopkeeper } from "@/lib/hooks/use-shopkeepers";
 import { generateInvoicePdf, downloadBlob } from "@/components/invoices/invoice-pdf";
 import { buildInvoiceWhatsAppMessage } from "@/components/invoices/invoice-message";
@@ -91,6 +91,8 @@ export function InvoiceDetailDialog({
   // Store record for the WhatsApp number (invoice payload has no phone)
   const { data: shop } = useShopkeeper(invoice?.shopId ?? "");
   const tenant = useTenantStore((s) => s.tenant);
+  // Public share token for the PDF-download link in the WhatsApp message
+  const { data: shareToken } = useInvoiceShareLink(invoice?.id ?? "");
 
   const recordPaymentMutation = useRecordPayment();
 
@@ -129,7 +131,10 @@ export function InvoiceDetailDialog({
 
   function handleShareWhatsApp() {
     if (!invoice) return;
-    const message = buildInvoiceWhatsAppMessage(invoice, tenant?.name);
+    let message = buildInvoiceWhatsAppMessage(invoice, tenant?.name);
+    if (shareToken) {
+      message += `\n\nDownload PDF: ${window.location.origin}/i/${shareToken}`;
+    }
     if (!shop?.phone) {
       toast.info("No phone number on file for this store — pick a contact in WhatsApp.");
     }

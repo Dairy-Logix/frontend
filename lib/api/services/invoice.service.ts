@@ -107,7 +107,33 @@ function normalize(raw: BackendInvoice): Invoice {
   } as Invoice;
 }
 
+export interface SharedInvoicePayload {
+  invoice: Invoice;
+  tenant: { name: string; logo: string | null };
+}
+
 export const invoiceService = {
+  /** Get-or-create the public share token for an invoice */
+  async getShareLink(id: string): Promise<ApiResponse<{ token: string }>> {
+    const { data } = await apiClient.post<{ token: string }>(
+      `/invoices/${id}/share-link`
+    );
+    return { success: true, data, message: 'Share link ready' };
+  },
+
+  /** Public, unauthenticated fetch of a shared invoice by token */
+  async getSharedInvoice(token: string): Promise<ApiResponse<SharedInvoicePayload>> {
+    const { data } = await apiClient.get<BackendInvoice & { tenant: { name: string; logo: string | null } }>(
+      `/invoices/shared/${token}`
+    );
+    const { tenant, ...raw } = data;
+    return {
+      success: true,
+      data: { invoice: normalize(raw as BackendInvoice), tenant },
+      message: 'Invoice fetched successfully',
+    };
+  },
+
   async getInvoices(params?: InvoiceFilterParams): Promise<ApiResponse<PaginatedResponse<Invoice>>> {
     const { data } = await apiClient.get<BackendInvoicesPage>(
       '/invoices',
