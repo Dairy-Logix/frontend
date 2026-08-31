@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/shared/status-badge";
-import { generateInvoicePdf, downloadBlob } from "@/components/invoices/invoice-pdf";
+import { generateInvoicePdf, openBlobInNewTab } from "@/components/invoices/invoice-pdf";
 import { buildInvoiceWhatsAppMessage } from "@/components/invoices/invoice-message";
 import { whatsappUrl } from "@/lib/utils";
 import { useTenantStore } from "@/lib/stores/tenant-store";
@@ -116,8 +116,8 @@ export default function InvoiceDetailPage() {
 
   async function handleDownloadPDF() {
     if (!invoice) return;
-    const { blob, filename } = await generateInvoicePdf(invoice, tenant);
-    downloadBlob(blob, filename);
+    const { blob } = await generateInvoicePdf(invoice, tenant);
+    openBlobInNewTab(blob);
   }
 
   function handleShareWhatsApp() {

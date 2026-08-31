@@ -34,7 +34,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useInvoice, useInvoiceShareLink, useRecordPayment } from "@/lib/hooks/use-invoices";
 import { useShopkeeper } from "@/lib/hooks/use-shopkeepers";
-import { generateInvoicePdf, downloadBlob } from "@/components/invoices/invoice-pdf";
+import { generateInvoicePdf, openBlobInNewTab } from "@/components/invoices/invoice-pdf";
 import { buildInvoiceWhatsAppMessage } from "@/components/invoices/invoice-message";
 import { whatsappUrl } from "@/lib/utils";
 import { useTenantStore } from "@/lib/stores/tenant-store";
@@ -125,8 +125,8 @@ export function InvoiceDetailDialog({
 
   async function handleDownloadPDF() {
     if (!invoice) return;
-    const { blob, filename } = await generateInvoicePdf(invoice, tenant);
-    downloadBlob(blob, filename);
+    const { blob } = await generateInvoicePdf(invoice, tenant);
+    openBlobInNewTab(blob);
   }
 
   function handleShareWhatsApp() {

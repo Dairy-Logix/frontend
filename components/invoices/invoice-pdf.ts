@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Invoice, Tenant } from "@/lib/types";
 import { getLogoUrl } from "@/lib/utils";
+import { lineUnitPrice } from "./invoice-item-pricing";
 
 /**
  * Client-side generator for the branded invoice PDF — the downloadable /
@@ -129,18 +130,13 @@ export async function generateInvoicePdf(
       ...tableTheme,
       startY: y,
       head: [["#", "Product", "Qty", "Unit Price", "Amount"]],
-      body: invoice.items.map((item, i) => {
-        const qtyPerUnit = item.quantityPerUnit ?? 1;
-        const piecePrice = item.unitPrice ?? 0;
-        const linePrice = item.pricePerUnit ?? piecePrice * qtyPerUnit;
-        return [
-          String(i + 1),
-          item.productName || "Unknown Product",
-          String(item.quantity),
-          inr(linePrice),
-          inr(item.totalPrice),
-        ];
-      }),
+      body: invoice.items.map((item, i) => [
+        String(i + 1),
+        item.productName || "Unknown Product",
+        String(item.quantity),
+        inr(lineUnitPrice(item)),
+        inr(item.totalPrice),
+      ]),
       columnStyles: { 2: right, 3: right, 4: right },
     });
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable
@@ -201,6 +197,17 @@ export async function generateInvoicePdf(
     blob: doc.output("blob"),
     filename: `${invoice.invoiceNumber}.pdf`,
   };
+}
+
+/**
+ * Open the PDF in a new browser tab (Chrome's viewer) instead of forcing a
+ * download — the viewer's own controls handle saving and printing.
+ */
+export function openBlobInNewTab(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  // Revoke later: revoking immediately would break the freshly opened tab.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

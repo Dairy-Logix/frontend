@@ -1,4 +1,5 @@
 import type { Invoice } from "@/lib/types";
+import { lineUnitPrice } from "./invoice-item-pricing";
 
 /**
  * WhatsApp-formatted invoice text — the full invoice as a chat message
@@ -41,12 +42,9 @@ export function buildInvoiceWhatsAppMessage(
     lines.push("");
     lines.push("*Items:*");
     invoice.items.forEach((item, i) => {
-      const qtyPerUnit = item.quantityPerUnit ?? 1;
-      const piecePrice = item.unitPrice ?? 0;
-      const linePrice = item.pricePerUnit ?? piecePrice * qtyPerUnit;
       lines.push(`${i + 1}. ${item.productName || "Unknown Product"}`);
       lines.push(
-        `    ${item.quantity} × ${inr(linePrice)} = ${inr(item.totalPrice)}`
+        `    ${item.quantity} × ${inr(lineUnitPrice(item))} = ${inr(item.totalPrice)}`
       );
     });
   }

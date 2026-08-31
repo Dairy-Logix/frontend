@@ -79,7 +79,9 @@ function normalizeItem(item: BackendInvoiceItem): Invoice['items'][number] {
     productCode: item.productCode || '',
     quantity: item.quantity ?? 0,
     unit: item.unit || '',
-    unitPrice: item.price ?? item.unitPrice ?? 0,
+    // || not ??: legacy rows store an explicit 0 in price with the real
+    // value in unitPrice
+    unitPrice: item.price || item.unitPrice || 0,
     totalPrice: item.subtotal ?? item.total ?? item.totalPrice ?? 0,
   };
 }

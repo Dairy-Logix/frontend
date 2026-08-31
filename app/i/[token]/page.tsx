@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { invoiceService } from "@/lib/api/services/invoice.service";
 import {
   generateInvoicePdf,
-  downloadBlob,
+  openBlobInNewTab,
 } from "@/components/invoices/invoice-pdf";
+import { lineUnitPrice } from "@/components/invoices/invoice-item-pricing";
 import { getLogoUrl } from "@/lib/utils";
 import type { Tenant } from "@/lib/types";
 
@@ -58,11 +59,11 @@ export default function SharedInvoicePage() {
 
   async function handleDownload() {
     if (!data) return;
-    const { blob, filename } = await generateInvoicePdf(
+    const { blob } = await generateInvoicePdf(
       data.invoice,
       { name: data.tenant.name, logo: data.tenant.logo ?? undefined } as Tenant
     );
-    downloadBlob(blob, filename);
+    openBlobInNewTab(blob);
   }
 
   if (isLoading) {
@@ -159,10 +160,7 @@ export default function SharedInvoicePage() {
                 </thead>
                 <tbody>
                   {invoice.items.map((item, i) => {
-                    const qtyPerUnit = item.quantityPerUnit ?? 1;
-                    const piecePrice = item.unitPrice ?? 0;
-                    const linePrice =
-                      item.pricePerUnit ?? piecePrice * qtyPerUnit;
+                    const linePrice = lineUnitPrice(item);
                     return (
                       <tr key={i} className="border-b border-border/50">
                         <td className="py-2 pr-2 font-medium">
