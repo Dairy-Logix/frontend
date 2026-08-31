@@ -1110,7 +1110,9 @@ export default function ProductsPage() {
           {/* Prices */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="product-purchase-price">Purchase Price (₹)</Label>
+              <Label htmlFor="product-purchase-price">
+                Purchase Price (₹ {formCategory === "Piece" ? "per piece" : "per crate"})
+              </Label>
               <Input
                 id="product-purchase-price"
                 type="number"
@@ -1123,7 +1125,9 @@ export default function ProductsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="product-selling-price">Selling Price (₹)</Label>
+              <Label htmlFor="product-selling-price">
+                Selling Price (₹ {formCategory === "Piece" ? "per piece" : "per crate"})
+              </Label>
               <Input
                 id="product-selling-price"
                 type="number"
