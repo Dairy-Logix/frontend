@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -84,16 +84,31 @@ export default function InvoicesPage() {
 
   const today = todayIST();
 
-  // Filter state
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState(today);
-  const [dateTo, setDateTo] = useState(today);
+  // Filter state — initialized from the URL so Back from an invoice detail
+  // page restores the listing exactly as it was left.
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "all");
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get("from") ?? today);
+  const [dateTo, setDateTo] = useState(() => searchParams.get("to") ?? today);
   const [selectedAgencyId, setSelectedAgencyId] = useState(() => searchParams.get("agency") ?? "");
 
   // Pagination state
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
   const [pageSize] = useState(20);
+
+  // Mirror listing state into the URL (replace, no navigation) so it survives
+  // the round-trip to an invoice detail page.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedAgencyId) params.set("agency", selectedAgencyId);
+    if (search) params.set("q", search);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (dateFrom !== today) params.set("from", dateFrom);
+    if (dateTo !== today) params.set("to", dateTo);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [selectedAgencyId, search, statusFilter, dateFrom, dateTo, page, today]);
 
   // Fetch lookup data from API
   const { data: agenciesData } = useAgencies({ pageSize: 100 });
