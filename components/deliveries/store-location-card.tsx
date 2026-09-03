@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, CheckCircle2, Trash2, Pencil } from "lucide-react";
+import { MapPin, CheckCircle2, Trash2, Pencil, LocateFixed } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DeliveryMap } from "@/components/deliveries/delivery-map";
 import { useClearStorePin, usePinStore, useVerifyStorePin } from "@/lib/hooks/use-deliveries";
@@ -17,7 +18,31 @@ export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: b
   const clear = useClearStorePin();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   if (!enabled) return null;
+
+  // Drop the pin where this browser/device is right now (useful when the
+  // office is standing at the store, e.g. on a phone). Needs HTTPS or localhost.
+  const useMyLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("This browser can't provide a location.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setEditing(true);
+        setDraft({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        toast.info(`Pin placed at your location (±${Math.round(pos.coords.accuracy)} m). Drag to adjust, then save.`);
+      },
+      (err) => {
+        setLocating(false);
+        toast.error(err.code === err.PERMISSION_DENIED ? "Location access was denied for this site." : "Could not get your location. Try again outdoors or check your device settings.");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  };
 
   const current = draft ?? shop.location ?? null;
   const verified = !!shop.locationVerifiedAt;
@@ -47,11 +72,13 @@ export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: b
         {editing ? (
           <>
             <Button size="sm" onClick={save} disabled={!draft || pin.isPending}>Save location</Button>
+            <Button size="sm" variant="outline" onClick={useMyLocation} disabled={locating}><LocateFixed className="h-4 w-4" /> {locating ? "Locating…" : "Use my current location"}</Button>
             <Button size="sm" variant="outline" onClick={() => { setEditing(false); setDraft(null); }}>Cancel</Button>
           </>
         ) : (
           <>
             <Button size="sm" variant="outline" onClick={() => { setEditing(true); setDraft(null); }}><Pencil className="h-4 w-4" /> {shop.location ? "Move pin" : "Set location"}</Button>
+            <Button size="sm" variant="outline" onClick={useMyLocation} disabled={locating}><LocateFixed className="h-4 w-4" /> {locating ? "Locating…" : "Use my current location"}</Button>
             {shop.location && !verified ? <Button size="sm" onClick={() => verify.mutate({ shopkeeperId: shop.id })} disabled={verify.isPending}><CheckCircle2 className="h-4 w-4" /> Confirm</Button> : null}
             {shop.location ? <Button size="sm" variant="ghost" onClick={() => clear.mutate({ shopkeeperId: shop.id })} disabled={clear.isPending}><Trash2 className="h-4 w-4" /> Remove</Button> : null}
           </>
