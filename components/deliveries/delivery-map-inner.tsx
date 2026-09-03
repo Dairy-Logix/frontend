@@ -35,6 +35,8 @@ export interface DeliveryMapProps {
   path?: Array<{ lat: number; lng: number }>;
   /** Draggable single pin (store location editor). */
   pin?: { lat: number; lng: number } | null;
+  /** The distributor's office, drawn as a fixed marker. */
+  office?: { lat: number; lng: number; name?: string } | null;
   onPinChange?: (p: { lat: number; lng: number }) => void;
   center?: { lat: number; lng: number };
   zoom?: number;
@@ -70,6 +72,13 @@ const agentIcon = (live: boolean) =>
       <div style="position:absolute;inset:0;border-radius:50%;background:#006CE6;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>
     </div>`,
   });
+
+const officeIcon = L.divIcon({
+  className: "",
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  html: `<div style="width:26px;height:26px;border-radius:6px;background:#1A1A2E;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font:700 12px system-ui">B</div>`,
+});
 
 const pinIcon = L.divIcon({
   className: "",
@@ -107,6 +116,7 @@ export default function DeliveryMapInner({
   path = [],
   pin,
   onPinChange,
+  office,
   center,
   zoom = 12,
   className,
@@ -118,8 +128,9 @@ export default function DeliveryMapInner({
     stores.forEach((s) => pts.push([s.lat, s.lng]));
     path.forEach((p) => pts.push([p.lat, p.lng]));
     if (pin) pts.push([pin.lat, pin.lng]);
+    if (office) pts.push([office.lat, office.lng]);
     return pts;
-  }, [agents, stores, path, pin]);
+  }, [agents, stores, path, pin, office]);
 
   const initialCenter: [number, number] = center
     ? [center.lat, center.lng]
@@ -157,6 +168,12 @@ export default function DeliveryMapInner({
             </Popup>
           </Marker>
         ))}
+
+        {office ? (
+          <Marker position={[office.lat, office.lng]} icon={officeIcon}>
+            <Tooltip direction="top" offset={[0, -14]}><span className="font-medium">{office.name ?? "Office"}</span></Tooltip>
+          </Marker>
+        ) : null}
 
         {pin ? (
           <Marker

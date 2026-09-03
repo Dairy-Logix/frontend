@@ -14,6 +14,8 @@ import { DeliveryMap, type MapAgent } from "@/components/deliveries/delivery-map
 import { DutyPanel } from "@/components/deliveries/duty-panel";
 import { useDeliveryBoard } from "@/lib/hooks/use-deliveries";
 import { useFeature } from "@/lib/hooks/use-feature";
+import { useTenant } from "@/lib/hooks/use-tenants";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { TENANT_ROUTES } from "@/lib/constants";
 import { agoLabel, dateOf, endedByLabel, timeOf, todayYmd, tripStatusMap } from "@/components/deliveries/format";
 import type { DeliveryTripRow, ExpectedDriver } from "@/lib/types";
@@ -23,6 +25,9 @@ export default function DeliveriesBoardPage() {
   const [date, setDate] = useState(todayYmd());
   const [vehicleFilter, setVehicleFilter] = useState<string | null>(null);
   const gps = useFeature("gpsTracking");
+  const tenantId = useAuthStore((s) => s.getTenantId()) ?? "";
+  const { data: tenant } = useTenant(tenantId);
+  const office = tenant?.officeLocation ? { ...tenant.officeLocation, name: tenant.name ? `${tenant.name} office` : "Office" } : null;
   const { data, isLoading, error, isFetching } = useDeliveryBoard(date);
 
   const agents = useMemo<MapAgent[]>(
@@ -85,7 +90,7 @@ export default function DeliveriesBoardPage() {
       {gps ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-3">
           {agents.length ? (
-            <DeliveryMap agents={agents} fitKey={`${date}:${agents.length}`} className="h-[380px] w-full rounded-lg overflow-hidden" />
+            <DeliveryMap agents={agents} office={office} fitKey={`${date}:${agents.length}`} className="h-[380px] w-full rounded-lg overflow-hidden" />
           ) : (
             <div className="h-[160px] flex flex-col items-center justify-center text-muted-foreground gap-2">
               <MapPin className="h-6 w-6" />

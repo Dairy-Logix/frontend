@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DeliveryMap, type MapStore } from "@/components/deliveries/delivery-map";
 import { useDeliveryTrip, useDeliveryTripPath, useForceEndTrip } from "@/lib/hooks/use-deliveries";
 import { useFeature } from "@/lib/hooks/use-feature";
+import { useTenant } from "@/lib/hooks/use-tenants";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { TENANT_ROUTES } from "@/lib/constants";
 import { dateOf, distance, endedByLabel, inr, stopStatusMap, timeOf, tripStatusMap } from "@/components/deliveries/format";
 import type { DeliveryTripStop } from "@/lib/types";
@@ -21,6 +23,9 @@ export default function DeliveryTripPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const router = useRouter();
   const gps = useFeature("gpsTracking");
+  const tenantId = useAuthStore((s) => s.getTenantId()) ?? "";
+  const { data: tenant } = useTenant(tenantId);
+  const office = tenant?.officeLocation ? { ...tenant.officeLocation, name: "Office" } : null;
   const { data: trip, isLoading, error } = useDeliveryTrip(tripId);
   const { data: path } = useDeliveryTripPath(gps ? tripId : undefined);
   const forceEnd = useForceEndTrip();
@@ -114,6 +119,7 @@ export default function DeliveryTripPage() {
           <DeliveryMap
             stores={stores}
             path={path ?? []}
+            office={office}
             agents={trip.lastLocation ? [{ id: trip.id, name: trip.employeeName ?? "Agent", lat: trip.lastLocation.lat, lng: trip.lastLocation.lng, at: trip.lastLocation.at, live }] : []}
             fitKey={trip.id}
             className="h-[380px] w-full rounded-lg overflow-hidden"
