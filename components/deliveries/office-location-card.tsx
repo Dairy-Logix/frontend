@@ -12,7 +12,7 @@ import type { Tenant } from "@/lib/types";
  * Office / warehouse pin on the tenant profile — where delivery runs start.
  * Set by clicking the map, dragging the pin, or using the browser's location.
  */
-export function OfficeLocationCard({ tenant, addressLine }: { tenant: Tenant; addressLine?: string }) {
+export function OfficeLocationCard({ tenant, tenantId, addressLine }: { tenant: Tenant; tenantId: string; addressLine?: string }) {
   const update = useUpdateTenant();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
@@ -20,7 +20,7 @@ export function OfficeLocationCard({ tenant, addressLine }: { tenant: Tenant; ad
   const current = draft ?? tenant.officeLocation ?? null;
 
   const save = (loc: { lat: number; lng: number } | null) =>
-    update.mutate({ id: tenant.id, input: { officeLocation: loc } }, { onSuccess: () => { setEditing(false); setDraft(null); } });
+    update.mutate({ id: tenantId, input: { officeLocation: loc } }, { onSuccess: () => { setEditing(false); setDraft(null); } });
 
   const useMyLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return toast.error("This browser can't provide a location.");

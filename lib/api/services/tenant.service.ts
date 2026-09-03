@@ -61,7 +61,7 @@ export const tenantService = {
     const { data } = await apiClient.patch<Tenant>(`/tenants/${id}`, input);
     return {
       success: true,
-      data,
+      data: normalizeTenant(data),
       message: 'Tenant updated successfully',
     };
   },

@@ -873,6 +873,7 @@ export default function SettingsPage() {
           {tenantData ? (
             <OfficeLocationCard
               tenant={tenantData}
+              tenantId={tenantId}
               addressLine={[profile.addressLine1, profile.city, profile.state, profile.pincode].filter(Boolean).join(", ")}
             />
           ) : null}
