@@ -7,6 +7,7 @@ import type {
   EmployeeAssignment,
   AgencyAssignment,
   DeliveryAssignment,
+  ShopShiftEntry,
   CollectorAssignment,
   CollectionsTodayStats,
   CreateEmployeeInput,
@@ -40,9 +41,15 @@ function normalizeEmployee(raw: any): Employee {
 // set of assigned shop ids (it already has full shop objects loaded), so
 // collapse shops → shopIds here. Shared by the delivery and collector flows.
 function normalizeAgencyAssignment(raw: any): AgencyAssignment {
+  const shopShifts: Record<string, Array<'AM' | 'PM'>> = {};
+  for (const s of raw?.shops || []) {
+    if (Array.isArray(s.deliveryShifts)) shopShifts[String(s._id || s.id)] = s.deliveryShifts;
+  }
   return {
     agencyIds: (raw?.agencyIds || []).map((id: any) => String(id)),
     shopIds: (raw?.shops || []).map((s: any) => String(s._id || s.id)),
+    shopShifts,
+    skipped: typeof raw?.skipped === 'number' ? raw.skipped : undefined,
   };
 }
 
@@ -218,13 +225,14 @@ export const employeeService = {
   },
 
   // Re-point specific stores to this delivery person (the per-store split).
+  // Per-shift split: each entry is one (store, AM|PM) pair.
   async assignDeliveryShops(
     id: string,
-    shopIds: string[]
+    entries: ShopShiftEntry[]
   ): Promise<ApiResponse<DeliveryAssignment>> {
     const { data } = await apiClient.post<any>(
       `/employees/${id}/delivery-shops`,
-      { shopIds }
+      { entries }
     );
     return {
       success: true,
@@ -235,11 +243,11 @@ export const employeeService = {
 
   async unassignDeliveryShops(
     id: string,
-    shopIds: string[]
+    entries: ShopShiftEntry[]
   ): Promise<ApiResponse<DeliveryAssignment>> {
     const { data } = await apiClient.delete<any>(
       `/employees/${id}/delivery-shops`,
-      { data: { shopIds } }
+      { data: { entries } }
     );
     return {
       success: true,

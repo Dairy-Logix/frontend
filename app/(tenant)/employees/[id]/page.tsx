@@ -345,6 +345,7 @@ export default function EmployeeDetailsPage() {
     employee.employeeRole === "delivery" || employee.employeeRole === "both";
   const assignedAgencyIds = deliveryAssignment?.agencyIds ?? [];
   const deliveryShopIds = deliveryAssignment?.shopIds ?? [];
+  const deliveryShopShifts = deliveryAssignment?.shopShifts ?? {};
 
   const assignedAgencies = agencies.filter((a) => assignedAgencyIds.includes(a.id));
 
@@ -353,11 +354,20 @@ export default function EmployeeDetailsPage() {
     agencyId: string
   ) => shop.amAgencyId === agencyId || shop.pmAgencyId === agencyId;
 
+  // An agency is a store's morning or evening agency — that is the shift it
+  // serves. Delivery routing is per (store, shift): the same store can have a
+  // different driver in the morning and the evening.
+  const shiftOfAgency = (shop: (typeof allShops)[number], agencyId: string): "AM" | "PM" =>
+    shop.amAgencyId === agencyId ? "AM" : "PM";
+  const deliveryKey = (shopId: string, shift: "AM" | "PM") => `${shopId}:${shift}`;
+  const routedDeliveryKeys = Object.entries(deliveryShopShifts).flatMap(([shopId, shifts]) =>
+    shifts.map((sh) => deliveryKey(shopId, sh))
+  );
+  const isRoutedForAgency = (shop: (typeof allShops)[number], agencyId: string) =>
+    routedDeliveryKeys.includes(deliveryKey(shop.id, shiftOfAgency(shop, agencyId)));
+
   const countRoutedStores = (agencyId: string) =>
-    allShops.filter(
-      (shop) =>
-        shopBelongsToAgency(shop, agencyId) && deliveryShopIds.includes(shop.id)
-    ).length;
+    allShops.filter((shop) => shopBelongsToAgency(shop, agencyId) && isRoutedForAgency(shop, agencyId)).length;
 
   const countAgencyStores = (agencyId: string) =>
     allShops.filter((shop) => shopBelongsToAgency(shop, agencyId)).length;
@@ -381,14 +391,19 @@ export default function EmployeeDetailsPage() {
     try {
       const added = selectedAgencyIds.filter((id) => !assignedAgencyIds.includes(id));
       const removed = assignedAgencyIds.filter((id) => !selectedAgencyIds.includes(id));
+      let skipped = 0;
       if (added.length > 0) {
-        await assignDeliveryAgencies.mutateAsync({ employeeId, agencyIds: added });
+        const res = await assignDeliveryAgencies.mutateAsync({ employeeId, agencyIds: added });
+        skipped = res?.skipped ?? 0;
       }
       if (removed.length > 0) {
         await unassignDeliveryAgencies.mutateAsync({ employeeId, agencyIds: removed });
       }
       setManageAgenciesOpen(false);
       toast.success(`Updated delivery agencies for ${employee.name}`);
+      if (skipped > 0) {
+        toast.info(`${skipped} store shift${skipped === 1 ? " is" : "s are"} already with another driver and stayed there. Release them from that driver to move them.`);
+      }
     } catch {
       // mutation hooks already surface error toasts
     } finally {
@@ -396,45 +411,49 @@ export default function EmployeeDetailsPage() {
     }
   };
 
+  // Selection state holds "shopId:AM" / "shopId:PM" keys.
   const openManageStoresModal = () => {
-    setSelectedDeliveryShopIds(deliveryShopIds);
+    setSelectedDeliveryShopIds(routedDeliveryKeys);
     setManageStoresOpen(true);
   };
 
-  const toggleDeliveryShopSelection = (shopId: string) => {
+  const toggleDeliveryShopSelection = (key: string) => {
     setSelectedDeliveryShopIds((prev) =>
-      prev.includes(shopId)
-        ? prev.filter((id) => id !== shopId)
-        : [...prev, shopId]
+      prev.includes(key) ? prev.filter((id) => id !== key) : [...prev, key]
     );
   };
 
   const toggleDeliveryAgencySelection = (agencyId: string) => {
-    const agencyShopIds = allShops
+    const agencyKeys = allShops
       .filter((shop) => shopBelongsToAgency(shop, agencyId))
-      .map((shop) => shop.id);
-    const allSelected = agencyShopIds.every((id) => selectedDeliveryShopIds.includes(id));
+      .map((shop) => deliveryKey(shop.id, shiftOfAgency(shop, agencyId)));
+    const allSelected = agencyKeys.every((k) => selectedDeliveryShopIds.includes(k));
     setSelectedDeliveryShopIds((prev) =>
       allSelected
-        ? prev.filter((id) => !agencyShopIds.includes(id))
-        : [...new Set([...prev, ...agencyShopIds])]
+        ? prev.filter((k) => !agencyKeys.includes(k))
+        : [...new Set([...prev, ...agencyKeys])]
     );
+  };
+
+  const parseDeliveryKey = (key: string) => {
+    const i = key.lastIndexOf(":");
+    return { shopId: key.slice(0, i), shift: key.slice(i + 1) as "AM" | "PM" };
   };
 
   const handleSaveDeliveryStores = async (e: React.FormEvent) => {
     e.preventDefault();
     setManageStoresLoading(true);
     try {
-      const added = selectedDeliveryShopIds.filter((id) => !deliveryShopIds.includes(id));
-      const removed = deliveryShopIds.filter((id) => !selectedDeliveryShopIds.includes(id));
+      const added = selectedDeliveryShopIds.filter((k) => !routedDeliveryKeys.includes(k));
+      const removed = routedDeliveryKeys.filter((k) => !selectedDeliveryShopIds.includes(k));
       if (added.length > 0) {
-        await assignDeliveryShops.mutateAsync({ employeeId, shopIds: added });
+        await assignDeliveryShops.mutateAsync({ employeeId, entries: added.map(parseDeliveryKey) });
       }
       if (removed.length > 0) {
-        await unassignDeliveryShops.mutateAsync({ employeeId, shopIds: removed });
+        await unassignDeliveryShops.mutateAsync({ employeeId, entries: removed.map(parseDeliveryKey) });
       }
       setManageStoresOpen(false);
-      const count = selectedDeliveryShopIds.length;
+      const count = new Set(selectedDeliveryShopIds.map((k) => parseDeliveryKey(k).shopId)).size;
       toast.success(
         `Routed ${count} store${count === 1 ? "" : "s"} to ${employee.name}`
       );
@@ -470,7 +489,7 @@ export default function EmployeeDetailsPage() {
       .filter(
         (shop) =>
           deliveryShopIds.includes(shop.id) &&
-          assignedAgencyIds.some((aid) => shopBelongsToAgency(shop, aid))
+          assignedAgencyIds.some((aid) => shopBelongsToAgency(shop, aid) && isRoutedForAgency(shop, aid))
       )
       .map((shop) => shop.id)
   ).size;
@@ -1435,8 +1454,8 @@ export default function EmployeeDetailsPage() {
                     );
                     if (agencyShops.length === 0) return null;
 
-                    const allSelected = agencyShops.every((s) => selectedDeliveryShopIds.includes(s.id));
-                    const someSelected = agencyShops.some((s) => selectedDeliveryShopIds.includes(s.id));
+                    const allSelected = agencyShops.every((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const someSelected = agencyShops.some((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
 
                     return (
                       <div key={agency.id} className="space-y-2">
@@ -1454,19 +1473,20 @@ export default function EmployeeDetailsPage() {
                             {agency.name} - {agency.location}
                           </h4>
                           <span className="text-xs text-muted-foreground">
-                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(s.id)).length}/{agencyShops.length} stores)
+                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id)))).length}/{agencyShops.length} stores · {shiftOfAgency(agencyShops[0], agency.id) === "AM" ? "morning" : "evening"})
                           </span>
                         </div>
 
                         {/* Agency Stores - 2 Column Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-2">
                           {agencyShops.map((shop) => {
-                            const isChecked = selectedDeliveryShopIds.includes(shop.id);
+                            const shopKey = deliveryKey(shop.id, shiftOfAgency(shop, agency.id));
+                            const isChecked = selectedDeliveryShopIds.includes(shopKey);
                             return (
                               <div
                                 key={shop.id}
                                 className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
-                                onClick={() => toggleDeliveryShopSelection(shop.id)}
+                                onClick={() => toggleDeliveryShopSelection(shopKey)}
                               >
                                 <div className={`mt-0.5 size-4 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center ${isChecked ? "bg-primary border-primary text-primary-foreground" : ""}`}>
                                   {isChecked && <Check className="size-3.5" />}

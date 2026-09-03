@@ -1,3 +1,4 @@
+import type { ShopShiftEntry } from '@/lib/types';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { employeeService } from '@/lib/api/services/employee.service';
@@ -321,8 +322,8 @@ export function useUnassignDeliveryAgencies() {
 export function useAssignDeliveryShops() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ employeeId, shopIds }: { employeeId: string; shopIds: string[] }) => {
-      const response = await employeeService.assignDeliveryShops(employeeId, shopIds);
+    mutationFn: async ({ employeeId, entries }: { employeeId: string; entries: ShopShiftEntry[] }) => {
+      const response = await employeeService.assignDeliveryShops(employeeId, entries);
       if (!response.success) throw new Error(response.message || 'Failed to assign stores');
       return response.data;
     },
@@ -337,8 +338,8 @@ export function useAssignDeliveryShops() {
 export function useUnassignDeliveryShops() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ employeeId, shopIds }: { employeeId: string; shopIds: string[] }) => {
-      const response = await employeeService.unassignDeliveryShops(employeeId, shopIds);
+    mutationFn: async ({ employeeId, entries }: { employeeId: string; entries: ShopShiftEntry[] }) => {
+      const response = await employeeService.unassignDeliveryShops(employeeId, entries);
       if (!response.success) throw new Error(response.message || 'Failed to unassign stores');
       return response.data;
     },

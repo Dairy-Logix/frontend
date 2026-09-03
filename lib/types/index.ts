@@ -616,6 +616,15 @@ export interface Employee {
 export interface AgencyAssignment {
   agencyIds: string[];
   shopIds: string[];
+  /** Delivery only: which shift(s) of each store route to this driver. */
+  shopShifts?: Record<string, Array<'AM' | 'PM'>>;
+  /** Delivery agency assignment only: store-shifts left with other drivers. */
+  skipped?: number;
+}
+
+export interface ShopShiftEntry {
+  shopId: string;
+  shift: 'AM' | 'PM';
 }
 
 // Back-compat alias — delivery assignment uses the shared shape.
