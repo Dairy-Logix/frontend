@@ -28,6 +28,10 @@ export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: b
       toast.error("This browser can't provide a location.");
       return;
     }
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      toast.error("Browsers only share location on https:// or http://localhost. Open the admin panel at http://localhost:3002 (or the https address) and try again.", { duration: 10000 });
+      return;
+    }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -38,7 +42,12 @@ export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: b
       },
       (err) => {
         setLocating(false);
-        toast.error(err.code === err.PERMISSION_DENIED ? "Location access was denied for this site." : "Could not get your location. Try again outdoors or check your device settings.");
+        toast.error(
+          err.code === err.PERMISSION_DENIED
+            ? "Location is blocked for this site. Click the lock icon in the address bar → Location → Allow, then reload."
+            : "Could not get your location. Try again outdoors or check your device settings.",
+          { duration: 10000 },
+        );
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
