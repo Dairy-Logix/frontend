@@ -16,7 +16,7 @@ import { useDeliveryBoard } from "@/lib/hooks/use-deliveries";
 import { useFeature } from "@/lib/hooks/use-feature";
 import { TENANT_ROUTES } from "@/lib/constants";
 import { agoLabel, dateOf, endedByLabel, timeOf, todayYmd, tripStatusMap } from "@/components/deliveries/format";
-import type { DeliveryTripRow } from "@/lib/types";
+import type { DeliveryTripRow, ExpectedDriver } from "@/lib/types";
 
 export default function DeliveriesBoardPage() {
   const router = useRouter();
@@ -48,6 +48,14 @@ export default function DeliveriesBoardPage() {
     return [...m.entries()].map(([id, label]) => ({ id, label }));
   }, [data]);
   const visibleTrips = (data?.trips ?? []).filter((t) => !vehicleFilter || (t.vehicleId ?? t.vehicle) === vehicleFilter);
+  // On-duty drivers who have not started a shift's run yet (today only).
+  const notStarted = (data?.drivers ?? []).flatMap((d) =>
+    (["AM", "PM"] as const)
+      .filter((sh) => d[sh] && d[sh]!.status === "not_started")
+      .map((sh) => ({ driver: d, shift: sh, stores: d[sh]!.stores })),
+  );
+  const onDuty = data?.drivers.length ?? 0;
+  const started = new Set((data?.trips ?? []).map((t) => t.employeeId)).size;
 
   return (
     <div className="space-y-6">
@@ -68,7 +76,7 @@ export default function DeliveriesBoardPage() {
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Trips" value={s?.trips ?? 0} description={`${s?.inProgress ?? 0} in progress`} icon={Route} tone="primary" />
+        <StatCard title="Trips" value={s?.trips ?? 0} description={isToday ? `${started} of ${onDuty} on-duty driver${onDuty === 1 ? "" : "s"} started · ${s?.inProgress ?? 0} on the road` : `${s?.inProgress ?? 0} in progress`} icon={Route} tone="primary" />
         <StatCard title="Delivered" value={`${s?.delivered ?? 0} / ${s?.stops ?? 0}`} description="stops delivered" icon={CheckCircle2} tone="emerald" />
         <StatCard title="Still out" value={s?.pending ?? 0} description={`${s?.skipped ?? 0} skipped`} icon={Truck} tone="cyan" />
         <StatCard title="Need attention" value={(s?.failed ?? 0) + (s?.exceptions ?? 0)} description={`${s?.failed ?? 0} could not be delivered`} icon={AlertTriangle} tone="amber" />
@@ -103,16 +111,48 @@ export default function DeliveriesBoardPage() {
         </div>
         {isLoading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : !data?.trips.length ? (
+        ) : !data?.trips.length && !notStarted.length ? (
           <div className="py-10 text-center text-muted-foreground text-sm">
-            No trips {isToday ? "started yet today" : "on this day"}. A trip appears here when a delivery agent taps Start in the Field app.
+            {isToday ? "No drivers are on duty with stores assigned. Switch drivers on above." : "No trips on this day."}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {visibleTrips.map((t) => <TripCard key={t.id} trip={t} onOpen={() => router.push(TENANT_ROUTES.DELIVERY_TRIP(t.id))} />)}
+            {!vehicleFilter ? notStarted.map((n) => <NotStartedCard key={`${n.driver.employeeId}-${n.shift}`} driver={n.driver} shift={n.shift} stores={n.stores} />) : null}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Morning / evening tag — sunrise amber vs dusk indigo, matching the Field app's shift themes. */
+function ShiftBadge({ shift }: { shift: "AM" | "PM" }) {
+  return (
+    <span
+      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+        shift === "AM" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
+      }`}
+    >
+      {shift === "AM" ? "AM · Morning" : "PM · Evening"}
+    </span>
+  );
+}
+
+function NotStartedCard({ driver, shift, stores }: { driver: ExpectedDriver; shift: "AM" | "PM"; stores: number }) {
+  return (
+    <div className="glass-subtle rounded-xl p-4 border border-dashed border-border/70 space-y-2 opacity-90">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-semibold truncate">{driver.employeeName}</p>
+          <p className="text-xs text-muted-foreground">{shift === "AM" ? "Morning" : "Evening"} run</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ShiftBadge shift={shift} />
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Not started</span>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground">{stores} store{stores === 1 ? "" : "s"} assigned · waiting for the driver to tap Start</p>
     </div>
   );
 }
@@ -128,7 +168,10 @@ function TripCard({ trip, onOpen }: { trip: DeliveryTripRow; onOpen: () => void 
           <p className="font-semibold truncate">{trip.employeeName ?? "Delivery agent"}</p>
           <p className="text-xs text-muted-foreground truncate">{trip.agencyNames.join(" + ") || "Beat"} · {trip.shift === "AM" ? "Morning" : "Evening"}{trip.vehicle ? ` · ${trip.vehicle}` : ""}</p>
         </div>
-        <StatusBadge status={trip.status} colorMap={tripStatusMap} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ShiftBadge shift={trip.shift} />
+          <StatusBadge status={trip.status} colorMap={tripStatusMap} />
+        </div>
       </div>
       <div>
         <div className="flex items-baseline justify-between text-sm">

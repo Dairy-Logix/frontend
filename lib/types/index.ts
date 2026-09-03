@@ -1522,9 +1522,25 @@ export interface DeliveryTripRow {
   durationMin?: number;
 }
 
+export interface ExpectedRunShift {
+  stores: number;
+  tripId?: string;
+  status: 'not_started' | DeliveryTripStatus;
+}
+
+/** An on-duty driver and the runs expected of them today. */
+export interface ExpectedDriver {
+  employeeId: string;
+  employeeName: string;
+  AM: ExpectedRunShift | null;
+  PM: ExpectedRunShift | null;
+}
+
 export interface DeliveryBoard {
   date: string;
   trips: DeliveryTripRow[];
+  /** Today only: on-duty drivers with per-shift expected runs. */
+  drivers: ExpectedDriver[];
   summary: {
     trips: number;
     stops: number;
