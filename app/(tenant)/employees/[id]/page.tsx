@@ -32,6 +32,7 @@ import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,6 +61,7 @@ import {
   useUnassignDeliveryAgencies,
   useAssignDeliveryShops,
   useUnassignDeliveryShops,
+  useSetDeliveryActive,
   useCollectorAssignment,
   useAssignCollectorAgencies,
   useUnassignCollectorAgencies,
@@ -110,6 +112,7 @@ export default function EmployeeDetailsPage() {
   const unassignDeliveryAgencies = useUnassignDeliveryAgencies();
   const assignDeliveryShops = useAssignDeliveryShops();
   const unassignDeliveryShops = useUnassignDeliveryShops();
+  const setDeliveryActive = useSetDeliveryActive();
 
   // Collector assignment hooks
   const { data: collectorAssignment } = useCollectorAssignment(employeeId);
@@ -366,11 +369,17 @@ export default function EmployeeDetailsPage() {
   );
   const isRoutedForAgency = (shop: (typeof allShops)[number], agencyId: string) =>
     routedDeliveryKeys.includes(deliveryKey(shop.id, shiftOfAgency(shop, agencyId)));
-  // Store + agency pairs another driver holds: shown as taken and not selectable
-  // until released from that driver (the API refuses them anyway).
-  const heldByOthers = new Map(
-    (deliveryAssignment?.heldByOthers ?? []).map((h) => [deliveryKey(h.shopId, h.shift), h.employeeName])
-  );
+  // Store + agency pairs other drivers hold. Only an ON-DUTY holder blocks
+  // selection, and only while this driver is on duty; an off-duty driver may
+  // hold anything (standby) — the clash is checked when they are switched on.
+  const thisOnDuty = deliveryAssignment?.deliveryActive !== false;
+  const heldByOthers = new Map<string, { name: string; active: boolean }>();
+  for (const h of deliveryAssignment?.heldByOthers ?? []) {
+    const key = deliveryKey(h.shopId, h.shift);
+    const prev = heldByOthers.get(key);
+    if (!prev || (h.active && !prev.active)) heldByOthers.set(key, { name: h.employeeName, active: h.active });
+  }
+  const blockedKey = (key: string) => thisOnDuty && !!heldByOthers.get(key)?.active;
 
   const countRoutedStores = (agencyId: string) =>
     allShops.filter((shop) => shopBelongsToAgency(shop, agencyId) && isRoutedForAgency(shop, agencyId)).length;
@@ -424,7 +433,7 @@ export default function EmployeeDetailsPage() {
   };
 
   const toggleDeliveryShopSelection = (key: string) => {
-    if (heldByOthers.has(key)) return;
+    if (blockedKey(key)) return;
     setSelectedDeliveryShopIds((prev) =>
       prev.includes(key) ? prev.filter((id) => id !== key) : [...prev, key]
     );
@@ -434,7 +443,7 @@ export default function EmployeeDetailsPage() {
     const agencyKeys = allShops
       .filter((shop) => shopBelongsToAgency(shop, agencyId))
       .map((shop) => deliveryKey(shop.id, shiftOfAgency(shop, agencyId)))
-      .filter((k) => !heldByOthers.has(k));
+      .filter((k) => !blockedKey(k));
     const allSelected = agencyKeys.every((k) => selectedDeliveryShopIds.includes(k));
     setSelectedDeliveryShopIds((prev) =>
       allSelected
@@ -740,6 +749,26 @@ export default function EmployeeDetailsPage() {
       </div>
 
       {/* Tabs */}
+      {(employee.employeeRole === "delivery" || employee.employeeRole === "both") ? (
+        <div className="glass rounded-xl p-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold">Delivery duty</h3>
+            <p className="text-xs text-muted-foreground">
+              {employee.deliveryActive !== false
+                ? "On duty — this driver runs their stores. Switch off when absent so a standby holding the same stores can be switched on."
+                : "Off duty — their stores are run by whichever standby holds them. Switching on is refused while another on-duty driver has any of the same stores."}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            {employee.deliveryActive !== false ? "On" : "Off"}
+            <Switch
+              checked={employee.deliveryActive !== false}
+              disabled={setDeliveryActive.isPending}
+              onCheckedChange={(on) => setDeliveryActive.mutate({ employeeId, active: on })}
+            />
+          </label>
+        </div>
+      ) : null}
       <DefaultVehicleCard employee={employee} />
 
       <Tabs defaultValue="overview" className="space-y-4">
@@ -1464,7 +1493,7 @@ export default function EmployeeDetailsPage() {
                     );
                     if (agencyShops.length === 0) return null;
 
-                    const freeShops = agencyShops.filter((s) => !heldByOthers.has(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const freeShops = agencyShops.filter((s) => !blockedKey(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
                     const allSelected = freeShops.length > 0 && freeShops.every((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
                     const someSelected = freeShops.some((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
                     const heldCount = agencyShops.length - freeShops.length;
@@ -1485,7 +1514,7 @@ export default function EmployeeDetailsPage() {
                             {agency.name} - {agency.location}
                           </h4>
                           <span className="text-xs text-muted-foreground">
-                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id)))).length}/{agencyShops.length} stores · {shiftOfAgency(agencyShops[0], agency.id) === "AM" ? "morning" : "evening"}{heldCount ? ` · ${heldCount} with other drivers` : ""})
+                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id)))).length}/{agencyShops.length} stores · {shiftOfAgency(agencyShops[0], agency.id) === "AM" ? "morning" : "evening"}{heldCount ? ` · ${heldCount} active with other drivers` : ""})
                           </span>
                         </div>
 
@@ -1495,14 +1524,15 @@ export default function EmployeeDetailsPage() {
                             const shopKey = deliveryKey(shop.id, shiftOfAgency(shop, agency.id));
                             const isChecked = selectedDeliveryShopIds.includes(shopKey);
                             const holder = heldByOthers.get(shopKey);
+                            const blocked = blockedKey(shopKey);
                             return (
                               <div
                                 key={shop.id}
-                                title={holder ? `Release this store from ${holder} first` : undefined}
-                                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${holder ? "opacity-70 cursor-not-allowed bg-amber-50/40 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900" : "hover:bg-muted/50 cursor-pointer"}`}
+                                title={blocked ? `Switch ${holder?.name} off duty (or release the store) first` : undefined}
+                                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${blocked ? "opacity-70 cursor-not-allowed bg-amber-50/40 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900" : "hover:bg-muted/50 cursor-pointer"}`}
                                 onClick={() => toggleDeliveryShopSelection(shopKey)}
                               >
-                                <div className={`mt-0.5 size-4 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center ${isChecked ? "bg-primary border-primary text-primary-foreground" : holder ? "bg-muted border-muted-foreground/30" : ""}`}>
+                                <div className={`mt-0.5 size-4 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center ${isChecked ? "bg-primary border-primary text-primary-foreground" : blocked ? "bg-muted border-muted-foreground/30" : ""}`}>
                                   {isChecked && <Check className="size-3.5" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -1510,8 +1540,8 @@ export default function EmployeeDetailsPage() {
                                     <Store className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     <span className="font-medium">{shop.shopName}</span>
                                     {holder ? (
-                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                        With {holder}
+                                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${holder.active ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" : "bg-muted text-muted-foreground"}`}>
+                                        {holder.active ? `Active with ${holder.name}` : `Standby: ${holder.name} (off duty)`}
                                       </span>
                                     ) : null}
                                     <StatusBadge

@@ -613,6 +613,8 @@ export interface Employee {
   assignedDeliveryShopCount?: number;
   /** Fleet vehicle id (settings.config.delivery.vehicles) this driver usually takes. */
   defaultVehicleId?: string | null;
+  /** On delivery duty. Off = standby / absent; their stores are run by another on-duty holder. */
+  deliveryActive?: boolean;
   isActive: boolean;
   // Full CDN URL computed by the backend from photoKey; null when no photo
   photoUrl?: string | null;
@@ -630,8 +632,10 @@ export interface AgencyAssignment {
   shopShifts?: Record<string, Array<'AM' | 'PM'>>;
   /** Delivery agency assignment only: store-shifts left with other drivers. */
   skipped?: number;
-  /** Delivery only: store + agency pairs in this driver's agencies that another driver holds. */
-  heldByOthers?: Array<{ shopId: string; shift: 'AM' | 'PM'; agencyId: string; employeeId: string; employeeName: string }>;
+  /** Delivery only: whether this driver is on delivery duty. */
+  deliveryActive?: boolean;
+  /** Delivery only: store + agency pairs in this driver's agencies that other drivers hold, with their duty state. */
+  heldByOthers?: Array<{ shopId: string; shift: 'AM' | 'PM'; agencyId: string; employeeId: string; employeeName: string; active: boolean }>;
 }
 
 export interface ShopShiftEntry {

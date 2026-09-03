@@ -284,6 +284,23 @@ function invalidateAssignmentCaches(queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
 }
 
+/** Delivery duty on/off — the substitution switch. */
+export function useSetDeliveryActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, active }: { employeeId: string; active: boolean }) => {
+      const response = await employeeService.setDeliveryActive(employeeId, active);
+      if (!response.success || !response.data) throw new Error(response.message || 'Failed to update duty');
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      invalidateAssignmentCaches(queryClient, variables.employeeId);
+      toast.success(`${data.name}: delivery duty ${variables.active ? 'on' : 'off'}`);
+    },
+    onError: (error) => toast.error(handleApiError(error), { duration: 8000 }),
+  });
+}
+
 /**
  * Assign agencies to a delivery person (default-fills the agencies' stores).
  */

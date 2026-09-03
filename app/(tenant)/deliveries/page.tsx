@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DeliveryMap, type MapAgent } from "@/components/deliveries/delivery-map";
+import { DutyPanel } from "@/components/deliveries/duty-panel";
 import { useDeliveryBoard } from "@/lib/hooks/use-deliveries";
 import { useFeature } from "@/lib/hooks/use-feature";
 import { TENANT_ROUTES } from "@/lib/constants";
@@ -85,6 +86,8 @@ export default function DeliveriesBoardPage() {
           )}
         </motion.div>
       ) : null}
+
+      {isToday ? <DutyPanel trips={data?.trips ?? []} /> : null}
 
       <div className="glass rounded-xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">

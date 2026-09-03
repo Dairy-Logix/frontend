@@ -31,6 +31,7 @@ function normalizeEmployee(raw: any): Employee {
     collectorAgencyIds: (raw.collectorAgencyIds || []).map((id: any) => String(id)),
     assignedDeliveryShopCount: raw.assignedDeliveryShopCount ?? 0,
     defaultVehicleId: raw.defaultVehicleId ?? null,
+    deliveryActive: raw.deliveryActive !== false,
     isActive: raw.isActive ?? (raw.status === 'active'),
     photoUrl: raw.photoUrl ?? null,
     createdAt: raw.createdAt,
@@ -51,6 +52,7 @@ function normalizeAgencyAssignment(raw: any): AgencyAssignment {
     shopIds: (raw?.shops || []).map((s: any) => String(s._id || s.id)),
     shopShifts,
     skipped: typeof raw?.skipped === 'number' ? raw.skipped : undefined,
+    deliveryActive: raw?.deliveryActive !== false,
     heldByOthers: Array.isArray(raw?.heldByOthers)
       ? raw.heldByOthers.map((h: any) => ({
           shopId: String(h.shopId),
@@ -58,6 +60,7 @@ function normalizeAgencyAssignment(raw: any): AgencyAssignment {
           agencyId: String(h.agencyId),
           employeeId: String(h.employeeId),
           employeeName: String(h.employeeName ?? 'another driver'),
+          active: h.active !== false,
         }))
       : [],
   };
@@ -123,6 +126,12 @@ export const employeeService = {
       data: normalizeEmployee(data),
       message: 'Employee updated successfully',
     };
+  },
+
+  /** Delivery duty on/off. The server refuses ON while an on-duty driver holds the same store + agency. */
+  async setDeliveryActive(id: string, active: boolean): Promise<ApiResponse<Employee>> {
+    const { data } = await apiClient.patch<any>(`/employees/${id}/delivery-active`, { active });
+    return { success: true, data: normalizeEmployee(data), message: active ? 'Delivery duty switched on' : 'Delivery duty switched off' };
   },
 
   async updateEmployeeStatus(
