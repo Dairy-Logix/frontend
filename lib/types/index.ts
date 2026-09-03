@@ -1478,8 +1478,10 @@ export interface DeliveryTripRow {
   id: string;
   employeeId: string;
   employeeName?: string;
-  agencyId: string;
-  agencyName?: string;
+  /** Every beat covered on this run (a van may carry two agencies' orders). */
+  agencyIds: string[];
+  agencyNames: string[];
+  vehicle?: string;
   shift: DeliveryShift;
   businessDate: string;
   status: DeliveryTripStatus;
@@ -1511,6 +1513,8 @@ export interface DeliveryBoard {
 export interface DeliveryTripStop {
   shopkeeperId: string;
   shopName: string;
+  agencyId?: string;
+  agencyName?: string;
   ownerName?: string;
   phone?: string;
   address?: string;
@@ -1542,8 +1546,9 @@ export interface DeliveryException {
   tripId: string;
   businessDate: string;
   shift: DeliveryShift;
-  agencyId: string;
+  agencyId?: string;
   agencyName?: string;
+  vehicle?: string;
   employeeId: string;
   employeeName?: string;
   endedAt?: string;

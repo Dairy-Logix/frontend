@@ -71,7 +71,7 @@ export default function DeliveryExceptionsPage() {
                 </div>
                 <p className="text-sm mt-1"><span className="text-red-600 font-medium">{e.reason}</span>{e.attemptAt ? <span className="text-muted-foreground"> · {timeOf(e.attemptAt)}</span> : null}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {dateOf(e.businessDate)} · {e.shift === "AM" ? "Morning" : "Evening"} · {e.employeeName ?? "Agent"} · {e.agencyName ?? ""} · {e.orders.map((o) => o.orderNumber).join(", ")} · {inr(e.amount)}
+                  {dateOf(e.businessDate)} · {e.shift === "AM" ? "Morning" : "Evening"} · {e.employeeName ?? "Agent"}{e.vehicle ? ` (${e.vehicle})` : ""} · {e.agencyName ?? ""} · {e.orders.map((o) => o.orderNumber).join(", ")} · {inr(e.amount)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

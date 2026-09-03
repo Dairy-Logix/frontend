@@ -51,7 +51,7 @@ export default function DeliveryTripPage() {
     { key: "shopName", header: "Store", cell: (s) => (
       <div>
         <p className="font-medium">{s.shopName}</p>
-        <p className="text-xs text-muted-foreground">{[s.area, s.city].filter(Boolean).join(", ") || s.address}</p>
+        <p className="text-xs text-muted-foreground">{[s.area, s.city].filter(Boolean).join(", ") || s.address}{trip.agencyNames.length > 1 && s.agencyName ? ` · ${s.agencyName}` : ""}</p>
       </div>
     ) },
     { key: "status", header: "Status", cell: (s) => <StatusBadge status={s.status} colorMap={stopStatusMap} /> },
@@ -84,7 +84,7 @@ export default function DeliveryTripPage() {
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.push(TENANT_ROUTES.DELIVERIES)}><ArrowLeft className="h-4 w-4" /> Back to Deliveries</Button>
       <PageHeader
-        title={`${trip.employeeName ?? "Delivery agent"} · ${trip.agencyName ?? trip.shift}`}
+        title={`${trip.employeeName ?? "Delivery agent"} · ${trip.agencyNames.join(" + ") || trip.shift}${trip.vehicle ? ` · ${trip.vehicle}` : ""}`}
         description={`${dateOf(trip.businessDate)} · ${trip.shift === "AM" ? "Morning" : "Evening"} · started ${timeOf(trip.startedAt)}${trip.endedAt ? ` · ended ${timeOf(trip.endedAt)} (${endedByLabel(trip)})` : ""}${trip.endReason ? ` · ${trip.endReason}` : ""}`}
         action={
           <div className="flex items-center gap-2">

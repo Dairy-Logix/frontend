@@ -29,7 +29,7 @@ export default function DeliveriesBoardPage() {
         .filter((t) => t.lastLocation)
         .map((t) => ({
           id: t.id,
-          name: `${t.employeeName ?? "Agent"} · ${t.agencyName ?? t.shift}`,
+          name: `${t.employeeName ?? "Agent"}${t.vehicle ? ` · ${t.vehicle}` : ""} · ${t.agencyNames.join(" + ") || t.shift}`,
           lat: t.lastLocation!.lat,
           lng: t.lastLocation!.lng,
           at: t.lastLocation!.at,
@@ -106,7 +106,7 @@ function TripCard({ trip, onOpen }: { trip: DeliveryTripRow; onOpen: () => void 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold truncate">{trip.employeeName ?? "Delivery agent"}</p>
-          <p className="text-xs text-muted-foreground truncate">{trip.agencyName ?? "Beat"} · {trip.shift === "AM" ? "Morning" : "Evening"}</p>
+          <p className="text-xs text-muted-foreground truncate">{trip.agencyNames.join(" + ") || "Beat"} · {trip.shift === "AM" ? "Morning" : "Evening"}{trip.vehicle ? ` · ${trip.vehicle}` : ""}</p>
         </div>
         <StatusBadge status={trip.status} colorMap={tripStatusMap} />
       </div>
