@@ -341,6 +341,8 @@ export interface DeliveryVehicle {
 }
 
 export interface DeliverySettings {
+  /** Tenant switch for the whole delivery module (plan flag must also be on). */
+  enabled: boolean;
   vehicles: DeliveryVehicle[];
   proximityRadiusMeters: number;
   strictProximity: boolean;

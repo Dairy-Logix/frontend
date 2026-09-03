@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 
 import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers, useChangePassword } from "@/lib/hooks";
+import { useFeature } from "@/lib/hooks/use-feature";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl, sortShopsByAgencyOrder } from "@/lib/utils";
 import { handleApiError } from "@/lib/api/client";
@@ -170,6 +171,7 @@ export default function SettingsPage() {
   // Fetch settings from backend
   const { data: settings, isLoading, error, refetch } = useSettings();
   const updateSettings = useUpdateSettings();
+  const deliveriesAllowedByPlan = useFeature("deliveries");
 
   // Fetch tenant profile
   const tenantId = useAuthStore((s) => s.getTenantId()) ?? '';
@@ -659,6 +661,27 @@ export default function SettingsPage() {
 
         {/* ===================== PROFILE TAB ===================== */}
         <TabsContent value="profile">
+          {deliveriesAllowedByPlan ? (
+            <div className="glass rounded-xl p-6 mt-4 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold">Optional modules</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-medium text-foreground">Delivery management</span> — trips, driver duty, live map and store locations.
+                  {settings?.config?.delivery?.enabled === false
+                    ? " Switched off: the Deliveries section is hidden and drivers cannot start trips."
+                    : " Switched on."}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                {settings?.config?.delivery?.enabled === false ? "Off" : "On"}
+                <Switch
+                  checked={settings?.config?.delivery?.enabled !== false}
+                  disabled={updateSettings.isPending}
+                  onCheckedChange={(on) => updateSettings.mutate({ delivery: { enabled: on } })}
+                />
+              </label>
+            </div>
+          ) : null}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

@@ -33,7 +33,7 @@ import { useUIStore } from "@/lib/stores/ui-store";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenantStore } from "@/lib/stores/tenant-store";
 import { useTranslations } from "@/components/providers/intl-provider";
-import { useTenantFeatures, type FeatureKey } from "@/lib/hooks/use-feature";
+import { useDeliveryModuleEnabled, useTenantFeatures, type FeatureKey } from "@/lib/hooks/use-feature";
 
 type NavItem = {
   key: string;
@@ -94,9 +94,13 @@ export function TenantSidebar() {
   const { tenant } = useTenantStore();
   const tNav = useTranslations("nav");
   const features = useTenantFeatures();
+  const deliveryModule = useDeliveryModuleEnabled();
 
   const navigation = allNavItems.filter(
-    (item) => !item.feature || features[item.feature],
+    (item) =>
+      (!item.feature || features[item.feature]) &&
+      // Deliveries also honours the tenant's own module switch (Settings).
+      (item.key !== "deliveries" || deliveryModule.switchedOn),
   );
 
   const businessName = tenant?.name || "BeatMitra";

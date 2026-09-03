@@ -14,6 +14,7 @@ import type { DeliverySettings, DeliveryVehicle } from "@/lib/types";
 import { Plus, Trash2 } from "lucide-react";
 
 const DEFAULTS: DeliverySettings = {
+  enabled: true,
   vehicles: [],
   proximityRadiusMeters: 150,
   strictProximity: false,
