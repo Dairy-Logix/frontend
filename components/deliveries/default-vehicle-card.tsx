@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/lib/hooks/use-settings";
 import { useUpdateEmployee } from "@/lib/hooks/use-employees";
-import { useFeature } from "@/lib/hooks/use-feature";
+import { useDeliveryModuleEnabled } from "@/lib/hooks/use-feature";
 import type { Employee } from "@/lib/types";
 
 const NONE = "__none__";
 
 /** "Usual vehicle" card on a delivery driver's page: preselected for them at Start. */
 export function DefaultVehicleCard({ employee }: { employee: Employee }) {
-  const enabled = useFeature("deliveries");
+  const { enabled } = useDeliveryModuleEnabled();
   const { data: settings } = useSettings();
   const update = useUpdateEmployee();
   const [value, setValue] = useState<string>(employee.defaultVehicleId ?? NONE);

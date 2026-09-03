@@ -7,12 +7,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DeliveryMap } from "@/components/deliveries/delivery-map";
 import { useClearStorePin, usePinStore, useVerifyStorePin } from "@/lib/hooks/use-deliveries";
-import { useFeature } from "@/lib/hooks/use-feature";
+import { useDeliveryModuleEnabled } from "@/lib/hooks/use-feature";
 import type { Shop } from "@/lib/types";
 
 /** "Location" card on the store page: shows the pin, lets the office set, move, confirm or remove it. */
 export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: boolean }) {
-  const enabled = useFeature("deliveries");
+  const { enabled } = useDeliveryModuleEnabled();
   const pin = usePinStore();
   const verify = useVerifyStorePin();
   const clear = useClearStorePin();
