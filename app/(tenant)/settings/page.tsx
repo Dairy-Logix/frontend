@@ -47,6 +47,7 @@ import {
 
 import { useSettings, useUpdateSettings, useTenant, useUpdateTenant, useAgencies, useProducts, useShopkeepers, useChangePassword } from "@/lib/hooks";
 import { useFeature } from "@/lib/hooks/use-feature";
+import { OfficeLocationCard } from "@/components/deliveries/office-location-card";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { getLogoUrl, sortShopsByAgencyOrder } from "@/lib/utils";
 import { handleApiError } from "@/lib/api/client";
@@ -869,6 +870,12 @@ export default function SettingsPage() {
               </Button>
             </div>
           </motion.div>
+          {tenantData ? (
+            <OfficeLocationCard
+              tenant={tenantData}
+              addressLine={[profile.addressLine1, profile.city, profile.state, profile.pincode].filter(Boolean).join(", ")}
+            />
+          ) : null}
         </TabsContent>
 
         {/* ===================== INVOICE TAB ===================== */}

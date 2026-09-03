@@ -202,6 +202,8 @@ export interface FeatureCatalogEntry {
 }
 
 export interface Tenant {
+  /** Office / warehouse pin; null until set. */
+  officeLocation?: { lat: number; lng: number } | null;
   id: string;
   _id?: string;
   name: string;
@@ -315,6 +317,7 @@ export interface CreateTenantInput {
 }
 
 export interface UpdateTenantInput {
+  officeLocation?: { lat: number; lng: number } | null;
   name?: string;
   contactPerson?: string;
   email?: string;

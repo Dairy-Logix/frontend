@@ -12,8 +12,15 @@ import type {
 // Backend returns Mongo documents keyed by `_id`; the frontend Tenant type uses
 // `id`. Dropdowns/links that read `tenant.id` (e.g. the user filter and the
 // create-user tenant picker) get `undefined` without this.
-function normalizeTenant(raw: Tenant & { _id?: string }): Tenant {
-  return { ...raw, id: raw?._id || raw?.id };
+function normalizeTenant(raw: Tenant & { _id?: string; officeLocation?: any }): Tenant {
+  const loc = raw?.officeLocation;
+  const officeLocation =
+    loc?.coordinates?.length >= 2
+      ? { lat: loc.coordinates[1], lng: loc.coordinates[0] }
+      : loc && typeof loc.lat === 'number'
+        ? { lat: loc.lat, lng: loc.lng }
+        : null;
+  return { ...raw, id: raw?._id || raw?.id, officeLocation };
 }
 
 export const tenantService = {
@@ -36,7 +43,7 @@ export const tenantService = {
     const { data } = await apiClient.get<Tenant>(`/tenants/${id}`);
     return {
       success: true,
-      data,
+      data: normalizeTenant(data),
       message: 'Tenant fetched successfully',
     };
   },
