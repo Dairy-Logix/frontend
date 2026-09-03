@@ -26,6 +26,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { DefaultVehicleCard } from "@/components/deliveries/default-vehicle-card";
 import { FormModal } from "@/components/shared/form-modal";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -739,6 +740,8 @@ export default function EmployeeDetailsPage() {
       </div>
 
       {/* Tabs */}
+      <DefaultVehicleCard employee={employee} />
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>

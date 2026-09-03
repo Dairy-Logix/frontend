@@ -333,7 +333,15 @@ export interface TenantSettings {
   updatedAt: string;
 }
 
+export interface DeliveryVehicle {
+  id: string;
+  registration: string;
+  name?: string;
+  active: boolean;
+}
+
 export interface DeliverySettings {
+  vehicles: DeliveryVehicle[];
   proximityRadiusMeters: number;
   strictProximity: boolean;
   requireProofPhoto: boolean;
@@ -603,6 +611,8 @@ export interface Employee {
   agencyIds?: string[];
   collectorAgencyIds?: string[];
   assignedDeliveryShopCount?: number;
+  /** Fleet vehicle id (settings.config.delivery.vehicles) this driver usually takes. */
+  defaultVehicleId?: string | null;
   isActive: boolean;
   // Full CDN URL computed by the backend from photoKey; null when no photo
   photoUrl?: string | null;
@@ -664,6 +674,7 @@ export interface CreateEmployeeInput {
 }
 
 export interface UpdateEmployeeInput {
+  defaultVehicleId?: string | null;
   name?: string;
   phone?: string;
   email?: string;
@@ -1493,6 +1504,7 @@ export interface DeliveryTripRow {
   agencyIds: string[];
   agencyNames: string[];
   vehicle?: string;
+  vehicleId?: string;
   shift: DeliveryShift;
   businessDate: string;
   status: DeliveryTripStatus;

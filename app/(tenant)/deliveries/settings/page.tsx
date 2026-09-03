@@ -10,9 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings, useUpdateSettings } from "@/lib/hooks/use-settings";
 import { useFeature } from "@/lib/hooks/use-feature";
-import type { DeliverySettings } from "@/lib/types";
+import type { DeliverySettings, DeliveryVehicle } from "@/lib/types";
+import { Plus, Trash2 } from "lucide-react";
 
 const DEFAULTS: DeliverySettings = {
+  vehicles: [],
   proximityRadiusMeters: 150,
   strictProximity: false,
   requireProofPhoto: false,
@@ -38,7 +40,14 @@ function DeliverySettingsForm({ initial }: { initial: DeliverySettings }) {
 
   const set = <K extends keyof DeliverySettings>(k: K, v: DeliverySettings[K]) => setForm((f) => ({ ...f, [k]: v }));
   const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
-  const save = () => update.mutate({ delivery: form });
+  const setVehicle = (i: number, patch: Partial<DeliveryVehicle>) =>
+    setForm((f) => ({ ...f, vehicles: f.vehicles.map((v, j) => (j === i ? { ...v, ...patch } : v)) }));
+  const addVehicle = () => setForm((f) => ({ ...f, vehicles: [...f.vehicles, { id: "", registration: "", name: "", active: true }] }));
+  const removeVehicle = (i: number) => setForm((f) => ({ ...f, vehicles: f.vehicles.filter((_, j) => j !== i) }));
+  const save = () =>
+    update.mutate({
+      delivery: { ...form, vehicles: form.vehicles.filter((v) => v.registration.trim()).map((v) => ({ ...v, id: v.id || undefined as unknown as string })) },
+    });
 
   return (
     <div className="space-y-6">
@@ -60,6 +69,30 @@ function DeliverySettingsForm({ initial }: { initial: DeliverySettings }) {
           </div>
           <ToggleRow label="Block delivery at stores with no location pin" hint="Off: the first delivery records the store's location for you to confirm. On: the office must pin every store first." checked={form.strictProximity} onChange={(v) => set("strictProximity", v)} disabled={!gps} />
           <ToggleRow label="Require a delivery photo" hint={photos ? "The agent must take a photo before marking a stop delivered." : "Needs the photo proof feature on your plan."} checked={form.requireProofPhoto} onChange={(v) => set("requireProofPhoto", v)} disabled={!photos} />
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">Vehicles</h3>
+            <p className="text-xs text-muted-foreground">Your vans. Drivers pick one of these at Start; with an empty list they type a label instead. Inactive vans stay in old trips but can&apos;t be picked.</p>
+          </div>
+          <div className="space-y-2">
+            {form.vehicles.map((v, i) => (
+              <div key={v.id || i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+                <Input
+                  placeholder="Registration, e.g. GJ05 AB 1234"
+                  value={v.registration}
+                  onChange={(e) => setVehicle(i, { registration: e.target.value.toUpperCase() })}
+                />
+                <Input placeholder="Name (optional), e.g. Tata Ace 2" value={v.name ?? ""} onChange={(e) => setVehicle(i, { name: e.target.value })} />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Switch checked={v.active} onCheckedChange={(on) => setVehicle(i, { active: on })} /> Active
+                </label>
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeVehicle(i)} aria-label="Remove vehicle"><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addVehicle}><Plus className="h-4 w-4" /> Add vehicle</Button>
+          </div>
         </section>
 
         <section className="space-y-4">

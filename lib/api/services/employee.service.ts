@@ -30,6 +30,7 @@ function normalizeEmployee(raw: any): Employee {
     agencyIds: (raw.agencyIds || []).map((id: any) => String(id)),
     collectorAgencyIds: (raw.collectorAgencyIds || []).map((id: any) => String(id)),
     assignedDeliveryShopCount: raw.assignedDeliveryShopCount ?? 0,
+    defaultVehicleId: raw.defaultVehicleId ?? null,
     isActive: raw.isActive ?? (raw.status === 'active'),
     photoUrl: raw.photoUrl ?? null,
     createdAt: raw.createdAt,

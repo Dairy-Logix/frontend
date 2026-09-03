@@ -20,6 +20,7 @@ import type { DeliveryTripRow } from "@/lib/types";
 export default function DeliveriesBoardPage() {
   const router = useRouter();
   const [date, setDate] = useState(todayYmd());
+  const [vehicleFilter, setVehicleFilter] = useState<string | null>(null);
   const gps = useFeature("gpsTracking");
   const { data, isLoading, error, isFetching } = useDeliveryBoard(date);
 
@@ -40,6 +41,12 @@ export default function DeliveriesBoardPage() {
 
   const isToday = date === todayYmd();
   const s = data?.summary;
+  const vehicles = useMemo(() => {
+    const m = new Map<string, string>();
+    (data?.trips ?? []).forEach((t) => { if (t.vehicle) m.set(t.vehicleId ?? t.vehicle, t.vehicle); });
+    return [...m.entries()].map(([id, label]) => ({ id, label }));
+  }, [data]);
+  const visibleTrips = (data?.trips ?? []).filter((t) => !vehicleFilter || (t.vehicleId ?? t.vehicle) === vehicleFilter);
 
   return (
     <div className="space-y-6">
@@ -80,7 +87,17 @@ export default function DeliveriesBoardPage() {
       ) : null}
 
       <div className="glass rounded-xl p-6">
-        <h3 className="text-sm font-semibold mb-4">Trips</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h3 className="text-sm font-semibold">Trips</h3>
+          {vehicles.length > 1 ? (
+            <div className="flex flex-wrap gap-1">
+              <Button size="sm" variant={vehicleFilter ? "ghost" : "secondary"} onClick={() => setVehicleFilter(null)}>All vehicles</Button>
+              {vehicles.map((v) => (
+                <Button key={v.id} size="sm" variant={vehicleFilter === v.id ? "secondary" : "ghost"} onClick={() => setVehicleFilter(v.id)}>{v.label}</Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {isLoading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !data?.trips.length ? (
@@ -89,7 +106,7 @@ export default function DeliveriesBoardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {data.trips.map((t) => <TripCard key={t.id} trip={t} onOpen={() => router.push(TENANT_ROUTES.DELIVERY_TRIP(t.id))} />)}
+            {visibleTrips.map((t) => <TripCard key={t.id} trip={t} onOpen={() => router.push(TENANT_ROUTES.DELIVERY_TRIP(t.id))} />)}
           </div>
         )}
       </div>
