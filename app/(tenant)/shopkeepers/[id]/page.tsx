@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useShopkeeper, useUpdateShopkeeper } from "@/lib/hooks/use-shopkeepers";
+import { StoreLocationCard } from "@/components/deliveries/store-location-card";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 
 // --- Status Color Maps ---
@@ -491,6 +492,7 @@ export default function ShopkeeperDetailsPage() {
             </div>
           </div>
         </motion.div>
+        <StoreLocationCard shop={shop} />
       </div>
 
       {/* Tabs */}

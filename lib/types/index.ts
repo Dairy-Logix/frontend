@@ -231,6 +231,7 @@ export interface Tenant {
 }
 
 export interface TenantConfig {
+  delivery?: DeliverySettings;
   branding: TenantBranding;
   invoiceSettings: InvoiceSettings;
   tax?: TaxSettings;
@@ -332,7 +333,19 @@ export interface TenantSettings {
   updatedAt: string;
 }
 
+export interface DeliverySettings {
+  proximityRadiusMeters: number;
+  strictProximity: boolean;
+  requireProofPhoto: boolean;
+  locationIntervalSec: number;
+  autoEndTripAfterHours: number;
+  retentionDays: number;
+  failureReasons: string[];
+  tripEndReasons: string[];
+}
+
 export interface UpdateSettingsInput {
+  delivery?: Partial<DeliverySettings>;
   branding?: Partial<TenantBranding>;
   invoiceSettings?: Partial<InvoiceSettings>;
   tax?: Partial<TaxSettings>;
@@ -499,6 +512,12 @@ export interface Shop {
   // Per-agency manual list ranks ({ [agencyId]: rank }, '_global' for the
   // unscoped list). Higher rank = earlier; stores without a rank sort last.
   displayOrders?: Record<string, number>;
+  /** Store pin for proximity-verified delivery; null until pinned. */
+  location?: { lat: number; lng: number } | null;
+  locationSource?: 'admin_pin' | 'field_capture' | 'geocoded';
+  locationCapturedAt?: string;
+  /** Null while a field-captured pin awaits office confirmation. */
+  locationVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1430,4 +1449,130 @@ export interface ExpenseSummary {
   byCategory: Array<{ _id: ExpenseCategory; count: number; totalAmount: number }>;
   byMonth: Array<{ _id: { year: number; month: number }; count: number; totalAmount: number }>;
   byAgency: Array<{ _id: string; agencyName?: string; count: number; totalAmount: number }>;
+}
+
+
+// --- Delivery trips (field trips, office view) ---
+
+export type DeliveryTripStatus = 'in_progress' | 'completed' | 'cancelled';
+export type DeliveryStopStatus = 'pending' | 'delivered' | 'failed' | 'skipped';
+export type DeliveryShift = 'AM' | 'PM';
+
+export interface GeoFix {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  mocked?: boolean;
+  at?: string;
+}
+
+export interface DeliveryTripCounts {
+  total: number;
+  delivered: number;
+  failed: number;
+  skipped: number;
+  pending: number;
+}
+
+export interface DeliveryTripRow {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  agencyId: string;
+  agencyName?: string;
+  shift: DeliveryShift;
+  businessDate: string;
+  status: DeliveryTripStatus;
+  startedAt: string;
+  endedAt?: string;
+  endedBy?: 'agent' | 'auto' | 'admin';
+  endReason?: string;
+  lastLocation?: GeoFix;
+  hasExceptions: boolean;
+  counts: DeliveryTripCounts;
+  durationMin?: number;
+}
+
+export interface DeliveryBoard {
+  date: string;
+  trips: DeliveryTripRow[];
+  summary: {
+    trips: number;
+    stops: number;
+    delivered: number;
+    failed: number;
+    skipped: number;
+    pending: number;
+    inProgress: number;
+    exceptions: number;
+  };
+}
+
+export interface DeliveryTripStop {
+  shopkeeperId: string;
+  shopName: string;
+  ownerName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  area?: string;
+  location: { lat: number; lng: number } | null;
+  locationVerified: boolean;
+  status: DeliveryStopStatus;
+  orders: Array<{ id: string; orderNumber: string; status: string; total: number }>;
+  invoices: Array<{ id: string; invoiceNumber: string; total: number; amountDue: number; status: string }>;
+  amount: number;
+  deliveredAt?: string;
+  verification?: 'verified' | 'unverified' | 'out_of_range_override';
+  distanceMeters?: number;
+  proofPhotoUrl?: string;
+  notes?: string;
+  attempt?: { reason: string; at: string };
+}
+
+export interface DeliveryTripDetail extends Omit<DeliveryTripRow, 'counts' | 'durationMin'> {
+  startLocation?: GeoFix;
+  endLocation?: GeoFix;
+  skippedShopIds: string[];
+  counts: DeliveryTripCounts;
+  stops: DeliveryTripStop[];
+}
+
+export interface DeliveryException {
+  tripId: string;
+  businessDate: string;
+  shift: DeliveryShift;
+  agencyId: string;
+  agencyName?: string;
+  employeeId: string;
+  employeeName?: string;
+  endedAt?: string;
+  endedBy?: 'agent' | 'auto' | 'admin';
+  shopkeeperId: string;
+  shopName: string;
+  ownerName?: string;
+  phone?: string;
+  area?: string;
+  city?: string;
+  location: { lat: number; lng: number } | null;
+  reason: string;
+  attemptAt?: string;
+  skipped: boolean;
+  orders: Array<{ id: string; orderNumber: string; status: string; total: number; invoiceNumber?: string }>;
+  amount: number;
+}
+
+export type DeliveryExceptionAction = 'reschedule' | 'mark_delivered' | 'return';
+
+export interface UnverifiedStorePin {
+  shopkeeperId: string;
+  shopName: string;
+  ownerName?: string;
+  phone?: string;
+  address?: string;
+  area?: string;
+  city?: string;
+  location: { lat: number; lng: number } | null;
+  locationSource?: string;
+  locationCapturedAt?: string;
 }

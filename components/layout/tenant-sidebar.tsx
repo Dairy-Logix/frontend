@@ -20,6 +20,7 @@ import {
   Calculator,
   ArrowRightLeft,
   Wallet2,
+  Truck,
 } from "lucide-react";
 import { cn, getLogoUrl } from "@/lib/utils";
 import {
@@ -47,6 +48,7 @@ const allNavItems: NavItem[] = [
   { key: "products", href: "/products", icon: Package },
   { key: "stores", href: "/shopkeepers", icon: Store },
   { key: "employees", href: "/employees", icon: Users, feature: "employees" },
+  { key: "deliveries", href: "/deliveries", icon: Truck, feature: "deliveries" },
   { key: "orders", href: "/orders", icon: ShoppingCart },
   { key: "invoices", href: "/invoices", icon: FileText },
   { key: "transfers", href: "/invoice-transfers", icon: ArrowRightLeft },

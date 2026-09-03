@@ -24,3 +24,4 @@ export type {
   PurchasesReportData,
   ExportFormat,
 } from './report.service';
+export * from './delivery.service';

@@ -56,6 +56,15 @@ function normalizeShop(raw: any): Shop {
           pincode: raw.pincode || '',
         },
     area: raw.area || raw.city || '',
+    location:
+      raw.location?.coordinates?.length >= 2
+        ? { lat: raw.location.coordinates[1], lng: raw.location.coordinates[0] }
+        : raw.location && typeof raw.location.lat === 'number'
+          ? { lat: raw.location.lat, lng: raw.location.lng }
+          : null,
+    locationSource: raw.locationSource,
+    locationCapturedAt: raw.locationCapturedAt,
+    locationVerifiedAt: raw.locationVerifiedAt ?? null,
     zone: raw.zone,
     routeId: raw.routeId,
     assignedEmployeeId: raw.assignedEmployeeId,
