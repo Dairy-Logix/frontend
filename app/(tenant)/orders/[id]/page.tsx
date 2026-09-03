@@ -281,7 +281,7 @@ export default function OrderDetailPage() {
 
         <div className="relative">
             {/* Timeline bar */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               {statusFlow.map((status, index) => {
                 const config = statusTimelineConfig[status];
                 const Icon = config.icon;
@@ -332,7 +332,16 @@ export default function OrderDetailPage() {
             </div>
 
             {/* Connecting lines */}
-            <div className="absolute top-5 left-0 right-0 flex px-[20%]" style={{ transform: "translateY(-50%)" }}>
+            <div
+              className="absolute top-5 left-0 right-0 flex"
+              style={{
+                transform: "translateY(-50%)",
+                // Circle centers sit at the midpoint of each equal-width column,
+                // so the line must span from the first center to the last.
+                paddingLeft: `${100 / (statusFlow.length * 2)}%`,
+                paddingRight: `${100 / (statusFlow.length * 2)}%`,
+              }}
+            >
               {statusFlow.slice(0, -1).map((status, index) => {
                 const isCompleted = index < currentStatusIndex;
                 return (
