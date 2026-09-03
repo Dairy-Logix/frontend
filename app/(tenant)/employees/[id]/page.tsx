@@ -1340,8 +1340,8 @@ export default function EmployeeDetailsPage() {
             onClick={() => setManageAgenciesOpen(false)}
           />
           {/* Panel */}
-          <div className="relative z-10 bg-background rounded-lg border shadow-lg w-full max-w-2xl max-h-[85vh] mx-4 p-6 animate-in fade-in-0 zoom-in-95">
-            <div className="flex flex-col gap-2 mb-4">
+          <div className="relative z-10 bg-background rounded-lg border shadow-lg w-full max-w-2xl max-h-[85vh] mx-4 p-6 animate-in fade-in-0 zoom-in-95 flex flex-col overflow-hidden">
+            <div className="flex flex-col gap-2 mb-4 shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Manage Delivery Agencies</h2>
                 <Button
@@ -1366,9 +1366,9 @@ export default function EmployeeDetailsPage() {
                 }
               />
             </div>
-            <hr className="mb-4" />
-            <form onSubmit={handleSaveAgencies} className="space-y-4">
-              <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-2">
+            <hr className="mb-4 shrink-0" />
+            <form onSubmit={handleSaveAgencies} className="flex flex-col min-h-0 flex-1 space-y-4">
+              <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-2">
                 {agenciesLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center space-y-3">
@@ -1410,7 +1410,7 @@ export default function EmployeeDetailsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -1442,8 +1442,8 @@ export default function EmployeeDetailsPage() {
             onClick={() => setManageStoresOpen(false)}
           />
           {/* Panel */}
-          <div className="relative z-10 bg-background rounded-lg border shadow-lg w-full max-w-5xl max-h-[85vh] mx-4 p-6 animate-in fade-in-0 zoom-in-95">
-            <div className="flex flex-col gap-2 mb-4">
+          <div className="relative z-10 bg-background rounded-lg border shadow-lg w-full max-w-5xl max-h-[85vh] mx-4 p-6 animate-in fade-in-0 zoom-in-95 flex flex-col overflow-hidden">
+            <div className="flex flex-col gap-2 mb-4 shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Manage Delivery Stores</h2>
                 <Button
@@ -1467,10 +1467,10 @@ export default function EmployeeDetailsPage() {
                 }
               />
             </div>
-            <hr className="mb-4" />
-            <form onSubmit={handleSaveDeliveryStores} className="space-y-4">
+            <hr className="mb-4 shrink-0" />
+            <form onSubmit={handleSaveDeliveryStores} className="flex flex-col min-h-0 flex-1 space-y-4">
               {/* Store List - Grouped by assigned Agency */}
-              <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-2">
+              <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
                 {(agenciesLoading || shopsLoading) ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center space-y-3">
@@ -1572,7 +1572,7 @@ export default function EmployeeDetailsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
