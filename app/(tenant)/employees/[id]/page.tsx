@@ -365,6 +365,11 @@ export default function EmployeeDetailsPage() {
   );
   const isRoutedForAgency = (shop: (typeof allShops)[number], agencyId: string) =>
     routedDeliveryKeys.includes(deliveryKey(shop.id, shiftOfAgency(shop, agencyId)));
+  // Store + agency pairs another driver holds: shown as taken and not selectable
+  // until released from that driver (the API refuses them anyway).
+  const heldByOthers = new Map(
+    (deliveryAssignment?.heldByOthers ?? []).map((h) => [deliveryKey(h.shopId, h.shift), h.employeeName])
+  );
 
   const countRoutedStores = (agencyId: string) =>
     allShops.filter((shop) => shopBelongsToAgency(shop, agencyId) && isRoutedForAgency(shop, agencyId)).length;
@@ -418,6 +423,7 @@ export default function EmployeeDetailsPage() {
   };
 
   const toggleDeliveryShopSelection = (key: string) => {
+    if (heldByOthers.has(key)) return;
     setSelectedDeliveryShopIds((prev) =>
       prev.includes(key) ? prev.filter((id) => id !== key) : [...prev, key]
     );
@@ -426,7 +432,8 @@ export default function EmployeeDetailsPage() {
   const toggleDeliveryAgencySelection = (agencyId: string) => {
     const agencyKeys = allShops
       .filter((shop) => shopBelongsToAgency(shop, agencyId))
-      .map((shop) => deliveryKey(shop.id, shiftOfAgency(shop, agencyId)));
+      .map((shop) => deliveryKey(shop.id, shiftOfAgency(shop, agencyId)))
+      .filter((k) => !heldByOthers.has(k));
     const allSelected = agencyKeys.every((k) => selectedDeliveryShopIds.includes(k));
     setSelectedDeliveryShopIds((prev) =>
       allSelected
@@ -1454,8 +1461,10 @@ export default function EmployeeDetailsPage() {
                     );
                     if (agencyShops.length === 0) return null;
 
-                    const allSelected = agencyShops.every((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
-                    const someSelected = agencyShops.some((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const freeShops = agencyShops.filter((s) => !heldByOthers.has(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const allSelected = freeShops.length > 0 && freeShops.every((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const someSelected = freeShops.some((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id))));
+                    const heldCount = agencyShops.length - freeShops.length;
 
                     return (
                       <div key={agency.id} className="space-y-2">
@@ -1473,7 +1482,7 @@ export default function EmployeeDetailsPage() {
                             {agency.name} - {agency.location}
                           </h4>
                           <span className="text-xs text-muted-foreground">
-                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id)))).length}/{agencyShops.length} stores · {shiftOfAgency(agencyShops[0], agency.id) === "AM" ? "morning" : "evening"})
+                            ({agencyShops.filter((s) => selectedDeliveryShopIds.includes(deliveryKey(s.id, shiftOfAgency(s, agency.id)))).length}/{agencyShops.length} stores · {shiftOfAgency(agencyShops[0], agency.id) === "AM" ? "morning" : "evening"}{heldCount ? ` · ${heldCount} with other drivers` : ""})
                           </span>
                         </div>
 
@@ -1482,19 +1491,26 @@ export default function EmployeeDetailsPage() {
                           {agencyShops.map((shop) => {
                             const shopKey = deliveryKey(shop.id, shiftOfAgency(shop, agency.id));
                             const isChecked = selectedDeliveryShopIds.includes(shopKey);
+                            const holder = heldByOthers.get(shopKey);
                             return (
                               <div
                                 key={shop.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                                title={holder ? `Release this store from ${holder} first` : undefined}
+                                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${holder ? "opacity-70 cursor-not-allowed bg-amber-50/40 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900" : "hover:bg-muted/50 cursor-pointer"}`}
                                 onClick={() => toggleDeliveryShopSelection(shopKey)}
                               >
-                                <div className={`mt-0.5 size-4 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center ${isChecked ? "bg-primary border-primary text-primary-foreground" : ""}`}>
+                                <div className={`mt-0.5 size-4 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center ${isChecked ? "bg-primary border-primary text-primary-foreground" : holder ? "bg-muted border-muted-foreground/30" : ""}`}>
                                   {isChecked && <Check className="size-3.5" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <Store className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     <span className="font-medium">{shop.shopName}</span>
+                                    {holder ? (
+                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                        With {holder}
+                                      </span>
+                                    ) : null}
                                     <StatusBadge
                                       status={shop.isActive ? "active" : "inactive"}
                                       colorMap={statusColorMap}

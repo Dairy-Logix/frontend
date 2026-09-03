@@ -620,6 +620,8 @@ export interface AgencyAssignment {
   shopShifts?: Record<string, Array<'AM' | 'PM'>>;
   /** Delivery agency assignment only: store-shifts left with other drivers. */
   skipped?: number;
+  /** Delivery only: store + agency pairs in this driver's agencies that another driver holds. */
+  heldByOthers?: Array<{ shopId: string; shift: 'AM' | 'PM'; agencyId: string; employeeId: string; employeeName: string }>;
 }
 
 export interface ShopShiftEntry {

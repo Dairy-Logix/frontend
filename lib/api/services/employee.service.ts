@@ -50,6 +50,15 @@ function normalizeAgencyAssignment(raw: any): AgencyAssignment {
     shopIds: (raw?.shops || []).map((s: any) => String(s._id || s.id)),
     shopShifts,
     skipped: typeof raw?.skipped === 'number' ? raw.skipped : undefined,
+    heldByOthers: Array.isArray(raw?.heldByOthers)
+      ? raw.heldByOthers.map((h: any) => ({
+          shopId: String(h.shopId),
+          shift: h.shift,
+          agencyId: String(h.agencyId),
+          employeeId: String(h.employeeId),
+          employeeName: String(h.employeeName ?? 'another driver'),
+        }))
+      : [],
   };
 }
 
