@@ -128,6 +128,16 @@ export const employeeService = {
     };
   },
 
+  /** Become a standby for another driver: copies their agencies + stores and switches this driver off duty. */
+  async copyDeliverySetupFrom(id: string, sourceEmployeeId: string): Promise<ApiResponse<DeliveryAssignment & { copiedFrom?: string; copied?: number }>> {
+    const { data } = await apiClient.post<any>(`/employees/${id}/delivery-copy-from`, { sourceEmployeeId });
+    return {
+      success: true,
+      data: { ...normalizeAgencyAssignment(data), copiedFrom: data?.copiedFrom, copied: data?.copied },
+      message: 'Delivery setup copied',
+    };
+  },
+
   /** Delivery duty on/off. The server refuses ON while an on-duty driver holds the same store + agency. */
   async setDeliveryActive(id: string, active: boolean): Promise<ApiResponse<Employee>> {
     const { data } = await apiClient.patch<any>(`/employees/${id}/delivery-active`, { active });

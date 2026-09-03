@@ -284,6 +284,23 @@ function invalidateAssignmentCaches(queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: shopkeeperKeys.all });
 }
 
+/** Copy another driver's agencies + stores onto this driver as a standby (duty switched off). */
+export function useCopyDeliverySetup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ employeeId, sourceEmployeeId }: { employeeId: string; sourceEmployeeId: string }) => {
+      const response = await employeeService.copyDeliverySetupFrom(employeeId, sourceEmployeeId);
+      if (!response.success || !response.data) throw new Error(response.message || 'Failed to copy');
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      invalidateAssignmentCaches(queryClient, variables.employeeId);
+      toast.success(`Copied ${data.copiedFrom ?? 'that driver'}'s agencies and ${data.copied ?? 0} store shift${data.copied === 1 ? '' : 's'}. Delivery duty is now off — switch it on from the Deliveries board when needed.`, { duration: 8000 });
+    },
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
 /** Delivery duty on/off — the substitution switch. */
 export function useSetDeliveryActive() {
   const queryClient = useQueryClient();

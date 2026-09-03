@@ -32,7 +32,6 @@ import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { PhotoAvatar } from "@/components/shared/photo-avatar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -50,7 +49,6 @@ import {
   useCreateEmployee,
   useUpdateEmployee,
   useDeleteEmployee,
-  useSetDeliveryActive,
 } from "@/lib/hooks";
 import { useTranslations } from "@/components/providers/intl-provider";
 
@@ -102,7 +100,6 @@ export default function EmployeesPage() {
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const deleteEmployee = useDeleteEmployee();
-  const setDeliveryActive = useSetDeliveryActive();
 
   const employees = employeesData?.data || [];
 
@@ -363,23 +360,6 @@ export default function EmployeesPage() {
           {row.phone}
         </span>
       ),
-    },
-    {
-      key: "deliveryActive",
-      header: "Delivery duty",
-      cell: (row) =>
-        row.employeeRole === "delivery" || row.employeeRole === "both" ? (
-          <span onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-2 text-xs">
-            <Switch
-              checked={row.deliveryActive !== false}
-              disabled={setDeliveryActive.isPending}
-              onCheckedChange={(on) => setDeliveryActive.mutate({ employeeId: row.id, active: on })}
-            />
-            {row.deliveryActive !== false ? "On" : "Off"}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
     },
     {
       key: "isActive",

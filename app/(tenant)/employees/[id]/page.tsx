@@ -27,12 +27,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DefaultVehicleCard } from "@/components/deliveries/default-vehicle-card";
+import { CopyFromDriver } from "@/components/deliveries/copy-from-driver";
 import { FormModal } from "@/components/shared/form-modal";
 import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -61,7 +61,7 @@ import {
   useUnassignDeliveryAgencies,
   useAssignDeliveryShops,
   useUnassignDeliveryShops,
-  useSetDeliveryActive,
+  useCopyDeliverySetup,
   useCollectorAssignment,
   useAssignCollectorAgencies,
   useUnassignCollectorAgencies,
@@ -112,7 +112,7 @@ export default function EmployeeDetailsPage() {
   const unassignDeliveryAgencies = useUnassignDeliveryAgencies();
   const assignDeliveryShops = useAssignDeliveryShops();
   const unassignDeliveryShops = useUnassignDeliveryShops();
-  const setDeliveryActive = useSetDeliveryActive();
+  const copyDeliverySetup = useCopyDeliverySetup();
 
   // Collector assignment hooks
   const { data: collectorAssignment } = useCollectorAssignment(employeeId);
@@ -749,26 +749,6 @@ export default function EmployeeDetailsPage() {
       </div>
 
       {/* Tabs */}
-      {(employee.employeeRole === "delivery" || employee.employeeRole === "both") ? (
-        <div className="glass rounded-xl p-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-base font-semibold">Delivery duty</h3>
-            <p className="text-xs text-muted-foreground">
-              {employee.deliveryActive !== false
-                ? "On duty — this driver runs their stores. Switch off when absent so a standby holding the same stores can be switched on."
-                : "Off duty — their stores are run by whichever standby holds them. Switching on is refused while another on-duty driver has any of the same stores."}
-            </p>
-          </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            {employee.deliveryActive !== false ? "On" : "Off"}
-            <Switch
-              checked={employee.deliveryActive !== false}
-              disabled={setDeliveryActive.isPending}
-              onCheckedChange={(on) => setDeliveryActive.mutate({ employeeId, active: on })}
-            />
-          </label>
-        </div>
-      ) : null}
       <DefaultVehicleCard employee={employee} />
 
       <Tabs defaultValue="overview" className="space-y-4">
@@ -1377,6 +1357,14 @@ export default function EmployeeDetailsPage() {
                 Select the agencies whose stores are routed to {employee.name}. All
                 stores of a selected agency are assigned by default.
               </p>
+              <CopyFromDriver
+                employeeId={employeeId}
+                employeeName={employee.name}
+                isPending={copyDeliverySetup.isPending}
+                onCopy={(sourceEmployeeId) =>
+                  copyDeliverySetup.mutate({ employeeId, sourceEmployeeId }, { onSuccess: () => setManageAgenciesOpen(false) })
+                }
+              />
             </div>
             <hr className="mb-4" />
             <form onSubmit={handleSaveAgencies} className="space-y-4">
@@ -1470,6 +1458,14 @@ export default function EmployeeDetailsPage() {
               <p className="text-sm text-muted-foreground">
                 Refine which stores of the assigned agencies are routed to {employee.name}
               </p>
+              <CopyFromDriver
+                employeeId={employeeId}
+                employeeName={employee.name}
+                isPending={copyDeliverySetup.isPending}
+                onCopy={(sourceEmployeeId) =>
+                  copyDeliverySetup.mutate({ employeeId, sourceEmployeeId }, { onSuccess: () => setManageStoresOpen(false) })
+                }
+              />
             </div>
             <hr className="mb-4" />
             <form onSubmit={handleSaveDeliveryStores} className="space-y-4">
