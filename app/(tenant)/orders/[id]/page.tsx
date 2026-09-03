@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -17,7 +17,6 @@ import {
   XCircle,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -25,7 +24,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 
 import type { Order, OrderStatus } from "@/lib/types";
-import { useOrder, useDeleteOrder } from "@/lib/hooks/use-orders";
+import { useOrder, useDeleteOrder, useUpdateOrderStatus } from "@/lib/hooks/use-orders";
 import { useShopkeepers } from "@/lib/hooks/use-shopkeepers";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 import { useProducts } from "@/lib/hooks/use-products";
@@ -39,10 +38,14 @@ const orderStatusColorMap: Record<
   { label: string; variant: "default" | "success" | "warning" | "error" | "info" }
 > = {
   placed: { label: "Placed", variant: "info" },
+  pending: { label: "Placed", variant: "info" },
   confirmed: { label: "Confirmed", variant: "success" },
+  processing: { label: "Processing", variant: "info" },
+  ready: { label: "Ready", variant: "info" },
   dispatched: { label: "Dispatched", variant: "warning" },
   delivered: { label: "Delivered", variant: "success" },
   completed: { label: "Completed", variant: "default" },
+  returned: { label: "Returned", variant: "error" },
 };
 
 // --- Status timeline flow ---
@@ -119,6 +122,9 @@ function formatDateTime(dateStr: string): string {
 }
 
 function getStatusIndex(status: OrderStatus): number {
+  // Intermediate backend states sit between "confirmed" and "dispatched" on the
+  // timeline; "pending" is normalised to "placed" by the order service already.
+  if (status === "processing" || status === "ready") return statusFlow.indexOf("confirmed");
   return statusFlow.indexOf(status);
 }
 
@@ -163,18 +169,14 @@ export default function OrderDetailPage() {
     return `${product.shortName} (${product.category})`;
   }
 
-  // Local order state (synced from API)
-  const [order, setOrder] = useState<Order | undefined>(undefined);
-
-  useEffect(() => {
-    if (orderData) setOrder(orderData);
-  }, [orderData]);
+  const order = orderData;
 
   const deleteOrder = useDeleteOrder();
+  const updateStatus = useUpdateOrderStatus();
 
   // Confirm action dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const isUpdating = updateStatus.isPending;
 
   // Loading state
   if (orderLoading) {
@@ -224,28 +226,14 @@ export default function OrderDetailPage() {
   const currentStatusIndex = getStatusIndex(order.status);
   const action = statusActionMap[order.status];
 
-  function handleStatusUpdate() {
-    if (!action) return;
-    setIsUpdating(true);
-
-    setTimeout(() => {
-      const now = new Date().toISOString();
-      const timestampField = `${action.nextStatus}At` as keyof Order;
-
-      setOrder((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: action.nextStatus,
-          [timestampField]: now,
-          updatedAt: now,
-        };
-      });
-
-      toast.success(`Order status updated to ${orderStatusColorMap[action.nextStatus].label}`);
-      setIsUpdating(false);
+  async function handleStatusUpdate() {
+    if (!action || !order) return;
+    try {
+      await updateStatus.mutateAsync({ id: order.id, status: action.nextStatus });
       setConfirmOpen(false);
-    }, 600);
+    } catch {
+      // useUpdateOrderStatus already toasts the error and rolls back the cache.
+    }
   }
 
   async function handleDeleteOrder() {
