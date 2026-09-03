@@ -10,7 +10,7 @@ import { useFeature } from "@/lib/hooks/use-feature";
 import type { Shop } from "@/lib/types";
 
 /** "Location" card on the store page: shows the pin, lets the office set, move, confirm or remove it. */
-export function StoreLocationCard({ shop }: { shop: Shop }) {
+export function StoreLocationCard({ shop, wide = false }: { shop: Shop; wide?: boolean }) {
   const enabled = useFeature("deliveries");
   const pin = usePinStore();
   const verify = useVerifyStorePin();
@@ -37,7 +37,7 @@ export function StoreLocationCard({ shop }: { shop: Shop }) {
       </div>
 
       {current || editing ? (
-        <DeliveryMap pin={current} onPinChange={editing ? setDraft : undefined} fitKey={`${shop.id}:${editing}`} className="h-[220px] w-full rounded-lg overflow-hidden" />
+        <DeliveryMap pin={current} onPinChange={editing ? setDraft : undefined} fitKey={`${shop.id}:${editing}`} className={wide ? "h-[460px] w-full rounded-lg overflow-hidden" : "h-[220px] w-full rounded-lg overflow-hidden"} />
       ) : (
         <p className="text-sm text-muted-foreground">No pin yet. The first delivery here will record one, or set it now.</p>
       )}

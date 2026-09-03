@@ -44,6 +44,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useShopkeeper, useUpdateShopkeeper } from "@/lib/hooks/use-shopkeepers";
 import { StoreLocationCard } from "@/components/deliveries/store-location-card";
+import { useDeliveryModuleEnabled } from "@/lib/hooks/use-feature";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 
 // --- Status Color Maps ---
@@ -80,6 +81,7 @@ export default function ShopkeeperDetailsPage() {
   const { data: shop, isLoading, error, refetch } = useShopkeeper(shopId);
   const { data: agenciesData } = useAgencies({ pageSize: 100 });
   const updateShopkeeper = useUpdateShopkeeper();
+  const deliveryModule = useDeliveryModuleEnabled();
 
   const agencies = agenciesData?.data || [];
 
@@ -492,7 +494,6 @@ export default function ShopkeeperDetailsPage() {
             </div>
           </div>
         </motion.div>
-        <StoreLocationCard shop={shop} />
       </div>
 
       {/* Tabs */}
@@ -504,7 +505,14 @@ export default function ShopkeeperDetailsPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            {deliveryModule.enabled ? <TabsTrigger value="location">Location</TabsTrigger> : null}
           </TabsList>
+
+          {deliveryModule.enabled ? (
+            <TabsContent value="location">
+              <StoreLocationCard shop={shop} wide />
+            </TabsContent>
+          ) : null}
 
           {/* Overview Tab */}
           <TabsContent value="overview">
