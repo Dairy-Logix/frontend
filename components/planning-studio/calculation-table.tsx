@@ -317,7 +317,12 @@ export function CalculationTable({
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-bold tabular-nums">
-                        {total}
+                        <div>{total}</div>
+                        {row.boxesToBuy != null && (row.piecesPerBox ?? 1) > 1 && (
+                          <div className="text-[11px] font-normal text-muted-foreground whitespace-nowrap">
+                            {row.boxesToBuy} {row.boxesToBuy === 1 ? "box" : "boxes"} × {row.piecesPerBox}
+                          </div>
+                        )}
                       </td>
                       {agencies.map((a) => {
                         const cellValue = inputs[row.productId]?.[a.id] ?? "";

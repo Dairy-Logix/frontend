@@ -276,6 +276,8 @@ export interface OrderPrintTemplate {
   titleText: string;
   /** Print the per-store "Total Price" column and the grand total. Default true. */
   showTotalPrice: boolean;
+  /** Print a "Boxes to buy" row (ceil(total ÷ piecesPerBox)) under the totals. Default false. */
+  showBoxTotals: boolean;
   enabledProductIds: string[];
   enabledStoresByAgency: Record<string, string[]>;
 }

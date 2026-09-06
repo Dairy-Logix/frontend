@@ -23,4 +23,7 @@ export type {
   CustomerReportData,
   PurchasesReportData,
   ExportFormat,
+  PurchasesByProductRow,
+  PurchasedVsSoldRow,
+  PurchasedVsSoldData,
 } from './report.service';

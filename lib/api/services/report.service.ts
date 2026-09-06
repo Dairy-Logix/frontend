@@ -38,6 +38,22 @@ export interface CustomerReportData {
   }[];
 }
 
+export interface PurchasesByProductRow {
+  productId: string;
+  productName: string;
+  productCode: string;
+  category?: 'Crate' | 'Piece' | null;
+  piecesPerBox: number;
+  /** Whole boxes as typed on the sheet (0 for non-boxed products). */
+  boxes: number;
+  loosePieces: number;
+  /** Selling units (pieces / crates). */
+  units: number;
+  lines: number;
+  /** units × current purchase price. */
+  amount: number;
+}
+
 export interface PurchasesReportData {
   summary: {
     count: number;
@@ -55,6 +71,43 @@ export interface PurchasesReportData {
     subsidy: number;
     netAmount: number;
   }[];
+  byProduct: PurchasesByProductRow[];
+}
+
+export interface PurchasedVsSoldRow {
+  productId: string;
+  productName: string;
+  productCode: string;
+  category?: 'Crate' | 'Piece' | null;
+  piecesPerBox: number;
+  /** Selling units bought from the dairy. */
+  purchased: number;
+  purchasedBoxes: number;
+  purchasedLoosePieces: number;
+  /** Selling units ordered by stores (business day). */
+  ordered: number;
+  /** purchased − ordered: > 0 leftover, < 0 short. */
+  difference: number;
+  purchasedBoxEquivalent: number | null;
+  orderedBoxEquivalent: number | null;
+  /** ceil(ordered ÷ piecesPerBox) — null for non-boxed products. */
+  boxesToBuy: number | null;
+  purchasedAmount: number;
+  orderedAmount: number;
+}
+
+export interface PurchasedVsSoldData {
+  agencyId: string | null;
+  rows: PurchasedVsSoldRow[];
+  totals: {
+    purchased: number;
+    ordered: number;
+    difference: number;
+    purchasedAmount: number;
+    orderedAmount: number;
+    shortProducts: number;
+    leftoverProducts: number;
+  };
 }
 
 export interface FinancialReportData {
@@ -68,9 +121,13 @@ export interface FinancialReportData {
 
 export type ExportFormat = 'pdf' | 'csv' | 'xlsx';
 
-/** Map frontend dateFrom/dateTo → backend startDate/endDate */
+/** Map frontend dateFrom/dateTo → backend startDate/endDate (+ optional agency) */
 function toApiParams(filters: ReportFilter) {
-  return { startDate: filters.dateFrom, endDate: filters.dateTo };
+  return {
+    startDate: filters.dateFrom,
+    endDate: filters.dateTo,
+    ...(filters.agencyId ? { agencyId: filters.agencyId } : {}),
+  };
 }
 
 export const reportService = {
@@ -104,6 +161,16 @@ export const reportService = {
       { params: toApiParams(filters) }
     );
     return { success: true, data, message: 'Customer report fetched successfully' };
+  },
+
+  async getPurchasedVsSoldReport(
+    filters: ReportFilter,
+  ): Promise<ApiResponse<PurchasedVsSoldData>> {
+    const { data } = await apiClient.get<PurchasedVsSoldData>(
+      '/reports/purchased-vs-sold',
+      { params: toApiParams(filters) },
+    );
+    return { success: true, data, message: 'Purchased vs sold report generated' };
   },
 
   async getPurchasesReport(filters: ReportFilter): Promise<ApiResponse<PurchasesReportData>> {
