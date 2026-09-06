@@ -58,9 +58,10 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
         <div>
           <h4 className="text-sm font-medium">Business day</h4>
           <p className="text-muted-foreground text-xs">
-            Orders are grouped into 24-hour days for reports, delivery lists and
-            invoices. Choose when that day rolls over and which calendar date it
-            is booked under. This does not control when shopkeepers can order.
+            Every order belongs to a business day, the date it is delivered and
+            reported under. Orders for one business day are taken over a 24-hour
+            period; choose when that period rolls over and whether it is for the
+            same day or the next. This does not control when shopkeepers can order.
           </p>
         </div>
 
@@ -73,8 +74,8 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
             onChange={(e) => set({ dayStartTime: e.target.value })}
           />
           <p className="text-muted-foreground text-[11px]">
-            Leave at 12:00 AM for a normal midnight-to-midnight day. e.g. 5:00 PM
-            → the day runs from yesterday 5:00 PM to today 5:00 PM.
+            Leave at 12:00 AM for a normal midnight-to-midnight period. e.g. 5:00
+            PM → orders are taken from yesterday 5:00 PM to today 5:00 PM.
           </p>
         </div>
 
@@ -96,9 +97,8 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
             </SelectContent>
           </Select>
           <p className="text-muted-foreground text-[11px]">
-            Same day = orders are filed under the date the day ends on. Next day =
-            an AM agency taking orders on the 6th for morning delivery books them
-            under the 7th.
+            Same day = the date the period ends on. Next day = an AM agency taking
+            orders on the 6th for morning delivery books them under the 7th.
           </p>
         </div>
       </div>
@@ -170,17 +170,17 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
       {/* Live preview */}
       <div className="bg-muted/50 rounded-md p-3 text-xs">
         <p className="font-medium">Preview (now)</p>
-        <p className="text-muted-foreground mt-1">
-          Current business day: <span className="font-medium">{fmtIST(window.start)}</span>{" "}
-          → <span className="font-medium">{fmtIST(window.end)}</span>
-        </p>
         {businessDay && (
           <p className="text-muted-foreground mt-1">
-            An order placed now is booked under:{" "}
+            Business day:{" "}
             <span className="text-foreground font-semibold">{fmtDateLabel(businessDay)}</span>
             {offsetOption && dayOffset > 0 ? ` (${offsetOption.label.toLowerCase()})` : ""}
           </p>
         )}
+        <p className="text-muted-foreground mt-1">
+          Orders for it are taken: <span className="font-medium">{fmtIST(window.start)}</span>{" "}
+          → <span className="font-medium">{fmtIST(window.end)}</span>
+        </p>
         {value.autoToggle && !cycleError && (
           <p className="mt-1">
             Ordering is currently{" "}
