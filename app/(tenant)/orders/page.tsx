@@ -463,6 +463,8 @@ export default function OrdersPage() {
   }, [matrixData, activeTemplate, selectedAgencyId, editedQuantities]);
 
   const selectedAgency = agencies.find((a) => a.id === selectedAgencyId);
+  // Older saved templates have no showTotalPrice → keep printing the column.
+  const printTotalPrice = activeTemplate?.showTotalPrice !== false;
 
   // Inject per-template @page + .print-sheet CSS so orientation and margins
   // are dynamic per click. Margins live on the @page rule so the print
@@ -932,7 +934,8 @@ export default function OrdersPage() {
                   {activeTemplate?.titleText?.trim() || tenantName || "Order Sheet"}
                 </div>
                 <div className="print-sheet-subtitle">
-                  {selectedAgency ? `${selectedAgency.name} — ` : ""}Order Sheet
+                  {selectedAgency ? `${selectedAgency.name} — ` : ""}
+                  {activeTemplate?.name?.trim() || "Order Sheet"}
                 </div>
               </div>
               <div className="print-sheet-meta">
@@ -957,7 +960,7 @@ export default function OrdersPage() {
                     {product.shortName}
                   </th>
                 ))}
-                <th className="print-col-total">Total Price</th>
+                {printTotalPrice && <th className="print-col-total">Total Price</th>}
               </tr>
             </thead>
             <tbody>
@@ -972,9 +975,11 @@ export default function OrdersPage() {
                       </td>
                     );
                   })}
-                  <td className="print-col-total">
-                    ₹{getRowTotal(cell.shopId).toLocaleString("en-IN")}
-                  </td>
+                  {printTotalPrice && (
+                    <td className="print-col-total">
+                      ₹{getRowTotal(cell.shopId).toLocaleString("en-IN")}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -989,9 +994,11 @@ export default function OrdersPage() {
                     </td>
                   );
                 })}
-                <td className="print-col-total">
-                  ₹{printData.grandTotal.toLocaleString("en-IN")}
-                </td>
+                {printTotalPrice && (
+                  <td className="print-col-total">
+                    ₹{printData.grandTotal.toLocaleString("en-IN")}
+                  </td>
+                )}
               </tr>
             </tfoot>
           </table>
