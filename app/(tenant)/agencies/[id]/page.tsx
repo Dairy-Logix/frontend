@@ -723,11 +723,11 @@ export default function AgencyDetailsPage() {
         <TabsContent value="order-cycle">
           <div className="max-w-2xl space-y-4">
             <div>
-              <h3 className="text-lg font-semibold">Order cycle / business day</h3>
+              <h3 className="text-lg font-semibold">Order cycle</h3>
               <p className="text-muted-foreground text-sm">
-                Controls when this agency&apos;s business day rolls over and,
-                optionally, when ordering automatically opens and closes. Leave
-                the rollover at 00:00 for a standard midnight-to-midnight day.
+                Two separate settings: which business day this agency&apos;s
+                orders are booked under, and the hours during which shopkeepers
+                can place them.
               </p>
             </div>
             <OrderCycleFields value={cycleDraft} onChange={setCycleDraft} />

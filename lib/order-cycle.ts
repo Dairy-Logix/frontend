@@ -20,9 +20,9 @@ export const MAX_BUSINESS_DAY_OFFSET_DAYS = 2;
 
 /** Options for the "this window belongs to" picker, in display order. */
 export const BUSINESS_DAY_OFFSET_OPTIONS: { value: number; label: string; hint: string }[] = [
-  { value: 0, label: 'Same day', hint: 'the day the window ends on' },
-  { value: 1, label: 'Next day', hint: 'orders taken in this window are booked under tomorrow' },
-  { value: 2, label: 'Day after next', hint: 'orders taken in this window are booked under the day after tomorrow' },
+  { value: 0, label: 'Same day', hint: 'filed under the date the day ends on' },
+  { value: 1, label: 'Next day', hint: 'filed under tomorrow' },
+  { value: 2, label: 'Day after next', hint: 'filed under the day after tomorrow' },
 ];
 
 function parseMinutes(time?: string | null): number {
