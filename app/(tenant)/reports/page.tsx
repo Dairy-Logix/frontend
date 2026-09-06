@@ -31,6 +31,8 @@ import {
   AlertCircle as AlertCircleIcon,
   Receipt,
   AlertTriangle,
+  Boxes,
+  Scale,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -54,8 +56,17 @@ import {
   useFinancialReport,
   useCustomerReport,
   usePurchasesReport,
+  usePurchasedVsSoldReport,
   reportKeys,
 } from "@/lib/hooks";
+import { useAgencies } from "@/lib/hooks/use-agencies";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ReportFilter } from "@/lib/types";
 import type {
   SalesReportData,
@@ -63,6 +74,7 @@ import type {
   FinancialReportData,
   CustomerReportData,
   PurchasesReportData,
+  PurchasedVsSoldData,
 } from "@/lib/api/services";
 import { useTranslations } from "@/components/providers/intl-provider";
 
@@ -185,6 +197,7 @@ function ReportTable({
   align,
   rows,
   delay = 0.1,
+  rowClassName,
 }: {
   title: string;
   headers: string[];
@@ -192,6 +205,8 @@ function ReportTable({
   align?: ("l" | "r")[];
   rows: (string | number)[][];
   delay?: number;
+  /** Extra classes for a body row (e.g. highlight a shortfall). */
+  rowClassName?: (rowIndex: number) => string;
 }) {
   const colAlign = (i: number) =>
     (align ? align[i] : i === 0 ? "l" : "r") === "l" ? "text-left" : "text-right";
@@ -224,7 +239,9 @@ function ReportTable({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(ri * 0.03, 0.4) }}
-                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${
+                  rowClassName ? rowClassName(ri) : ""
+                }`}
               >
                 {row.map((cell, ci) => (
                   <td
@@ -1155,6 +1172,21 @@ function PurchasesTab({ filters }: { filters: ReportFilter }) {
         </>
       )}
 
+      {data.byProduct && data.byProduct.length > 0 && (
+        <ReportTable
+          title="Products Purchased"
+          headers={["Product", "Boxes", "Loose pcs", "Units", "Amount"]}
+          rows={data.byProduct.map((r) => [
+            r.productCode ? `${r.productName} (${r.productCode})` : r.productName,
+            r.piecesPerBox > 1 ? `${r.boxes.toLocaleString("en-IN")} × ${r.piecesPerBox}` : "—",
+            r.piecesPerBox > 1 ? r.loosePieces.toLocaleString("en-IN") : "—",
+            `${r.units.toLocaleString("en-IN")} ${r.category === "Crate" ? "crates" : "pcs"}`,
+            formatINR(r.amount),
+          ])}
+          delay={0.15}
+        />
+      )}
+
       <PrintSheet title="Purchases Report" meta={[
           {
             label: "Period",
@@ -1185,6 +1217,176 @@ function PurchasesTab({ filters }: { filters: ReportFilter }) {
             ])}
           />
         )}
+        {data.byProduct && data.byProduct.length > 0 && (
+          <PrintTable
+            title="Products Purchased"
+            headers={["Product", "Boxes", "Loose pcs", "Units", "Amount"]}
+            rows={data.byProduct.map((r) => [
+              r.productCode ? `${r.productName} (${r.productCode})` : r.productName,
+              r.piecesPerBox > 1 ? `${r.boxes} × ${r.piecesPerBox}` : "—",
+              r.piecesPerBox > 1 ? r.loosePieces : "—",
+              `${r.units.toLocaleString("en-IN")} ${r.category === "Crate" ? "crates" : "pcs"}`,
+              formatINR(r.amount),
+            ])}
+          />
+        )}
+      </PrintSheet>
+    </div>
+  );
+}
+
+// --- Purchased vs Sold Tab ---
+
+const fmtUnits = (n: number, category?: "Crate" | "Piece" | null) =>
+  `${n.toLocaleString("en-IN")} ${category === "Crate" ? "cr" : "pcs"}`;
+
+const fmtBoxEq = (boxes: number | null) =>
+  boxes == null ? "—" : `${boxes.toLocaleString("en-IN", { maximumFractionDigits: 1 })} bx`;
+
+function PurchasedVsSoldTab({
+  filters,
+  agencyId,
+  onAgencyChange,
+}: {
+  filters: ReportFilter;
+  agencyId: string;
+  onAgencyChange: (id: string) => void;
+}) {
+  const { data: agenciesPage } = useAgencies({ pageSize: 100 });
+  const agencies = agenciesPage?.data ?? [];
+  const scoped = useMemo<ReportFilter>(
+    () => ({ ...filters, agencyId: agencyId || undefined }),
+    [filters, agencyId]
+  );
+  const { data, isLoading, error } = usePurchasedVsSoldReport(scoped);
+
+  const agencyName = agencies.find((a) => a.id === agencyId)?.name;
+
+  const agencyPicker = (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-muted-foreground">Agency</span>
+      <Select value={agencyId || "all"} onValueChange={(v) => onAgencyChange(v === "all" ? "" : v)}>
+        <SelectTrigger className="w-[220px]">
+          <SelectValue placeholder="All agencies" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All agencies</SelectItem>
+          {agencies.map((a) => (
+            <SelectItem key={a.id} value={a.id}>
+              {a.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        {agencyPicker}
+        <LoadingState label="Comparing purchases with store orders..." />
+      </div>
+    );
+  if (error)
+    return (
+      <div className="space-y-6">
+        {agencyPicker}
+        <ErrorState label="Failed to load purchased vs sold report." error={error} />
+      </div>
+    );
+  if (!data || data.rows.length === 0)
+    return (
+      <div className="space-y-6">
+        {agencyPicker}
+        <EmptyState label="No purchases or orders in the selected period." />
+      </div>
+    );
+
+  const { totals, rows } = data;
+  const headers = ["Product", "Purchased", "Ordered", "Difference", "Purchased (boxes)", "Ordered (boxes)", "Boxes to buy"];
+  const tableRows = rows.map((r) => [
+    r.productCode ? `${r.productName} (${r.productCode})` : r.productName,
+    fmtUnits(r.purchased, r.category),
+    fmtUnits(r.ordered, r.category),
+    `${r.difference > 0 ? "+" : ""}${r.difference.toLocaleString("en-IN")}`,
+    fmtBoxEq(r.purchasedBoxEquivalent),
+    fmtBoxEq(r.orderedBoxEquivalent),
+    r.boxesToBuy == null ? "—" : `${r.boxesToBuy} × ${r.piecesPerBox}`,
+  ]);
+  const rowTone = (i: number) => {
+    const d = rows[i]?.difference ?? 0;
+    if (d < 0) return "bg-red-500/[0.06]";
+    if (d > 0) return "bg-amber-500/[0.05]";
+    return "";
+  };
+
+  return (
+    <div className="space-y-6">
+      {agencyPicker}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Purchased"
+          value={totals.purchased.toLocaleString("en-IN")}
+          description={`units · ${formatINRShort(totals.purchasedAmount)}`}
+          icon={Truck}
+          tone="cyan"
+        />
+        <StatCard
+          title="Ordered by stores"
+          value={totals.ordered.toLocaleString("en-IN")}
+          description={`units · ${formatINRShort(totals.orderedAmount)}`}
+          icon={ShoppingCart}
+          tone="primary"
+        />
+        <StatCard
+          title="Short"
+          value={String(totals.shortProducts)}
+          description="products bought below orders"
+          icon={AlertTriangle}
+          tone={totals.shortProducts > 0 ? "amber" : "emerald"}
+        />
+        <StatCard
+          title="Leftover"
+          value={String(totals.leftoverProducts)}
+          description="products bought above orders"
+          icon={Boxes}
+          tone="emerald"
+        />
+      </div>
+
+      <ReportTable
+        title="Purchased vs Ordered by Product"
+        headers={headers}
+        rows={tableRows}
+        rowClassName={rowTone}
+      />
+      <p className="text-xs text-muted-foreground px-1">
+        Purchased = dairy purchases on the date (boxes converted to units). Ordered = store
+        orders booked under the same business day. Red rows are short, amber rows have
+        leftover. Boxes to buy = orders rounded up to whole boxes.
+      </p>
+
+      <PrintSheet
+        title="Purchased vs Sold"
+        meta={[
+          {
+            label: "Period",
+            value: `${formatFullDate(filters.dateFrom)} – ${formatFullDate(filters.dateTo)}`,
+          },
+          { label: "Agency", value: agencyName ?? "All agencies" },
+        ]}
+      >
+        <PrintStats
+          items={[
+            { label: "Purchased (units)", value: totals.purchased.toLocaleString("en-IN") },
+            { label: "Ordered (units)", value: totals.ordered.toLocaleString("en-IN") },
+            { label: "Difference", value: totals.difference.toLocaleString("en-IN") },
+            { label: "Short products", value: String(totals.shortProducts) },
+          ]}
+        />
+        <PrintTable title="Purchased vs Ordered by Product" headers={headers} rows={tableRows} />
       </PrintSheet>
     </div>
   );
@@ -1228,7 +1430,7 @@ function downloadCSV(filename: string, headers: string[], rows: (string | number
 
 // --- Main Reports Page ---
 
-type TabKey = "sales" | "collections" | "financial" | "customers" | "purchases";
+type TabKey = "sales" | "collections" | "financial" | "customers" | "purchases" | "purchased-vs-sold";
 
 export default function ReportsPage() {
   const tPage = useTranslations("pages.reports");
@@ -1237,6 +1439,8 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(daysAgoIST(30));
   const [dateTo, setDateTo] = useState(todayIST());
   const [activeTab, setActiveTab] = useState<TabKey>("sales");
+  // Agency scope for the purchased-vs-sold tab ("" = all agencies).
+  const [pvsAgencyId, setPvsAgencyId] = useState("");
 
   const filters = useMemo<ReportFilter>(
     () => ({ dateFrom, dateTo }),
@@ -1293,6 +1497,26 @@ export default function ReportsPage() {
           r.totalOrders,
           r.totalRevenue,
           Math.round(r.averageOrderValue),
+        ])
+      );
+    } else if (activeTab === "purchased-vs-sold") {
+      const d = queryClient.getQueryData<PurchasedVsSoldData>(
+        reportKeys.purchasedVsSold({ ...filters, agencyId: pvsAgencyId || undefined })
+      );
+      if (!d) return toast.error("Purchased vs sold data is still loading — try again in a moment.");
+      downloadCSV(
+        `purchased-vs-sold_${range}.csv`,
+        ["Product", "Code", "Pieces per box", "Purchased units", "Purchased boxes", "Loose pcs", "Ordered units", "Difference", "Boxes to buy"],
+        d.rows.map((r) => [
+          r.productName,
+          r.productCode,
+          r.piecesPerBox,
+          r.purchased,
+          r.purchasedBoxes,
+          r.purchasedLoosePieces,
+          r.ordered,
+          r.difference,
+          r.boxesToBuy ?? "",
         ])
       );
     } else {
@@ -1416,6 +1640,10 @@ export default function ReportsPage() {
             <Truck className="h-4 w-4" />
             Purchases
           </TabsTrigger>
+          <TabsTrigger value="purchased-vs-sold" className="gap-1.5">
+            <Scale className="h-4 w-4" />
+            Purchased vs Sold
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="sales" className="mt-6">
@@ -1432,6 +1660,13 @@ export default function ReportsPage() {
         </TabsContent>
         <TabsContent value="purchases" className="mt-6">
           <PurchasesTab filters={filters} />
+        </TabsContent>
+        <TabsContent value="purchased-vs-sold" className="mt-6">
+          <PurchasedVsSoldTab
+            filters={filters}
+            agencyId={pvsAgencyId}
+            onAgencyChange={setPvsAgencyId}
+          />
         </TabsContent>
       </Tabs>
     </div>

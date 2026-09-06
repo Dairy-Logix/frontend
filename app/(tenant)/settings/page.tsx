@@ -303,6 +303,7 @@ export default function SettingsPage() {
           showTitle: t.showTitle ?? true,
           titleText: t.titleText ?? "",
           showTotalPrice: t.showTotalPrice ?? true,
+          showBoxTotals: t.showBoxTotals ?? false,
         })),
       );
     } else {
@@ -320,6 +321,7 @@ export default function SettingsPage() {
             showTitle: true,
             titleText: "",
             showTotalPrice: true,
+            showBoxTotals: false,
             enabledProductIds: legacy.enabledProductIds ?? [],
             enabledStoresByAgency: legacy.enabledStoresByAgency ?? {},
           },
@@ -470,6 +472,7 @@ export default function SettingsPage() {
       showTitle: true,
       titleText: "",
       showTotalPrice: true,
+      showBoxTotals: false,
       enabledProductIds: printProducts.map((p) => p.id),
       enabledStoresByAgency: Object.fromEntries(
         printAgencies.map((a) => [
@@ -1204,6 +1207,22 @@ export default function SettingsPage() {
                                 />
                                 <span className="text-xs text-muted-foreground">
                                   {(template.showTotalPrice ?? true) ? "Shown" : "Hidden"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Boxes to buy row
+                              </Label>
+                              <div className="h-8 flex items-center gap-2">
+                                <Switch
+                                  checked={template.showBoxTotals ?? false}
+                                  onCheckedChange={(v) =>
+                                    updateTemplate(template.id, { showBoxTotals: v })
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {(template.showBoxTotals ?? false) ? "Shown" : "Hidden"}
                                 </span>
                               </div>
                             </div>

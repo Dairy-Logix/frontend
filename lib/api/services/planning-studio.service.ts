@@ -22,6 +22,10 @@ export interface PreviewRow {
   productCode: string;
   unit: string;
   total: number;
+  /** Buying pack (Product.piecesPerBox); 1 when not boxed. */
+  piecesPerBox?: number;
+  /** Whole boxes that cover `total`; null for non-boxed products. */
+  boxesToBuy?: number | null;
   savedQuantities: Record<string, number>;
 }
 

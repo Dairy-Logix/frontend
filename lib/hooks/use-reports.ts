@@ -10,6 +10,8 @@ export const reportKeys = {
   financial: (filters: ReportFilter) => [...reportKeys.all, 'financial', filters] as const,
   customers: (filters: ReportFilter) => [...reportKeys.all, 'customers', filters] as const,
   purchases: (filters: ReportFilter) => [...reportKeys.all, 'purchases', filters] as const,
+  purchasedVsSold: (filters: ReportFilter) =>
+    [...reportKeys.all, 'purchased-vs-sold', filters] as const,
 };
 
 /**
@@ -94,6 +96,24 @@ export function usePurchasesReport(filters: ReportFilter) {
       const response = await reportService.getPurchasesReport(filters);
       if (!response.success) {
         throw new Error(response.message || 'Failed to generate purchases report');
+      }
+      return response.data;
+    },
+    enabled: !!filters.dateFrom && !!filters.dateTo,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch the purchased-vs-sold report (boxes → units vs store orders)
+ */
+export function usePurchasedVsSoldReport(filters: ReportFilter) {
+  return useQuery({
+    queryKey: reportKeys.purchasedVsSold(filters),
+    queryFn: async () => {
+      const response = await reportService.getPurchasedVsSoldReport(filters);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to generate purchased vs sold report');
       }
       return response.data;
     },

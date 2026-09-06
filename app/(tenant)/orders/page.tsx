@@ -465,6 +465,11 @@ export default function OrdersPage() {
   const selectedAgency = agencies.find((a) => a.id === selectedAgencyId);
   // Older saved templates have no showTotalPrice → keep printing the column.
   const printTotalPrice = activeTemplate?.showTotalPrice !== false;
+  // "Boxes to buy" row: opt-in per template, and only when at least one
+  // printed product is bought in boxes (piecesPerBox > 1).
+  const printBoxTotals =
+    activeTemplate?.showBoxTotals === true &&
+    printData.printProducts.some((p) => (p.piecesPerBox ?? 1) > 1);
 
   // Inject per-template @page + .print-sheet CSS so orientation and margins
   // are dynamic per click. Margins live on the @page rule so the print
@@ -1000,6 +1005,21 @@ export default function OrdersPage() {
                   </td>
                 )}
               </tr>
+              {printBoxTotals && (
+                <tr className="print-totals-row print-boxes-row">
+                  <td className="print-col-store">Boxes to buy</td>
+                  {printData.printProducts.map((product) => {
+                    const ppb = product.piecesPerBox ?? 1;
+                    const total = printData.productTotals[product.id] ?? 0;
+                    return (
+                      <td key={product.id} className="print-col-product">
+                        {ppb > 1 && total > 0 ? `${Math.ceil(total / ppb)} × ${ppb}` : ""}
+                      </td>
+                    );
+                  })}
+                  {printTotalPrice && <td className="print-col-total" />}
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>,
