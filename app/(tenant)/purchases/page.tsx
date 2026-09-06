@@ -39,7 +39,10 @@ function formatINR(n: number): string {
 }
 
 interface AgencyEntry {
+  /** Per product: boxes for boxed products (piecesPerBox > 1), else selling units. */
   qty: Record<string, string>;
+  /** Per boxed product: extra single pieces on top of whole boxes. */
+  loose: Record<string, string>;
   tax: string;
   subsidy: string;
   purchaseNumber: string;
@@ -47,10 +50,21 @@ interface AgencyEntry {
 
 const emptyEntry: AgencyEntry = {
   qty: {},
+  loose: {},
   tax: "",
   subsidy: "",
   purchaseNumber: "",
 };
+
+/** A product is bought in boxes when it carries a buying pack larger than 1. */
+const isBoxed = (p: Product) => (p.piecesPerBox ?? 1) > 1;
+
+/** Selling units for one cell: boxes × piecesPerBox + loose, or the plain quantity. */
+function baseUnitsFor(p: Product, qty: string, loose: string): number {
+  const q = Number(qty) || 0;
+  if (!isBoxed(p)) return q;
+  return q * (p.piecesPerBox ?? 1) + (Number(loose) || 0);
+}
 
 export default function PurchasesPage() {
   const tPage = useTranslations("pages.purchases");
@@ -122,11 +136,17 @@ export default function PurchasesPage() {
     const next: Record<string, AgencyEntry> = {};
     for (const p of dayPurchasesPage.data) {
       const qty: Record<string, string> = {};
+      const loose: Record<string, string> = {};
       for (const item of p.items) {
-        qty[refId(item.productId)] = String(item.quantity);
+        const pid = refId(item.productId);
+        // `quantity` is stored as entered (boxes for boxed lines), so it
+        // prefills the same cell it came from; loose pieces ride alongside.
+        qty[pid] = String(item.quantity);
+        if (item.unit === "box" && item.loosePieces) loose[pid] = String(item.loosePieces);
       }
       next[refId(p.agencyId)] = {
         qty,
+        loose,
         tax: p.taxAmount ? String(p.taxAmount) : "",
         subsidy: p.subsidy ? String(p.subsidy) : "",
         purchaseNumber: p.purchaseNumber || "",
@@ -150,6 +170,16 @@ export default function PurchasesPage() {
     });
   }
 
+  function setLoose(agencyId: string, productId: string, value: string) {
+    setMatrix((prev) => {
+      const cur = prev[agencyId] || emptyEntry;
+      return {
+        ...prev,
+        [agencyId]: { ...cur, loose: { ...cur.loose, [productId]: value } },
+      };
+    });
+  }
+
   function setField(
     agencyId: string,
     field: "tax" | "subsidy" | "purchaseNumber",
@@ -161,11 +191,13 @@ export default function PurchasesPage() {
     });
   }
 
+  // Amount is always selling units × per-unit purchase price, so a boxed
+  // product costs the same whether it was typed as 2 boxes or 48 pieces.
   function basicAmountFor(agencyId: string): number {
     const entry = getEntry(agencyId);
     return products.reduce((sum, p) => {
-      const q = Number(entry.qty[p.id]) || 0;
-      return sum + q * (p.purchasePricePerUnit || 0);
+      const units = baseUnitsFor(p, entry.qty[p.id], entry.loose[p.id]);
+      return sum + units * (p.purchasePricePerUnit || 0);
     }, 0);
   }
 
@@ -208,12 +240,27 @@ export default function PurchasesPage() {
     const purchases: CreatePurchaseInput[] = [];
     for (const agency of agencies) {
       const entry = getEntry(agency.id);
+      for (const p of products) {
+        if (!isBoxed(p)) continue;
+        const boxes = Number(entry.qty[p.id]) || 0;
+        if (!Number.isInteger(boxes)) {
+          toast.error(
+            `${p.name} (${agency.name}): enter whole boxes and put the remainder in the "+ pcs" field`,
+          );
+          return;
+        }
+      }
       const items = products
-        .map((p) => ({
-          productId: p.id,
-          quantity: Number(entry.qty[p.id]) || 0,
-        }))
-        .filter((i) => i.quantity > 0);
+        .map((p) => {
+          const quantity = Number(entry.qty[p.id]) || 0;
+          const loosePieces = isBoxed(p) ? Number(entry.loose[p.id]) || 0 : 0;
+          return {
+            productId: p.id,
+            quantity,
+            ...(loosePieces > 0 ? { loosePieces } : {}),
+          };
+        })
+        .filter((i) => i.quantity > 0 || (i.loosePieces ?? 0) > 0);
       if (items.length === 0) continue;
       purchases.push({
         agencyId: agency.id,
@@ -337,8 +384,11 @@ export default function PurchasesPage() {
       <div className="flex items-start gap-2 text-xs text-muted-foreground px-1">
         <Sparkles className="h-3.5 w-3.5 mt-0.5 text-primary" />
         <span>
-          Enter the order quantity for each agency. Prices come from the Products
-          page. Subsidy is deducted, tax is added — Net = Basic + Tax − Subsidy.
+          Enter the quantity bought for each agency. Products with a buying pack
+          are entered in <strong>boxes</strong> (plus any loose pieces); others in
+          their selling unit. Prices come from the Products page and are always
+          per selling unit. Subsidy is deducted, tax is added — Net = Basic + Tax
+          − Subsidy.
         </span>
       </div>
 
@@ -427,29 +477,70 @@ export default function PurchasesPage() {
                       </div>
                     </td>
                     <td className="py-2 px-4 text-right tabular-nums font-medium border-r border-border/40">
-                      {formatINR(p.purchasePricePerUnit)}
+                      <div>{formatINR(p.purchasePricePerUnit)}</div>
+                      {isBoxed(p) && (
+                        <div className="text-[11px] font-normal text-muted-foreground whitespace-nowrap">
+                          box of {p.piecesPerBox} ={" "}
+                          {formatINR((p.piecesPerBox ?? 1) * (p.purchasePricePerUnit || 0))}
+                        </div>
+                      )}
                     </td>
                     {agencies.map((a) => {
-                      const value = getEntry(a.id).qty[p.id] || "";
-                      const hasValue = Number(value) > 0;
+                      const entry = getEntry(a.id);
+                      const value = entry.qty[p.id] || "";
+                      const loose = entry.loose[p.id] || "";
+                      const boxed = isBoxed(p);
+                      const units = baseUnitsFor(p, value, loose);
+                      const hasValue = units > 0;
+                      const inputCls = `h-9 text-center tabular-nums transition-all ${
+                        hasValue
+                          ? "bg-primary/5 border-primary/40 font-semibold focus-visible:ring-primary/30"
+                          : "bg-background/60 border-border/60 focus-visible:ring-primary/20"
+                      }`;
                       return (
                         <td
                           key={a.id}
                           className="py-2 px-2 border-r border-border/40"
                         >
-                          <Input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={value}
-                            onChange={(e) => setQty(a.id, p.id, e.target.value)}
-                            placeholder="0"
-                            className={`h-9 text-center tabular-nums transition-all ${
-                              hasValue
-                                ? "bg-primary/5 border-primary/40 font-semibold focus-visible:ring-primary/30"
-                                : "bg-background/60 border-border/60 focus-visible:ring-primary/20"
-                            }`}
-                          />
+                          {boxed ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={value}
+                                  onChange={(e) => setQty(a.id, p.id, e.target.value)}
+                                  placeholder="boxes"
+                                  aria-label={`${p.name} boxes for ${a.name}`}
+                                  className={inputCls}
+                                />
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={loose}
+                                  onChange={(e) => setLoose(a.id, p.id, e.target.value)}
+                                  placeholder="+ pcs"
+                                  aria-label={`${p.name} loose pieces for ${a.name}`}
+                                  className={`${inputCls} w-[68px] shrink-0 text-xs`}
+                                />
+                              </div>
+                              <div className="text-[10px] text-center text-muted-foreground tabular-nums">
+                                {hasValue ? `= ${units.toLocaleString("en-IN")} pcs` : `box of ${p.piecesPerBox}`}
+                              </div>
+                            </div>
+                          ) : (
+                            <Input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={value}
+                              onChange={(e) => setQty(a.id, p.id, e.target.value)}
+                              placeholder="0"
+                              className={inputCls}
+                            />
+                          )}
                         </td>
                       );
                     })}
