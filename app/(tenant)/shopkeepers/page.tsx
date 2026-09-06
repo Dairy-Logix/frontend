@@ -77,6 +77,9 @@ function getUrlParam(key: string): string {
 
 // --- Main Page ---
 
+/** Page size used while reordering so the entire agency list is on one page. */
+const REORDER_PAGE_SIZE = 1000;
+
 export default function ShopkeepersPage() {
   const tPage = useTranslations("pages.stores");
   const router = useRouter();
@@ -172,6 +175,7 @@ export default function ShopkeepersPage() {
   const {
     data: shopkeepersData,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useShopkeepers({
@@ -195,10 +199,24 @@ export default function ShopkeepersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reorder mode state
+  // Reorder mode state. Reordering works on the WHOLE list for the selected
+  // agency (one page of REORDER_PAGE_SIZE), so a store can be dragged from the
+  // top to the very end; the listing state is snapshotted and restored on exit.
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [customOrder, setCustomOrder] = useState<string[]>([]);
+  const [preReorderListState, setPreReorderListState] = useState<{
+    page: number;
+    pageSize: number;
+    search: string;
+    agencyTypeFilter: string;
+    areaFilter: string;
+    statusFilter: string;
+  } | null>(null);
+  // `customOrder` only holds the ids the user has dragged so far; the displayed
+  // list (filteredShopkeepers) puts those first and every other store after, in
+  // server order. Drags and Save always work off the displayed list, so stores
+  // that finish loading after the first drag are still included.
 
   // Form fields
   const [formAmAgencyId, setFormAmAgencyId] = useState("");
@@ -256,7 +274,7 @@ export default function ShopkeepersPage() {
 
     // Apply custom order if in reorder mode or if custom order exists
     if (customOrder.length > 0 && isReorderMode) {
-      filtered = filtered.sort((a, b) => {
+      filtered = [...filtered].sort((a, b) => {
         const indexA = customOrder.indexOf(a.id);
         const indexB = customOrder.indexOf(b.id);
         // If not in custom order, put at end
@@ -397,11 +415,39 @@ export default function ShopkeepersPage() {
   // --- Reorder Handlers ---
 
   function toggleReorderMode() {
-    if (!isReorderMode) {
-      // Entering reorder mode - initialize custom order with current filtered list
-      setCustomOrder(filteredShopkeepers.map(s => s.id));
+    if (isReorderMode) {
+      exitReorderMode();
+      return;
     }
-    setIsReorderMode(!isReorderMode);
+    // Entering reorder mode: remember the listing state, then load EVERY store
+    // of the selected agency on a single page with no client-side filters, so
+    // the saved order covers the whole list (startIndex 0) and a store can be
+    // moved anywhere — not just within the 20 rows of the current page.
+    setPreReorderListState({ page, pageSize, search, agencyTypeFilter, areaFilter, statusFilter });
+    setPage(1);
+    setPageSize(REORDER_PAGE_SIZE);
+    setSearch("");
+    setAgencyTypeFilter("all");
+    setAreaFilter("all");
+    setStatusFilter("all");
+    setCustomOrder([]);
+    setDraggedIndex(null);
+    setIsReorderMode(true);
+  }
+
+  function exitReorderMode() {
+    if (preReorderListState) {
+      setPage(preReorderListState.page);
+      setPageSize(preReorderListState.pageSize);
+      setSearch(preReorderListState.search);
+      setAgencyTypeFilter(preReorderListState.agencyTypeFilter);
+      setAreaFilter(preReorderListState.areaFilter);
+      setStatusFilter(preReorderListState.statusFilter);
+    }
+    setPreReorderListState(null);
+    setIsReorderMode(false);
+    setDraggedIndex(null);
+    setCustomOrder([]);
   }
 
   function handleDragStart(index: number) {
@@ -412,7 +458,9 @@ export default function ShopkeepersPage() {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
 
-    const newOrder = [...customOrder];
+    // Work off the list as displayed (dragged ids first, then the rest), so the
+    // indices match what the user sees even before every store has been moved.
+    const newOrder = filteredShopkeepers.map((s) => s.id);
     const draggedId = newOrder[draggedIndex];
     newOrder.splice(draggedIndex, 1);
     newOrder.splice(index, 0, draggedId);
@@ -426,22 +474,26 @@ export default function ShopkeepersPage() {
   }
 
   function saveOrder() {
-    if (customOrder.length === 0) {
-      setIsReorderMode(false);
+    if (reorderShopkeepers.isPending || isFetching) return;
+    // Persist the list exactly as displayed — every store of this agency, not
+    // just the ones that were dragged.
+    const orderedIds = filteredShopkeepers.map((s) => s.id);
+    if (orderedIds.length === 0) {
+      exitReorderMode();
       return;
     }
     reorderShopkeepers.mutate(
-      // Offset by the current page so reordering page 2 doesn't collide with
-      // page 1; the order is saved per agency tab.
+      // The full list is on a single page in reorder mode, so the offset is 0
+      // and every store of this agency gets an absolute rank. The order is
+      // saved per agency tab.
       {
-        shopkeeperIds: customOrder,
+        shopkeeperIds: orderedIds,
         startIndex: (page - 1) * pageSize,
         agencyId: activeAgencyTab || undefined,
       },
       {
         onSuccess: () => {
-          setIsReorderMode(false);
-          setCustomOrder([]);
+          exitReorderMode();
         },
       }
     );
@@ -494,19 +546,13 @@ export default function ShopkeepersPage() {
           <div className="flex items-center gap-2">
             {isReorderMode ? (
               <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsReorderMode(false);
-                    setCustomOrder([]);
-                  }}
-                >
+                <Button variant="outline" onClick={exitReorderMode}>
                   Cancel
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
                   onClick={saveOrder}
-                  disabled={reorderShopkeepers.isPending}
+                  disabled={reorderShopkeepers.isPending || isFetching || shopkeepers.length === 0}
                 >
                   {reorderShopkeepers.isPending ? (
                     <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
@@ -594,7 +640,9 @@ export default function ShopkeepersPage() {
                     key={agency.id}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    disabled={isReorderMode}
                     onClick={() => {
+                      if (isReorderMode) return;
                       setActiveAgencyTab(agency.id);
                       setPage(1);
                     }}
@@ -638,7 +686,10 @@ export default function ShopkeepersPage() {
             <Filter className="h-3.5 w-3.5" />
             <span className="font-medium">Filters</span>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div
+            className={`flex flex-col sm:flex-row gap-3 ${isReorderMode ? "pointer-events-none opacity-50" : ""}`}
+            aria-disabled={isReorderMode}
+          >
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -682,6 +733,21 @@ export default function ShopkeepersPage() {
         </div>
       </motion.div>
 
+      {/* Reorder banner — the whole agency list is loaded on one page */}
+      {isReorderMode && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-orange-300/60 bg-orange-50/60 px-4 py-3 text-sm dark:border-orange-400/30 dark:bg-orange-950/20">
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4 text-orange-600" />
+            <span>
+              {isFetching
+                ? "Loading all stores…"
+                : `Drag stores to set their order. All ${shopkeepers.length} stores${activeAgencyTab ? " of this agency" : ""} are shown on one page.`}
+            </span>
+          </div>
+          {isFetching && <LoaderIcon className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </div>
+      )}
+
       {/* Shopkeeper List */}
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
@@ -711,7 +777,7 @@ export default function ShopkeepersPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: index * 0.03 }}
+                transition={{ duration: 0.3, delay: Math.min(index, 20) * 0.03 }}
                 draggable={isReorderMode}
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -812,8 +878,8 @@ export default function ShopkeepersPage() {
         </AnimatePresence>
       </div>
 
-      {/* Pagination */}
-      {shopkeepersData?.pagination && (
+      {/* Pagination (hidden in reorder mode — everything is on one page) */}
+      {shopkeepersData?.pagination && !isReorderMode && (
         <div className="flex items-center justify-between glass-subtle rounded-xl px-4 py-3">
           <p className="text-sm text-muted-foreground">
             Showing {shopkeepers.length} of {shopkeepersData.pagination.total ?? shopkeepers.length} stores
