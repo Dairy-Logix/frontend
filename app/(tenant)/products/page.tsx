@@ -1083,7 +1083,9 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* Category */}
+          {/* Category + its pack field side by side: Quantity Per Unit for
+              Crate products, Pieces Per Box (buying pack) for Piece products */}
+          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="product-category">Category</Label>
             <Select
@@ -1111,11 +1113,11 @@ export default function ProductsPage() {
                 ))}
               </SelectContent>
             </Select>
-            {formCategory === "Piece" && (
-              <p className="text-xs text-muted-foreground">
-                Piece products are sold individually — orders are charged per piece.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              {formCategory === "Piece"
+                ? "Sold individually — orders are charged per piece."
+                : "Sold by the crate — orders are charged per crate."}
+            </p>
           </div>
 
           {/* Quantity Per Unit (Crate only) */}
@@ -1140,27 +1142,26 @@ export default function ProductsPage() {
               <Input
                 id="product-pieces-per-box"
                 type="number"
-                placeholder="e.g. 24 — leave blank if bought per piece"
+                placeholder="e.g. 24 — blank if bought per piece"
                 value={formPiecesPerBox}
                 onChange={(e) => setFormPiecesPerBox(e.target.value)}
                 min={1}
                 step={1}
               />
               <p className="text-xs text-muted-foreground">
-                How many pieces you receive per box from the dairy. Used only for
-                purchases and purchase reports; stores still order and pay per piece.
+                Pieces per box from the dairy; used only for purchases.
                 {Number(formPiecesPerBox) > 1 && Number(formPurchasePrice) > 0 && (
                   <>
                     {" "}Box cost ≈{" "}
                     <span className="font-medium text-foreground">
                       {formatINR(Number(formPiecesPerBox) * Number(formPurchasePrice))}
                     </span>
-                    .
                   </>
                 )}
               </p>
             </div>
           )}
+          </div>
 
           {/* Prices */}
           <div className="grid grid-cols-2 gap-4">
