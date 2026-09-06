@@ -17,7 +17,7 @@ function cleanOrderCycle(cycle?: OrderCycle): OrderCycle | undefined {
   if (cycle.orderOpenTime) out.orderOpenTime = cycle.orderOpenTime;
   if (cycle.orderCutoff) out.orderCutoff = cycle.orderCutoff;
   if (cycle.autoToggle !== undefined) out.autoToggle = cycle.autoToggle;
-  if (cycle.deliveryOffsetDays !== undefined) out.deliveryOffsetDays = cycle.deliveryOffsetDays;
+  if (cycle.businessDayOffsetDays !== undefined) out.businessDayOffsetDays = cycle.businessDayOffsetDays;
   if (cycle.timezone) out.timezone = cycle.timezone;
   return out;
 }
@@ -49,7 +49,7 @@ function normalizeAgency(raw: any): Agency {
           orderOpenTime: raw.orderCycle.orderOpenTime || '',
           orderCutoff: raw.orderCycle.orderCutoff || '',
           autoToggle: raw.orderCycle.autoToggle ?? false,
-          deliveryOffsetDays: raw.orderCycle.deliveryOffsetDays ?? 0,
+          businessDayOffsetDays: raw.orderCycle.businessDayOffsetDays ?? 0,
           timezone: raw.orderCycle.timezone || '',
         }
       : undefined,

@@ -11,12 +11,19 @@ export interface OrderCyclePreview {
   orderOpenTime?: string;
   orderCutoff?: string;
   autoToggle?: boolean;
-  /** 0 = delivered on the day the window ends, 1 = next-day delivery. */
-  deliveryOffsetDays?: number;
+  /** Business day of the window as days after its end date: 0 = same day, 1 = next day, 2 = day after. */
+  businessDayOffsetDays?: number;
 }
 
-/** Mirrors the backend cap — only same-day (0) or next-day (1) are supported. */
-export const MAX_DELIVERY_OFFSET_DAYS = 1;
+/** Mirrors the backend cap — same day (0), next day (1) or the day after (2). */
+export const MAX_BUSINESS_DAY_OFFSET_DAYS = 2;
+
+/** Options for the "this window belongs to" picker, in display order. */
+export const BUSINESS_DAY_OFFSET_OPTIONS: { value: number; label: string; hint: string }[] = [
+  { value: 0, label: 'Same day', hint: 'the day the window ends on' },
+  { value: 1, label: 'Next day', hint: 'orders taken in this window are booked under tomorrow' },
+  { value: 2, label: 'Day after next', hint: 'orders taken in this window are booked under the day after tomorrow' },
+];
 
 function parseMinutes(time?: string | null): number {
   if (!time) return 0;
@@ -47,13 +54,13 @@ function instantInWindow(window: { start: Date; end: Date }, time: string): Date
 }
 
 /**
- * The YYYY-MM-DD delivery day (IST) an order placed at `at` belongs to: the
- * calendar date the window ends on, pushed forward by the delivery offset.
+ * The YYYY-MM-DD business day (IST) an order placed at `at` belongs to: the
+ * calendar date the window ends on, pushed forward by the business-day offset.
  * Mirrors backend `businessDateLabel`.
  */
 export function businessDateLabel(cycle: OrderCyclePreview, at: Date = new Date()): string {
   const { end } = businessDayWindow(cycle.dayStartTime, at);
-  const offset = Math.max(0, Math.min(MAX_DELIVERY_OFFSET_DAYS, Math.floor(Number(cycle.deliveryOffsetDays) || 0)));
+  const offset = Math.max(0, Math.min(MAX_BUSINESS_DAY_OFFSET_DAYS, Math.floor(Number(cycle.businessDayOffsetDays) || 0)));
   return new Date(end.getTime() + IST_OFFSET_MS + offset * DAY_MS).toISOString().substring(0, 10);
 }
 
@@ -81,10 +88,10 @@ function toMinutesOrNull(time?: string | null): number | null {
  * otherwise); an empty open means "opens at the rollover".
  */
 export function validateOrderCycle(c: OrderCyclePreview): string | null {
-  if (c.deliveryOffsetDays !== undefined && c.deliveryOffsetDays !== null) {
-    const n = Number(c.deliveryOffsetDays);
-    if (!Number.isInteger(n) || n < 0 || n > MAX_DELIVERY_OFFSET_DAYS) {
-      return `Delivery day offset must be a whole number between 0 and ${MAX_DELIVERY_OFFSET_DAYS}.`;
+  if (c.businessDayOffsetDays !== undefined && c.businessDayOffsetDays !== null) {
+    const n = Number(c.businessDayOffsetDays);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_BUSINESS_DAY_OFFSET_DAYS) {
+      return `Business day offset must be a whole number between 0 and ${MAX_BUSINESS_DAY_OFFSET_DAYS}.`;
     }
   }
   if (!c.autoToggle) return null;

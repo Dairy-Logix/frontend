@@ -384,8 +384,8 @@ export interface OrderCycle {
   orderOpenTime?: string;
   orderCutoff?: string;
   autoToggle?: boolean;
-  /** 0 = delivered on the day the window ends, 1 = next-day delivery. */
-  deliveryOffsetDays?: number;
+  /** Business day of the window as days after its end date: 0 = same day, 1 = next day, 2 = day after. */
+  businessDayOffsetDays?: number;
   timezone?: string;
 }
 
