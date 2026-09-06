@@ -453,6 +453,8 @@ export interface Product {
   shortName: string;
   category: ProductCategory;
   quantityPerUnit: number;
+  /** Buying pack (Piece products): pieces per box from the dairy. Default 1. */
+  piecesPerBox: number;
   purchasePricePerUnit: number;
   sellingPricePerUnit: number;
   isActive: boolean;
@@ -471,6 +473,7 @@ export interface CreateProductInput {
   shortName: string;
   category: ProductCategory;
   quantityPerUnit: number;
+  piecesPerBox?: number;
   purchasePricePerUnit: number;
   sellingPricePerUnit: number;
   description?: string;
@@ -484,6 +487,7 @@ export interface UpdateProductInput {
   shortName?: string;
   category?: ProductCategory;
   quantityPerUnit?: number;
+  piecesPerBox?: number;
   purchasePricePerUnit?: number;
   sellingPricePerUnit?: number;
   isActive?: boolean;

@@ -158,6 +158,7 @@ export default function ProductsPage() {
   const [formShortName, setFormShortName] = useState("");
   const [formCategory, setFormCategory] = useState<ProductCategory>("Crate");
   const [formQuantityPerUnit, setFormQuantityPerUnit] = useState("");
+  const [formPiecesPerBox, setFormPiecesPerBox] = useState("");
   const [formPurchasePrice, setFormPurchasePrice] = useState("");
   const [formSellingPrice, setFormSellingPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -227,6 +228,7 @@ export default function ProductsPage() {
     setFormShortName("");
     setFormCategory("Crate");
     setFormQuantityPerUnit("");
+    setFormPiecesPerBox("");
     setFormPurchasePrice("");
     setFormSellingPrice("");
     setFormDescription("");
@@ -241,6 +243,7 @@ export default function ProductsPage() {
     setFormShortName(product.shortName);
     setFormCategory(product.category);
     setFormQuantityPerUnit(String(product.quantityPerUnit));
+    setFormPiecesPerBox(product.piecesPerBox > 1 ? String(product.piecesPerBox) : "");
     setFormPurchasePrice(String(product.purchasePricePerUnit));
     setFormSellingPrice(String(product.sellingPricePerUnit));
     setFormDescription(product.description ?? "");
@@ -260,6 +263,14 @@ export default function ProductsPage() {
     }
     if (!formShortName.trim()) {
       toast.error("Short name is required");
+      return;
+    }
+    if (
+      formCategory === "Piece" &&
+      formPiecesPerBox.trim() !== "" &&
+      (!Number.isInteger(Number(formPiecesPerBox)) || Number(formPiecesPerBox) < 1)
+    ) {
+      toast.error("Pieces per box must be a whole number of 1 or more");
       return;
     }
     if (formCategory !== "Piece" && (!formQuantityPerUnit || Number(formQuantityPerUnit) <= 0)) {
@@ -284,6 +295,11 @@ export default function ProductsPage() {
       category: formCategory,
       quantityPerUnit:
         formCategory === "Piece" ? 1 : Number(formQuantityPerUnit),
+      // Buying pack only applies to Piece products; Crate products buy in crates.
+      piecesPerBox:
+        formCategory === "Piece" && formPiecesPerBox.trim() !== ""
+          ? Number(formPiecesPerBox)
+          : 1,
       purchasePricePerUnit: Number(formPurchasePrice),
       sellingPricePerUnit: Number(formSellingPrice),
       description: formDescription || undefined,
@@ -945,7 +961,7 @@ export default function ProductsPage() {
                       <div
                         className={cn(
                           "mb-3 grid gap-3",
-                          product.category !== "Piece" ? "grid-cols-2" : "grid-cols-1"
+                          product.category !== "Piece" || product.piecesPerBox > 1 ? "grid-cols-2" : "grid-cols-1"
                         )}
                       >
                         {product.category !== "Piece" && (
@@ -955,6 +971,16 @@ export default function ProductsPage() {
                             </p>
                             <p className="text-sm font-semibold">
                               {product.quantityPerUnit} pcs
+                            </p>
+                          </div>
+                        )}
+                        {product.category === "Piece" && product.piecesPerBox > 1 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Pieces per box
+                            </p>
+                            <p className="text-sm font-semibold">
+                              {product.piecesPerBox} pcs
                             </p>
                           </div>
                         )}
@@ -1104,6 +1130,35 @@ export default function ProductsPage() {
                 onChange={(e) => setFormQuantityPerUnit(e.target.value)}
                 min={1}
               />
+            </div>
+          )}
+
+          {/* Pieces per box (Piece only) — the buying pack, never the selling pack */}
+          {formCategory === "Piece" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="product-pieces-per-box">Pieces Per Box (purchase)</Label>
+              <Input
+                id="product-pieces-per-box"
+                type="number"
+                placeholder="e.g. 24 — leave blank if bought per piece"
+                value={formPiecesPerBox}
+                onChange={(e) => setFormPiecesPerBox(e.target.value)}
+                min={1}
+                step={1}
+              />
+              <p className="text-xs text-muted-foreground">
+                How many pieces you receive per box from the dairy. Used only for
+                purchases and purchase reports; stores still order and pay per piece.
+                {Number(formPiecesPerBox) > 1 && Number(formPurchasePrice) > 0 && (
+                  <>
+                    {" "}Box cost ≈{" "}
+                    <span className="font-medium text-foreground">
+                      {formatINR(Number(formPiecesPerBox) * Number(formPurchasePrice))}
+                    </span>
+                    .
+                  </>
+                )}
+              </p>
             </div>
           )}
 
