@@ -6,9 +6,11 @@ import { Switch } from "@/components/ui/switch";
 import type { OrderCycle } from "@/lib/types";
 import {
   businessDayWindow,
+  businessDateLabel,
   isOrderWindowOpen,
   validateOrderCycle,
   fmtIST,
+  fmtDateLabel,
 } from "@/lib/order-cycle";
 
 interface OrderCycleFieldsProps {
@@ -27,6 +29,8 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
   const window = businessDayWindow(value.dayStartTime || "00:00");
   const cycleError = validateOrderCycle(value);
   const open = value.autoToggle && !cycleError ? isOrderWindowOpen(value) : undefined;
+  const nextDay = (value.deliveryOffsetDays ?? 0) >= 1;
+  const deliveryDay = cycleError ? null : businessDateLabel(value);
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
@@ -64,6 +68,25 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
               {value.autoToggle ? "Scheduled" : "Manual toggle"}
             </span>
           </div>
+        </div>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-md border border-dashed p-3">
+        <div className="space-y-1">
+          <Label htmlFor="deliveryOffsetDays">Orders are for the next day</Label>
+          <p className="text-muted-foreground text-[11px]">
+            Turn on when orders taken today are delivered tomorrow (e.g. an AM
+            agency taking orders 12:00 AM – 2:00 PM for the next morning). Off =
+            orders are delivered on the day the business day ends.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 pt-1">
+          <Switch
+            id="deliveryOffsetDays"
+            checked={nextDay}
+            onCheckedChange={(checked) => set({ deliveryOffsetDays: checked ? 1 : 0 })}
+          />
+          <span className="text-muted-foreground text-xs">{nextDay ? "Next day" : "Same day"}</span>
         </div>
       </div>
 
@@ -109,6 +132,13 @@ export function OrderCycleFields({ value, onChange }: OrderCycleFieldsProps) {
           Business day: <span className="font-medium">{fmtIST(window.start)}</span>{" "}
           → <span className="font-medium">{fmtIST(window.end)}</span>
         </p>
+        {deliveryDay && (
+          <p className="text-muted-foreground mt-1">
+            Orders placed now are for:{" "}
+            <span className="font-medium">{fmtDateLabel(deliveryDay)}</span>
+            {nextDay ? " (next day)" : ""}
+          </p>
+        )}
         {value.autoToggle && !cycleError && (
           <p className="mt-1">
             Ordering is currently{" "}
