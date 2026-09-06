@@ -11,7 +11,12 @@ export interface OrderCyclePreview {
   orderOpenTime?: string;
   orderCutoff?: string;
   autoToggle?: boolean;
+  /** 0 = delivered on the day the window ends, 1 = next-day delivery. */
+  deliveryOffsetDays?: number;
 }
+
+/** Mirrors the backend cap — only same-day (0) or next-day (1) are supported. */
+export const MAX_DELIVERY_OFFSET_DAYS = 1;
 
 function parseMinutes(time?: string | null): number {
   if (!time) return 0;
@@ -41,6 +46,17 @@ function instantInWindow(window: { start: Date; end: Date }, time: string): Date
   return new Date(window.start.getTime() + deltaMin * 60_000);
 }
 
+/**
+ * The YYYY-MM-DD delivery day (IST) an order placed at `at` belongs to: the
+ * calendar date the window ends on, pushed forward by the delivery offset.
+ * Mirrors backend `businessDateLabel`.
+ */
+export function businessDateLabel(cycle: OrderCyclePreview, at: Date = new Date()): string {
+  const { end } = businessDayWindow(cycle.dayStartTime, at);
+  const offset = Math.max(0, Math.min(MAX_DELIVERY_OFFSET_DAYS, Math.floor(Number(cycle.deliveryOffsetDays) || 0)));
+  return new Date(end.getTime() + IST_OFFSET_MS + offset * DAY_MS).toISOString().substring(0, 10);
+}
+
 export function isOrderWindowOpen(cycle: OrderCyclePreview, at: Date = new Date()): boolean {
   const window = businessDayWindow(cycle.dayStartTime, at);
   const now = at.getTime();
@@ -65,6 +81,12 @@ function toMinutesOrNull(time?: string | null): number | null {
  * otherwise); an empty open means "opens at the rollover".
  */
 export function validateOrderCycle(c: OrderCyclePreview): string | null {
+  if (c.deliveryOffsetDays !== undefined && c.deliveryOffsetDays !== null) {
+    const n = Number(c.deliveryOffsetDays);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_DELIVERY_OFFSET_DAYS) {
+      return `Delivery day offset must be a whole number between 0 and ${MAX_DELIVERY_OFFSET_DAYS}.`;
+    }
+  }
   if (!c.autoToggle) return null;
   const start = toMinutesOrNull(c.dayStartTime) ?? 0;
   const offset = (t: number) => (t - start + 1440) % 1440;
@@ -82,6 +104,16 @@ export function validateOrderCycle(c: OrderCyclePreview): string | null {
     if (cutoffOffset <= openOffset) return 'Closing time must be after the opening time.';
   }
   return null;
+}
+
+/** Format a YYYY-MM-DD label as a friendly "Sun, 7 Sep". */
+export function fmtDateLabel(dateStr: string): string {
+  return new Date(`${dateStr}T12:00:00Z`).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 }
 
 /** Format an instant in IST as a friendly "Sun, Jun 1, 5:00 PM". */

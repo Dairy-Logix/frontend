@@ -296,6 +296,7 @@ export default function AgencyDetailsPage() {
     orderOpenTime: "",
     orderCutoff: "",
     autoToggle: false,
+    deliveryOffsetDays: 0,
   };
   const [cycleDraft, setCycleDraft] = useState<OrderCycle>(EMPTY_CYCLE);
   useEffect(() => {
