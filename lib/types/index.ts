@@ -985,8 +985,16 @@ export interface QueryDeliveriesParams extends PaginationParams {
 // --- Purchase Types ---
 
 export interface PurchaseItem {
-  productId: string | { _id: string; name?: string; code?: string; price?: number; unit?: string };
+  productId:
+    | string
+    | { _id: string; name?: string; code?: string; price?: number; unit?: string; piecesPerBox?: number };
+  /** As entered: boxes when unit === 'box', else selling units. */
   quantity: number;
+  unit?: 'box' | 'unit';
+  piecesPerBox?: number;
+  loosePieces?: number;
+  /** Selling units (pieces / crates). Missing on rows saved before 2026-09. */
+  baseQuantity?: number;
 }
 
 export interface Purchase {
@@ -1005,7 +1013,10 @@ export interface Purchase {
 
 export interface CreatePurchaseItemInput {
   productId: string;
+  /** Boxes for products with piecesPerBox > 1, else selling units. */
   quantity: number;
+  /** Extra single pieces beyond whole boxes (boxed products only). */
+  loosePieces?: number;
 }
 
 export interface CreatePurchaseInput {
