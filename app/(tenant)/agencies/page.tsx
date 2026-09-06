@@ -689,8 +689,8 @@ function AgencyCard({
           {(() => {
             const oc = agency.orderCycle;
             const customDay = !!oc?.dayStartTime && oc.dayStartTime !== "00:00";
-            const nextDay = (oc?.deliveryOffsetDays ?? 0) >= 1;
-            if (!oc || (!customDay && !oc.autoToggle && !nextDay)) return null;
+            const dayOffset = oc?.businessDayOffsetDays ?? 0;
+            if (!oc || (!customDay && !oc.autoToggle && dayOffset === 0)) return null;
             const to12 = (t?: string) => {
               if (!t) return "";
               const [h, m] = t.split(":").map(Number);
@@ -699,7 +699,7 @@ function AgencyCard({
             };
             const detail = [
               customDay ? `Day starts ${to12(oc.dayStartTime)}` : null,
-              nextDay ? "Next-day delivery" : null,
+              dayOffset > 0 ? `Business day +${dayOffset}` : null,
               oc.autoToggle
                 ? `Auto orders${oc.orderOpenTime ? ` · opens ${to12(oc.orderOpenTime)}` : ""}${oc.orderCutoff ? ` · closes ${to12(oc.orderCutoff)}` : ""}`
                 : null,
@@ -715,7 +715,7 @@ function AgencyCard({
                 <span>
                   {[
                     customDay ? to12(oc.dayStartTime) : null,
-                    nextDay ? "Next day" : null,
+                    dayOffset > 0 ? `Day +${dayOffset}` : null,
                     oc.autoToggle ? "Auto" : null,
                   ]
                     .filter(Boolean)
