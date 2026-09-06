@@ -17,6 +17,7 @@ function toBackendDto(input: Partial<CreateProductInput & UpdateProductInput>): 
   if (input.category !== undefined) dto.category = input.category;
   if (input.description !== undefined) dto.description = input.description;
   if (input.quantityPerUnit !== undefined) dto.quantity = input.quantityPerUnit;
+  if (input.piecesPerBox !== undefined) dto.piecesPerBox = input.piecesPerBox;
   if (input.purchasePricePerUnit !== undefined) dto.price = input.purchasePricePerUnit;
   if (input.sellingPricePerUnit !== undefined) dto.mrp = input.sellingPricePerUnit;
   if ((input as UpdateProductInput).isActive !== undefined)
@@ -34,6 +35,7 @@ function mapProduct(raw: any): Product {
     shortName: raw.shortName || raw.name || '',
     category: raw.category || 'Crate',
     quantityPerUnit: raw.quantityPerUnit ?? raw.quantity ?? 1,
+    piecesPerBox: Math.max(1, Number(raw.piecesPerBox) || 1),
     purchasePricePerUnit: raw.purchasePricePerUnit ?? raw.price ?? 0,
     sellingPricePerUnit: raw.sellingPricePerUnit ?? raw.mrp ?? raw.price ?? 0,
     isActive: raw.isActive ?? (raw.status === 'active'),

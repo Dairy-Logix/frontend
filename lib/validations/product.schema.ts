@@ -30,6 +30,12 @@ export const productSchema = z.object({
     .int('Quantity must be a whole number')
     .positive('Quantity must be greater than 0')
     .max(1000, 'Quantity cannot exceed 1000'),
+  piecesPerBox: z
+    .number()
+    .int('Pieces per box must be a whole number')
+    .positive('Pieces per box must be greater than 0')
+    .max(10000, 'Pieces per box cannot exceed 10,000')
+    .optional(),
   purchasePricePerUnit: z
     .number({
       required_error: 'Purchase price is required',
