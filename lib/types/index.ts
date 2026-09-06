@@ -274,6 +274,8 @@ export interface OrderPrintTemplate {
   margins: OrderPrintMargins;
   showTitle: boolean;
   titleText: string;
+  /** Print the per-store "Total Price" column and the grand total. Default true. */
+  showTotalPrice: boolean;
   enabledProductIds: string[];
   enabledStoresByAgency: Record<string, string[]>;
 }
