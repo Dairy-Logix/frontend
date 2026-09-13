@@ -304,6 +304,8 @@ export default function SettingsPage() {
           showBoxTotals: t.showBoxTotals ?? false,
           rowHeightMode: t.rowHeightMode ?? "auto",
           rowHeightMm: t.rowHeightMm ?? 8,
+          fontSizePt: t.fontSizePt ?? 8,
+          boldNumbers: t.boldNumbers ?? false,
         })),
       );
     } else {
@@ -324,6 +326,8 @@ export default function SettingsPage() {
             showBoxTotals: false,
             rowHeightMode: "auto",
             rowHeightMm: 8,
+            fontSizePt: 8,
+            boldNumbers: false,
             enabledProductIds: legacy.enabledProductIds ?? [],
             enabledStoresByAgency: legacy.enabledStoresByAgency ?? {},
           },
@@ -477,6 +481,8 @@ export default function SettingsPage() {
       showBoxTotals: false,
       rowHeightMode: "auto",
       rowHeightMm: 8,
+      fontSizePt: 8,
+      boldNumbers: false,
       enabledProductIds: printProducts.map((p) => p.id),
       enabledStoresByAgency: Object.fromEntries(
         printAgencies.map((a) => [
@@ -1224,6 +1230,40 @@ export default function SettingsPage() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Number size (pt)
+                              </Label>
+                              <Input
+                                type="number"
+                                min={6}
+                                max={16}
+                                step={0.5}
+                                value={template.fontSizePt ?? 8}
+                                onChange={(e) =>
+                                  updateTemplate(template.id, {
+                                    fontSizePt: Math.min(16, Math.max(6, Number(e.target.value) || 8)),
+                                  })
+                                }
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Bold numbers
+                              </Label>
+                              <div className="h-8 flex items-center gap-2">
+                                <Switch
+                                  checked={template.boldNumbers ?? false}
+                                  onCheckedChange={(v) =>
+                                    updateTemplate(template.id, { boldNumbers: v })
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {(template.boldNumbers ?? false) ? "Bold" : "Normal"}
+                                </span>
+                              </div>
+                            </div>
                             {(template.rowHeightMode ?? "auto") === "fixed" && (
                               <div className="space-y-1">
                                 <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
@@ -1245,6 +1285,13 @@ export default function SettingsPage() {
                               </div>
                             )}
                           </div>
+                          {(template.showBoxTotals ?? false) && (
+                            <p className="text-xs text-muted-foreground">
+                              The "Boxes to buy" row only appears for products that have a pack size
+                              (pieces per box) greater than 1 in the product form. It shows how many
+                              boxes cover the total ordered pieces.
+                            </p>
+                          )}
                           {(template.rowHeightMode ?? "auto") === "fill" && (
                             <p className="text-xs text-muted-foreground">
                               Rows are stretched evenly so the sheet uses the full page height. With more

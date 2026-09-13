@@ -284,6 +284,10 @@ export interface OrderPrintTemplate {
   rowHeightMode?: PrintRowHeightMode;
   /** Row height in mm when rowHeightMode is 'fixed'. Default 8. */
   rowHeightMm?: number;
+  /** Font size in pt for the printed table cells (names, headers, quantities). Default 8. */
+  fontSizePt?: number;
+  /** Print the quantity numbers in bold. Default false. */
+  boldNumbers?: boolean;
   enabledProductIds: string[];
   enabledStoresByAgency: Record<string, string[]>;
 }

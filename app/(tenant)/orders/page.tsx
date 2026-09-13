@@ -549,7 +549,21 @@ export default function OrdersPage() {
       rowHeightMm && rowHeightMm > 0
         ? `.print-sheet-table tbody td { height: ${rowHeightMm.toFixed(2)}mm !important; }`
         : "";
+    // Table font size lives OUTSIDE @media print so the off-screen measuring
+    // pass (fill mode) sees the same text size the printer will.
+    const fontSizePt = Math.min(16, Math.max(6, template.fontSizePt ?? 8));
+    // Bold applies to the quantity cells only; store names and headers keep
+    // their own weights from globals.css.
+    const boldRule = template.boldNumbers
+      ? `.print-sheet .print-sheet-table tbody td.print-col-product { font-weight: 700 !important; }`
+      : "";
     styleEl.textContent = `
+      .print-sheet .print-sheet-table th,
+      .print-sheet .print-sheet-table td,
+      .print-sheet .print-sheet-table thead th {
+        font-size: ${fontSizePt}pt !important;
+      }
+      ${boldRule}
       @media print {
         @page {
           size: A4 ${template.orientation};
@@ -630,6 +644,8 @@ export default function OrdersPage() {
     // Wait one paint so React renders the print block, then size the rows
     // (which needs the rendered sheet) and print on the following paint.
     requestAnimationFrame(() => {
+      // Apply page + font size first so fill-mode measurement uses them.
+      applyTemplatePrintStyle(template, null);
       const mode = template.rowHeightMode ?? "auto";
       let rowHeightMm: number | null = null;
       if (mode === "fixed") {

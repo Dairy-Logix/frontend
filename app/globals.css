@@ -709,7 +709,8 @@
   .print-sheet-table th,
   .print-sheet-table td {
     border: 1px solid #000 !important;
-    padding: 2px 3px !important;
+    padding: 0 2px !important;
+    line-height: 1.05 !important;
     text-align: center !important;
     vertical-align: middle !important;
     color: #000 !important;
@@ -720,6 +721,21 @@
     font-weight: 700 !important;
     font-size: 8pt !important;
     white-space: nowrap !important;
+    line-height: 1.05 !important;
+  }
+  /* Product headers may wrap so a wide sheet shrinks to the page width instead
+     of being cropped at the right edge. Store/total headers stay on one line. */
+  .print-sheet-table thead th.print-col-product {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.05 !important;
+    padding: 0 1px !important;
+  }
+  /* Quantity cells: tight line height and minimal side padding so the number
+     size can go up without widening the product columns. */
+  .print-sheet-table td.print-col-product {
+    padding: 0 !important;
+    line-height: 1 !important;
   }
   .print-sheet-table .print-col-store {
     text-align: left !important;
