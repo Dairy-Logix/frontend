@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
@@ -479,6 +479,7 @@ export default function OrdersPage() {
   useEffect(() => {
     setPortalReady(true);
   }, []);
+  const printSheetRef = useRef<HTMLDivElement>(null);
   const activeTemplate =
     printTemplates.find((t) => t.id === activePrintTemplateId) ?? null;
 
@@ -531,7 +532,7 @@ export default function OrdersPage() {
   // are dynamic per click. Margins live on the @page rule so the print
   // engine handles them natively across pages; the .print-sheet flows
   // naturally inside that printable area.
-  function applyTemplatePrintStyle(template: OrderPrintTemplate) {
+  function applyTemplatePrintStyle(template: OrderPrintTemplate, rowHeightMm: number | null) {
     const styleId = "orders-print-template-style";
     let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
     if (!styleEl) {
@@ -541,26 +542,107 @@ export default function OrdersPage() {
     }
     const { top, right, bottom, left } = template.margins;
     // Font size + cell padding come from the static print CSS in globals.css.
-    // The table sizes itself automatically based on column count, so no
-    // per-template scaling is needed here.
+    // Column widths are automatic (the table is 100% wide and the browser
+    // spreads the columns). Row height is the one thing the browser cannot
+    // fill on its own, so it is injected here when the template asks for it.
+    const rowRule =
+      rowHeightMm && rowHeightMm > 0
+        ? `.print-sheet-table tbody td { height: ${rowHeightMm.toFixed(2)}mm !important; }`
+        : "";
     styleEl.textContent = `
       @media print {
         @page {
           size: A4 ${template.orientation};
           margin: ${Math.max(0, top)}mm ${Math.max(0, right)}mm ${Math.max(0, bottom)}mm ${Math.max(0, left)}mm;
         }
+        ${rowRule}
       }
     `;
   }
 
+  // "Fill the page": measure the sheet's natural header / thead / tfoot / row
+  // heights in an off-screen copy at the printable width, then pick the tallest
+  // uniform row height that still fits every store on the fewest pages. Returns
+  // null when nothing sensible can be computed (falls back to auto).
+  const MM_PER_PX = 25.4 / 96;
+  const MAX_FILL_ROW_MM = 20;
+  function computeFillRowHeightMm(template: OrderPrintTemplate): number | null {
+    const sheet = printSheetRef.current;
+    if (!sheet) return null;
+    const landscape = template.orientation === "landscape";
+    const pageW = landscape ? 297 : 210;
+    const pageH = landscape ? 210 : 297;
+    const { top, right, bottom, left } = template.margins;
+    const printableW = pageW - Math.max(0, left) - Math.max(0, right);
+    // 2mm safety so pixel rounding never pushes the last row onto a new page.
+    const printableH = pageH - Math.max(0, top) - Math.max(0, bottom) - 2;
+
+    sheet.classList.add("print-sheet--measure");
+    sheet.style.width = `${printableW}mm`;
+    try {
+      const mm = (el: Element | null) => (el ? el.getBoundingClientRect().height * MM_PER_PX : 0);
+      const headerEl = sheet.querySelector(".print-sheet-header");
+      let headerMm = 0;
+      if (headerEl) {
+        const cs = getComputedStyle(headerEl);
+        headerMm =
+          mm(headerEl) +
+          ((parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0)) * MM_PER_PX;
+      }
+      const theadMm = mm(sheet.querySelector(".print-sheet-table thead"));
+      const tfootMm = mm(sheet.querySelector(".print-sheet-table tfoot"));
+      const rows = Array.from(sheet.querySelectorAll<HTMLTableRowElement>(".print-sheet-table tbody tr"));
+      const n = rows.length;
+      if (n === 0) return null;
+      const minRow = Math.max(...rows.map((r) => mm(r)));
+      if (!(minRow > 0)) return null;
+
+      const firstAvail = printableH - headerMm - theadMm - tfootMm;
+      const otherAvail = printableH - theadMm - tfootMm;
+      if (firstAvail <= minRow || otherAvail <= minRow) return null;
+
+      // Fewest pages needed at the natural row height.
+      let pages = 1;
+      const spill = n - Math.floor(firstAvail / minRow);
+      if (spill > 0) pages += Math.ceil(spill / Math.max(1, Math.floor(otherAvail / minRow)));
+
+      const capacity = (h: number) =>
+        Math.floor(firstAvail / h) + (pages - 1) * Math.floor(otherAvail / h);
+
+      // Largest uniform row height that still fits n rows in `pages` pages.
+      let lo = minRow;
+      let hi = Math.max(minRow, Math.min(MAX_FILL_ROW_MM, firstAvail));
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        if (capacity(mid) >= n) lo = mid;
+        else hi = mid;
+      }
+      // Shave 1% so the computed rows never overshoot the page.
+      return Math.max(minRow, lo * 0.99);
+    } finally {
+      sheet.classList.remove("print-sheet--measure");
+      sheet.style.width = "";
+    }
+  }
+
   function handlePrintWithTemplate(template: OrderPrintTemplate) {
-    applyTemplatePrintStyle(template);
     setActivePrintTemplateId(template.id);
-    // Wait one paint so React renders the print block before window.print().
+    // Wait one paint so React renders the print block, then size the rows
+    // (which needs the rendered sheet) and print on the following paint.
     requestAnimationFrame(() => {
-      window.print();
-      // Clear the active template so the print block goes back to display:none.
-      setTimeout(() => setActivePrintTemplateId(null), 100);
+      const mode = template.rowHeightMode ?? "auto";
+      let rowHeightMm: number | null = null;
+      if (mode === "fixed") {
+        rowHeightMm = Math.min(30, Math.max(4, template.rowHeightMm ?? 8));
+      } else if (mode === "fill") {
+        rowHeightMm = computeFillRowHeightMm(template);
+      }
+      applyTemplatePrintStyle(template, rowHeightMm);
+      requestAnimationFrame(() => {
+        window.print();
+        // Clear the active template so the print block goes back to display:none.
+        setTimeout(() => setActivePrintTemplateId(null), 100);
+      });
     });
   }
 
@@ -1022,7 +1104,7 @@ export default function OrdersPage() {
     {/* ===================== PRINT-ONLY SHEET (portaled to <body>) ===================== */}
     {portalReady &&
       createPortal(
-        <div className="print-sheet">
+        <div className="print-sheet" ref={printSheetRef}>
           {activeTemplate?.showTitle !== false && (
             <div className="print-sheet-header">
               <div>

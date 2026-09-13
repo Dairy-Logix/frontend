@@ -267,6 +267,8 @@ export interface OrderPrintMargins {
   left: number;
 }
 
+export type PrintRowHeightMode = 'auto' | 'fill' | 'fixed';
+
 export interface OrderPrintTemplate {
   id: string;
   name: string;
@@ -278,6 +280,10 @@ export interface OrderPrintTemplate {
   showTotalPrice: boolean;
   /** Print a "Boxes to buy" row (ceil(total ÷ piecesPerBox)) under the totals. Default false. */
   showBoxTotals: boolean;
+  /** Row height: 'auto' fits content, 'fill' stretches rows to use the page, 'fixed' uses rowHeightMm. Default auto. */
+  rowHeightMode?: PrintRowHeightMode;
+  /** Row height in mm when rowHeightMode is 'fixed'. Default 8. */
+  rowHeightMm?: number;
   enabledProductIds: string[];
   enabledStoresByAgency: Record<string, string[]>;
 }

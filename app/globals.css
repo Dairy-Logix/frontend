@@ -655,8 +655,29 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+}
 
-  .print-sheet-header {
+/* Off-screen copy of the sheet used only to MEASURE natural header/row heights
+   before printing a "fill the page" template. Positioned far off-screen at the
+   template's printable width so wrapping matches the printed output. */
+.print-sheet.print-sheet--measure {
+  display: block;
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 8pt;
+}
+
+/* Sheet content styles. These live OUTSIDE @media print on purpose: on screen
+   .print-sheet is display:none so they have no visible effect, but the
+   measuring pass above needs them to compute row heights that match print. */
+.print-sheet-header {
     display: flex !important;
     justify-content: space-between !important;
     align-items: flex-end !important;
@@ -718,7 +739,8 @@
     font-weight: 700 !important;
   }
 
-  /* Repeat header on each printed page; avoid splitting a row */
+/* Repeat header on each printed page; avoid splitting a row */
+@media print {
   .print-sheet-table thead { display: table-header-group !important; }
   .print-sheet-table tfoot { display: table-footer-group !important; }
   .print-sheet-table tr    { page-break-inside: avoid !important; }

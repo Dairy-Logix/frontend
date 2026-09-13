@@ -55,6 +55,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type {
   OrderPrintTemplate,
   PrintOrientation,
+  PrintRowHeightMode,
   NotificationEventType,
   AdminNotificationPref,
   Tenant,
@@ -301,6 +302,8 @@ export default function SettingsPage() {
           titleText: t.titleText ?? "",
           showTotalPrice: t.showTotalPrice ?? true,
           showBoxTotals: t.showBoxTotals ?? false,
+          rowHeightMode: t.rowHeightMode ?? "auto",
+          rowHeightMm: t.rowHeightMm ?? 8,
         })),
       );
     } else {
@@ -319,6 +322,8 @@ export default function SettingsPage() {
             titleText: "",
             showTotalPrice: true,
             showBoxTotals: false,
+            rowHeightMode: "auto",
+            rowHeightMm: 8,
             enabledProductIds: legacy.enabledProductIds ?? [],
             enabledStoresByAgency: legacy.enabledStoresByAgency ?? {},
           },
@@ -470,6 +475,8 @@ export default function SettingsPage() {
       titleText: "",
       showTotalPrice: true,
       showBoxTotals: false,
+      rowHeightMode: "auto",
+      rowHeightMm: 8,
       enabledProductIds: printProducts.map((p) => p.id),
       enabledStoresByAgency: Object.fromEntries(
         printAgencies.map((a) => [
@@ -1195,7 +1202,56 @@ export default function SettingsPage() {
                                 </span>
                               </div>
                             </div>
+                            <div className="space-y-1">
+                              <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                Row height
+                              </Label>
+                              <Select
+                                value={template.rowHeightMode ?? "auto"}
+                                onValueChange={(v) =>
+                                  updateTemplate(template.id, {
+                                    rowHeightMode: v as PrintRowHeightMode,
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="auto">Auto (fit content)</SelectItem>
+                                  <SelectItem value="fill">Fill the page</SelectItem>
+                                  <SelectItem value="fixed">Fixed height</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {(template.rowHeightMode ?? "auto") === "fixed" && (
+                              <div className="space-y-1">
+                                <Label className="block text-xs uppercase tracking-wide text-muted-foreground leading-snug">
+                                  Row height (mm)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={4}
+                                  max={30}
+                                  step={0.5}
+                                  value={template.rowHeightMm ?? 8}
+                                  onChange={(e) =>
+                                    updateTemplate(template.id, {
+                                      rowHeightMm: Math.min(30, Math.max(4, Number(e.target.value) || 8)),
+                                    })
+                                  }
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            )}
                           </div>
+                          {(template.rowHeightMode ?? "auto") === "fill" && (
+                            <p className="text-xs text-muted-foreground">
+                              Rows are stretched evenly so the sheet uses the full page height. With more
+                              stores than fit on one page, every page is filled and rows are spread across
+                              the fewest pages possible.
+                            </p>
+                          )}
 
                           {/* Custom title text — only when title bar is enabled */}
                           {template.showTitle && (
