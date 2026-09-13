@@ -85,6 +85,10 @@ export default function OrdersPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchShop, setSearchShop] = useState(() => getUrlParam("q"));
   const [editedQuantities, setEditedQuantities] = useState<Record<string, Record<string, number>>>({});
+  // What the user has literally typed per cell while in edit mode. Keeping the
+  // raw text (not the parsed number) means "1." or "" survive re-render instead
+  // of snapping back to "1" or "0" mid-keystroke.
+  const [editedInputs, setEditedInputs] = useState<Record<string, Record<string, string>>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => getUrlParam("date") || todayIST());
   const [transferWizardOpen, setTransferWizardOpen] = useState(false);
@@ -285,6 +289,13 @@ export default function OrdersPage() {
     // Crate products may be ordered in half steps (0.5, 1.5, …), matching the
     // Store mobile app and the backend; parseInt would silently drop the .5.
     const quantity = parseFloat(value) || 0;
+    setEditedInputs((prev) => ({
+      ...prev,
+      [shopId]: {
+        ...prev[shopId],
+        [productId]: value,
+      },
+    }));
     setEditedQuantities((prev) => ({
       ...prev,
       [shopId]: {
@@ -388,6 +399,7 @@ export default function OrdersPage() {
       setHasChanges(false);
       setIsEditMode(false);
       setEditedQuantities({});
+      setEditedInputs({});
       toast.success("Changes saved successfully");
     } catch (error) {
       toast.error("Failed to save some changes");
@@ -404,6 +416,7 @@ export default function OrdersPage() {
 
   function handleConfirmDiscard() {
     setEditedQuantities({});
+    setEditedInputs({});
     setHasChanges(false);
     setIsEditMode(false);
     setDiscardConfirmOpen(false);
@@ -883,6 +896,8 @@ export default function OrdersPage() {
                     </td>
                     {matrixData.products.map((product) => {
                       const value = getCellValue(cell.shopId, product.id);
+                      const inputValue =
+                        editedInputs[cell.shopId]?.[product.id] ?? (value > 0 ? String(value) : "");
                       return (
                         <td
                           key={product.id}
@@ -895,7 +910,8 @@ export default function OrdersPage() {
                               type="number"
                               min="0"
                               step={product.category === "Piece" ? 1 : 0.5}
-                              value={value}
+                              value={inputValue}
+                              placeholder="-"
                               onChange={(e) =>
                                 handleQuantityChange(
                                   cell.shopId,
