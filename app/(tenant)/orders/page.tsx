@@ -261,7 +261,9 @@ export default function OrdersPage() {
   }
 
   function handleQuantityChange(shopId: string, productId: string, value: string) {
-    const quantity = parseInt(value) || 0;
+    // Crate products may be ordered in half steps (0.5, 1.5, …), matching the
+    // Store mobile app and the backend; parseInt would silently drop the .5.
+    const quantity = parseFloat(value) || 0;
     setEditedQuantities((prev) => ({
       ...prev,
       [shopId]: {
@@ -273,6 +275,26 @@ export default function OrdersPage() {
   }
 
   async function handleSaveChanges() {
+    // Enforce quantity granularity before hitting the API: whole numbers for
+    // Piece products, 0.5 steps for everything else (same rule as backend).
+    for (const editedProducts of Object.values(editedQuantities)) {
+      for (const [productId, quantity] of Object.entries(editedProducts)) {
+        if (quantity <= 0) continue;
+        const product = products.find((p) => p.id === productId);
+        if (!product) continue;
+        const badPiece = product.category === "Piece" && !Number.isInteger(quantity);
+        const badStep = Math.round(quantity * 2) / 2 !== quantity;
+        if (badPiece || badStep) {
+          toast.error(
+            badPiece
+              ? `${product.name} is sold per piece — enter a whole number.`
+              : `${product.name}: quantity must be in steps of 0.5.`
+          );
+          return;
+        }
+      }
+    }
+
     const promises: Promise<unknown>[] = [];
 
     // Group all edits by shopId, then decide per-shop whether to update or create
@@ -851,6 +873,7 @@ export default function OrdersPage() {
                             <Input
                               type="number"
                               min="0"
+                              step={product.category === "Piece" ? 1 : 0.5}
                               value={value}
                               onChange={(e) =>
                                 handleQuantityChange(
