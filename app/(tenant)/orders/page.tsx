@@ -207,6 +207,27 @@ export default function OrdersPage() {
     );
   }, [matrixData.cells, searchShop]);
 
+  // Column totals for the visible rows (unsaved edits included), shown in the
+  // matrix footer: per-product quantity plus the grand amount.
+  const matrixTotals = useMemo(() => {
+    const productTotals: Record<string, number> = {};
+    let grandTotal = 0;
+    matrixData.products.forEach((product) => {
+      productTotals[product.id] = 0;
+    });
+    filteredCells.forEach((cell) => {
+      matrixData.products.forEach((product) => {
+        const qty =
+          editedQuantities[cell.shopId]?.[product.id] ??
+          cell.productQuantities[product.id] ??
+          0;
+        productTotals[product.id] += qty;
+        grandTotal += qty * product.sellingPricePerUnit;
+      });
+    });
+    return { productTotals, grandTotal };
+  }, [filteredCells, matrixData.products, editedQuantities]);
+
   const pendingCells = useMemo(
     () =>
       matrixData.cells.filter(
@@ -946,6 +967,37 @@ export default function OrdersPage() {
                 ))
               )}
             </tbody>
+            {filteredCells.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-primary/20 bg-gradient-to-r from-red-500/10 to-orange-500/10">
+                  <td className="py-3 px-4 font-bold text-foreground bg-background bg-gradient-to-r from-red-500/10 to-orange-500/10 sticky left-0 z-10 border-r border-border">
+                    Total
+                  </td>
+                  {matrixData.products.map((product) => {
+                    const total = matrixTotals.productTotals[product.id] ?? 0;
+                    return (
+                      <td
+                        key={product.id}
+                        className="py-3 px-1 text-center border-r border-border/50"
+                      >
+                        <span className={total > 0 ? "font-bold" : "text-muted-foreground"}>
+                          {total > 0 ? total : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                  <td className="py-3 px-4 text-center text-xs text-muted-foreground border-r border-border/50">
+                    {filteredCells.length} {filteredCells.length === 1 ? "store" : "stores"}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold text-foreground bg-background bg-gradient-to-r from-red-500/10 to-orange-500/10 sticky right-0 z-10 border-l-2 border-border">
+                    <div className="flex items-center justify-end gap-1">
+                      <IndianRupee className="h-3.5 w-3.5" />
+                      <span>{matrixTotals.grandTotal.toLocaleString("en-IN")}</span>
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </motion.div>
