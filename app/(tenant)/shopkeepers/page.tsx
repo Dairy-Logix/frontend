@@ -17,8 +17,10 @@ import {
   Save,
   Wallet,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -190,6 +192,14 @@ export default function ShopkeepersPage() {
   const createShopkeeper = useCreateShopkeeper();
   const updateShopkeeper = useUpdateShopkeeper();
   const deleteShopkeeper = useDeleteShopkeeper();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    deleteShopkeeper.mutate(deleteTarget.id, {
+      onSettled: () => setDeleteTarget(null),
+    });
+  }
   const reorderShopkeepers = useReorderShopkeepers();
   const { data: totalWalletBalance = 0 } = useTotalWalletBalance();
 
@@ -869,6 +879,23 @@ export default function ShopkeepersPage() {
                         Outstanding Balance
                       </span>
                     </div>
+
+                    {/* Delete */}
+                    {!isReorderMode && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        title="Delete store"
+                        aria-label={`Delete ${shop.shopName}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget({ id: shop.id, name: shop.shopName });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -1186,6 +1213,18 @@ export default function ShopkeepersPage() {
           </div>
         )}
       </FormModal>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && !deleteShopkeeper.isPending && setDeleteTarget(null)}
+        title={`Delete ${deleteTarget?.name ?? "this store"}?`}
+        description="This permanently removes the store and deactivates its login. Past orders and invoices stay on record. This cannot be undone."
+        confirmLabel="Delete store"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteShopkeeper.isPending}
+      />
     </div>
   );
 }

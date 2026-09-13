@@ -23,7 +23,9 @@ import {
   EyeOff,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -42,7 +44,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { useShopkeeper, useUpdateShopkeeper } from "@/lib/hooks/use-shopkeepers";
+import { useShopkeeper, useUpdateShopkeeper, useDeleteShopkeeper } from "@/lib/hooks/use-shopkeepers";
 import { useAgencies } from "@/lib/hooks/use-agencies";
 
 // --- Status Color Maps ---
@@ -79,6 +81,17 @@ export default function ShopkeeperDetailsPage() {
   const { data: shop, isLoading, error, refetch } = useShopkeeper(shopId);
   const { data: agenciesData } = useAgencies({ pageSize: 100 });
   const updateShopkeeper = useUpdateShopkeeper();
+  const deleteShopkeeper = useDeleteShopkeeper();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  function handleConfirmDelete() {
+    deleteShopkeeper.mutate(shopId, {
+      onSuccess: () => {
+        setDeleteOpen(false);
+        router.push("/shopkeepers");
+      },
+    });
+  }
 
   const agencies = agenciesData?.data || [];
 
@@ -317,13 +330,23 @@ export default function ShopkeeperDetailsPage() {
         title={shop.shopName}
         description={`Managed by ${agencyNames.combined}`}
         action={
-          <Button
-            className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
-            onClick={openEditModal}
-          >
-            <Pencil className="h-4 w-4" />
-            Edit Store
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-red-500 border-red-500/40 hover:bg-red-500/10 hover:text-red-600"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600"
+              onClick={openEditModal}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Store
+            </Button>
+          </div>
         }
       />
 
@@ -840,6 +863,18 @@ export default function ShopkeeperDetailsPage() {
           </p>
         </div>
       </FormModal>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => !deleteShopkeeper.isPending && setDeleteOpen(open)}
+        title={`Delete ${shop.shopName}?`}
+        description="This permanently removes the store and deactivates its login. Past orders and invoices stay on record. This cannot be undone."
+        confirmLabel="Delete store"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteShopkeeper.isPending}
+      />
     </div>
   );
 }
