@@ -1040,7 +1040,6 @@ export default function OrdersPage() {
                               min="0"
                               step={product.category === "Piece" ? 1 : 0.5}
                               value={inputValue}
-                              placeholder="-"
                               onChange={(e) =>
                                 handleQuantityChange(
                                   cell.shopId,
@@ -1056,7 +1055,7 @@ export default function OrdersPage() {
                             />
                           ) : (
                             <span className={value > 0 ? "font-semibold" : "text-muted-foreground"}>
-                              {value > 0 ? value : "-"}
+                              {value > 0 ? value : ""}
                             </span>
                           )}
                         </td>
@@ -1129,7 +1128,7 @@ export default function OrdersPage() {
                         className="py-3 px-1 text-center border-r border-border/50"
                       >
                         <span className={total > 0 ? "font-bold" : "text-muted-foreground"}>
-                          {total > 0 ? total : "-"}
+                          {total > 0 ? total : ""}
                         </span>
                       </td>
                     );
