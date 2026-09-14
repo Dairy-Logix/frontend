@@ -870,3 +870,25 @@
     text-align: center !important;
   }
 }
+
+/* Orders matrix rows: a theme-accent highlight on hover and while any input in
+   the row has focus (i.e. while an order is being filled in). The sticky
+   store-name cell gets an opaque mix so scrolled content never shows through. */
+@layer components {
+  .order-row {
+    transition: background-color 150ms ease;
+  }
+  .order-row:hover,
+  .order-row:focus-within {
+    background-color: color-mix(in oklch, var(--accent) 14%, transparent);
+  }
+  .order-row:focus-within {
+    background-color: color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+  .order-row:hover > .order-row-sticky {
+    background-color: color-mix(in oklch, var(--accent) 14%, var(--background));
+  }
+  .order-row:focus-within > .order-row-sticky {
+    background-color: color-mix(in oklch, var(--accent) 22%, var(--background));
+  }
+}

@@ -985,11 +985,11 @@ export default function OrdersPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: rowIndex * 0.02 }}
-                    className={`border-b border-border/30 last:border-0 hover:bg-white/5 transition-colors ${
+                    className={`order-row border-b border-border/30 last:border-0 ${
                       rowIndex % 2 === 0 ? "bg-white/[0.02]" : ""
                     }`}
                   >
-                    <td className="py-2 px-4 font-medium bg-background sticky left-0 z-10 border-r border-border">
+                    <td className="order-row-sticky py-2 px-4 font-medium bg-background sticky left-0 z-10 border-r border-border">
                       {cell.shopName}
                     </td>
                     {matrixData.products.map((product) => {
