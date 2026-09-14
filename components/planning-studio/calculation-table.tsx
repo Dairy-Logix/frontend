@@ -372,6 +372,8 @@ export function CalculationTable({
                               )}
                               <input
                                 type="number"
+                                // Wheel must scroll the table, not bump the value.
+                                onWheel={(e) => e.currentTarget.blur()}
                                 min={0}
                                 max={total}
                                 step={1}

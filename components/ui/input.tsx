@@ -2,11 +2,24 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({ className, type, onWheel, ...props }: React.ComponentProps<"input">) {
+  // A focused <input type="number"> changes its value on mouse-wheel, so
+  // scrolling a page with the cursor over a focused quantity box silently
+  // bumps the number. Drop focus on wheel: the page scrolls, the value stays,
+  // and the spinner arrows / keyboard still work as before.
+  const handleWheel: React.WheelEventHandler<HTMLInputElement> | undefined =
+    type === "number"
+      ? (e) => {
+          e.currentTarget.blur()
+          onWheel?.(e)
+        }
+      : onWheel
+
   return (
     <input
       type={type}
       data-slot="input"
+      onWheel={handleWheel}
       className={cn(
         "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
         "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
