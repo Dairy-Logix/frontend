@@ -260,6 +260,37 @@ export default function OrdersPage() {
 
   // --- Edit handlers ---
 
+  // Arrow keys (and Enter) move focus between quantity cells like a
+  // spreadsheet. Up/Down would otherwise step the number, so they are
+  // intercepted; Left/Right jump cells too (quantities are short, so caret
+  // movement inside a cell isn't worth keeping). Enter moves down the column
+  // — the natural "next store" motion when filling one product. Movement
+  // clamps at the matrix edges; Tab keeps its native behaviour.
+  function handleCellKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    const moves: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+      Enter: [1, 0],
+    };
+    const move = moves[e.key];
+    if (!move || e.altKey || e.ctrlKey || e.metaKey) return;
+    const input = e.currentTarget;
+    const row = Number(input.dataset.row);
+    const col = Number(input.dataset.col);
+    if (Number.isNaN(row) || Number.isNaN(col)) return;
+    const target = input
+      .closest("table")
+      ?.querySelector<HTMLInputElement>(
+        `input[data-row="${row + move[0]}"][data-col="${col + move[1]}"]`,
+      );
+    e.preventDefault();
+    if (!target) return;
+    target.focus();
+    target.select();
+  }
+
   function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
     const input = e.currentTarget;
     const cell = input.closest("td") as HTMLElement | null;
@@ -992,7 +1023,7 @@ export default function OrdersPage() {
                     <td className="order-row-sticky py-2 px-4 font-medium bg-background sticky left-0 z-10 border-r border-border">
                       {cell.shopName}
                     </td>
-                    {matrixData.products.map((product) => {
+                    {matrixData.products.map((product, colIndex) => {
                       const value = getCellValue(cell.shopId, product.id);
                       const inputValue =
                         editedInputs[cell.shopId]?.[product.id] ?? (value > 0 ? String(value) : "");
@@ -1018,6 +1049,9 @@ export default function OrdersPage() {
                                 )
                               }
                               onFocus={handleInputFocus}
+                              onKeyDown={handleCellKeyDown}
+                              data-row={rowIndex}
+                              data-col={colIndex}
                               className="w-14 h-7 px-1 text-xs text-center bg-white/5 border-white/20 focus:bg-white/10 focus:border-orange-500"
                             />
                           ) : (
