@@ -58,7 +58,12 @@ function normalizeShop(raw: any): Shop {
     area: raw.area || raw.city || '',
     zone: raw.zone,
     routeId: raw.routeId,
-    assignedEmployeeId: raw.assignedEmployeeId,
+    assignedEmployeeIds: Array.isArray(raw.assignedEmployeeIds)
+      ? raw.assignedEmployeeIds.map(String)
+      : [],
+    assignedDeliveryEmployeeIds: Array.isArray(raw.assignedDeliveryEmployeeIds)
+      ? raw.assignedDeliveryEmployeeIds.map(String)
+      : [],
     openingBalance: raw.openingBalance ?? 0,
     currentBalance: raw.currentBalance ?? raw.outstandingBalance ?? 0,
     walletBalance: raw.walletBalance ?? 0,

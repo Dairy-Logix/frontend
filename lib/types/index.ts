@@ -506,9 +506,10 @@ export interface Shop {
   zone?: string;
   route?: ShopRoute;
   routeId?: string;
-  assignedEmployeeId?: string;
-  assignedEmployee?: Employee;
-  assignedDeliveryEmployeeId?: string;
+  // Collectors this store is assigned to (a store may have several).
+  assignedEmployeeIds: string[];
+  // Delivery persons this store is routed to (a store may have several).
+  assignedDeliveryEmployeeIds: string[];
   openingBalance: number;
   currentBalance: number;
   walletBalance: number;
@@ -566,7 +567,8 @@ export interface UpdateShopkeeperInput {
   area?: string;
   zone?: string;
   routeId?: string;
-  assignedEmployeeId?: string | null;
+  assignedEmployeeIds?: string[];
+  assignedDeliveryEmployeeIds?: string[];
   isActive?: boolean;
   password?: string;
   photoKey?: string | null;
