@@ -18,6 +18,7 @@ import {
   AlertCircle,
   FileText,
   Layers,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -52,6 +53,8 @@ import { todayIST } from "@/lib/utils";
 import type { PendingStoreBalance } from "@/lib/api/services/invoice.service";
 import { useTranslations } from "@/components/providers/intl-provider";
 import { PaymentCorrectionReview } from "@/components/payments/payment-correction-review";
+import { CorrectCollectionDialog } from "@/components/payments/correct-collection-dialog";
+import type { GroupedCollection } from "@/lib/types";
 
 // --- Color maps ---
 const paymentTypeColorMap: Record<
@@ -117,6 +120,8 @@ export default function PaymentsPage() {
   const [payDate, setPayDate] = useState(() => getUrlParam("date") || todayIST());
   const [payPage, setPayPage] = useState(() => Number(getUrlParam("page")) || 1);
   const [expandedPayId, setExpandedPayId] = useState<string | null>(null);
+  // Tenant-admin direct edit of a recorded collection (voids + re-collects).
+  const [correctingCollection, setCorrectingCollection] = useState<GroupedCollection | null>(null);
 
   // Mirror listing state into the URL (replace, no navigation) so it
   // survives navigating away and Back.
@@ -152,6 +157,7 @@ export default function PaymentsPage() {
   const employees = employeesData?.data || [];
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.id;
+  const canCorrectCollections = currentUser?.role === "tenant_admin";
 
   const isCollectedByYou = useCallback((collectedById?: string) => {
     return !collectedById || (currentUserId && collectedById === currentUserId);
@@ -685,7 +691,7 @@ export default function PaymentsPage() {
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden md:table-cell">Collected By</th>
                       <th className="text-right py-3 px-4 font-medium text-muted-foreground">Amount</th>
                       <th className="text-center py-3 px-4 font-medium text-muted-foreground">Method</th>
-                      <th className="text-center py-3 px-4 font-medium text-muted-foreground w-10"></th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground w-20"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -741,9 +747,22 @@ export default function PaymentsPage() {
                                 </div>
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <Button variant="ghost" size="icon-sm">
-                                  {expandedPayId === rowKey ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                </Button>
+                                <div className="flex items-center justify-center gap-0.5">
+                                  {canCorrectCollections && col.collectionId && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      title="Correct collection amount"
+                                      aria-label="Correct collection amount"
+                                      onClick={(e) => { e.stopPropagation(); setCorrectingCollection(col); }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  <Button variant="ghost" size="icon-sm">
+                                    {expandedPayId === rowKey ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </Button>
+                                </div>
                               </td>
                             </tr>,
                           ];
@@ -860,6 +879,11 @@ export default function PaymentsPage() {
           )}
         </>
       )}
+
+      <CorrectCollectionDialog
+        collection={correctingCollection}
+        onOpenChange={(open) => { if (!open) setCorrectingCollection(null); }}
+      />
 
       {/* Collect Modal */}
       <FormModal

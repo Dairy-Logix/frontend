@@ -248,6 +248,22 @@ export const paymentService = {
     return { success: true, data, message: 'Correction rejected' };
   },
 
+  /**
+   * Tenant-admin direct edit of a completed collection. The backend voids the
+   * original session and re-collects the corrected amount through the normal
+   * FIFO invoice / wallet / outstanding logic inside one transaction.
+   */
+  async correctCollection(
+    collectionId: string,
+    input: { correctedAmount: number; reason?: string; paymentType?: string },
+  ): Promise<ApiResponse<{ request: PaymentCorrectionRequest; replacement: CollectForStoreResult }>> {
+    const { data } = await apiClient.post<{ request: PaymentCorrectionRequest; replacement: CollectForStoreResult }>(
+      `/payments/collections/${encodeURIComponent(collectionId)}/correct`,
+      input,
+    );
+    return { success: true, data, message: 'Collection corrected successfully' };
+  },
+
   async getCollectionSummary(params?: {
     dateFrom?: string;
     dateTo?: string;
