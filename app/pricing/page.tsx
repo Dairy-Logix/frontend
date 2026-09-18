@@ -26,6 +26,7 @@ const CORE_FEATURES = [
   "Order management",
   "Product management",
   "Store management",
+  "Encrypted backups every 6 hours",
 ];
 
 const limitLabels: Record<string, string> = {

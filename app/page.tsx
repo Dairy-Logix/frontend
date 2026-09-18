@@ -28,6 +28,10 @@ import {
   Warehouse,
   Utensils,
   Smartphone,
+  FileText,
+  ShieldCheck,
+  Building2,
+  PackageSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -387,12 +391,27 @@ const features = [
   {
     title: "Invoicing",
     description: "Auto-generate invoices per delivery, download PDFs, and share via WhatsApp.",
-    icon: BarChart3,
+    icon: FileText,
   },
   {
     title: "Reports & Analytics",
     description: "Sales, collection, delivery, and financial reports with PDF and Excel export.",
     icon: BarChart3,
+  },
+  {
+    title: "Multi-Agency Operations",
+    description: "Run morning and evening agencies side by side, each with its own store list, order matrix, and delivery order.",
+    icon: Building2,
+  },
+  {
+    title: "Purchases & Stock",
+    description: "Log factory purchases in boxes, compare purchased vs sold, and see exactly how many boxes to buy tomorrow.",
+    icon: PackageSearch,
+  },
+  {
+    title: "Data Safety & Backups",
+    description: "Your data is backed up every 6 hours, encrypted, stored off-site, and restore-tested. Included in every plan.",
+    icon: ShieldCheck,
   },
 ];
 
