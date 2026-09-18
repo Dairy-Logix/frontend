@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, ArrowRight, Loader2 } from "lucide-react";
@@ -44,7 +45,11 @@ const formatLimit = (n: number) =>
 export default function PricingPage() {
   const { data: plans, isLoading } = usePublicPlans();
   const sortedPlans = (plans || []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  // Fallback emphasis when no plan is flagged from the admin console.
+  const anyFlagged = sortedPlans.some((p) => p.highlight || p.badge);
   const middleSlug = sortedPlans[1]?.slug;
+  const anyYearly = sortedPlans.some((p) => p.yearlyPriceInPaise != null);
+  const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -67,6 +72,26 @@ export default function PricingPage() {
           </p>
         </motion.div>
 
+        {anyYearly && !isLoading && (
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex rounded-lg border bg-card p-1 text-sm">
+              {(["monthly", "yearly"] as const).map((per) => (
+                <button
+                  key={per}
+                  type="button"
+                  onClick={() => setPeriod(per)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-md capitalize transition-colors",
+                    period === per ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {per}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -79,7 +104,16 @@ export default function PricingPage() {
             className="grid gap-6 md:grid-cols-3"
           >
             {sortedPlans.map((plan) => {
-              const recommended = plan.slug === middleSlug;
+              const recommended = anyFlagged ? !!plan.highlight : plan.slug === middleSlug;
+              const badge = plan.badge ?? (!anyFlagged && plan.slug === middleSlug ? "Most popular" : null);
+              const quote =
+                period === "yearly" && plan.pricing?.yearly ? plan.pricing.yearly : plan.pricing?.monthly;
+              const list = quote?.listInPaise ?? plan.priceInPaise;
+              const charge = quote?.chargeInPaise ?? plan.priceInPaise;
+              const perLabel = quote?.period === "yearly" ? "/year" : "/month";
+              const saleEnds = quote?.discountEndsAt
+                ? new Date(quote.discountEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                : null;
               const enabledFeatures = Object.entries(plan.features).filter(
                 ([, v]) => v,
               );
@@ -91,9 +125,9 @@ export default function PricingPage() {
                     recommended ? "border-primary shadow-xl" : "border-border",
                   )}
                 >
-                  {recommended && (
+                  {badge && (
                     <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      Most popular
+                      {badge}
                     </Badge>
                   )}
                   <div className="mb-4">
@@ -104,9 +138,23 @@ export default function PricingPage() {
                   </div>
                   <div className="mb-6">
                     <span className="text-4xl font-bold">
-                      {formatPrice(plan.priceInPaise)}
+                      {formatPrice(charge)}
                     </span>
-                    <span className="text-muted-foreground">/month</span>
+                    <span className="text-muted-foreground">{perLabel}</span>
+                    {charge < list && (
+                      <span className="ml-2 text-base text-muted-foreground line-through">
+                        {formatPrice(list)}
+                      </span>
+                    )}
+                    {charge < list && quote?.discountLabel && (
+                      <p className="text-xs font-medium text-primary mt-1">
+                        {quote.discountLabel}
+                        {saleEnds ? ` · until ${saleEnds}` : ""}
+                      </p>
+                    )}
+                    {period === "yearly" && quote?.period !== "yearly" && (
+                      <p className="text-xs text-muted-foreground mt-1">Monthly billing only</p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       GST inclusive · {plan.trialDays}-day trial
                     </p>

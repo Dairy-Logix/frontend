@@ -141,7 +141,8 @@ export interface DecodedToken {
 // --- Tenant Types ---
 
 export type TenantStatus = 'active' | 'inactive' | 'suspended';
-export type SubscriptionPlan = 'basic' | 'standard' | 'premium';
+// Open string: plans are created from the super-admin console, so any slug is valid.
+export type SubscriptionPlan = string;
 export type SubscriptionStatus =
   | 'trialing'
   | 'active'
@@ -223,6 +224,12 @@ export interface Tenant {
   features?: SubscriptionFeatures;
   limits?: SubscriptionLimits;
   subscriptionHistory?: SubscriptionHistoryEntry[];
+  // Negotiated discount set by super-admin (applies at next subscribe/plan switch)
+  manualDiscountPercent?: number;
+  manualDiscountReason?: string;
+  manualDiscountUntil?: string;
+  manualDiscountSetBy?: string;
+  manualDiscountSetAt?: string;
   config: TenantConfig;
   agencyCount: number;
   isDemo?: boolean;

@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api/client';
 import type { ApiResponse } from '@/lib/types';
+import type { BillingPeriod, PriceQuote } from './signup.service';
 
 export interface BillingSubscription {
   _id: string;
@@ -16,6 +17,32 @@ export interface BillingSubscription {
   cancelledAt?: string;
   cancelReason?: string;
   endedAt?: string;
+  // Pricing snapshot locked at subscribe time (absent on legacy rows).
+  billingPeriod?: BillingPeriod;
+  listInPaise?: number;
+  chargeInPaise?: number;
+  discountPercent?: number;
+  discountAmountInPaise?: number;
+  discountSource?: 'none' | 'sale' | 'coupon' | 'manual';
+  discountLabel?: string;
+  couponCode?: string;
+  pendingCouponCode?: string;
+  freeMonths?: number;
+}
+
+export interface SubscribeOptions {
+  planSlug?: string;
+  billingPeriod?: BillingPeriod;
+  couponCode?: string;
+}
+
+export interface PricingPreview extends PriceQuote {
+  planSlug: string;
+  planLabel: string;
+  freeMonths: number;
+  couponError?: { reason: string; message: string };
+  couponCode?: string;
+  notes: string[];
 }
 
 export interface BillingPayment {
@@ -38,6 +65,7 @@ export interface SubscribeResult {
   tenantName?: string;
   planLabel?: string;
   amountInPaise?: number;
+  pricing?: PricingPreview;
 }
 
 export const billingService = {
@@ -53,11 +81,22 @@ export const billingService = {
     return { success: true, data, message: 'OK' };
   },
 
-  async subscribe(planSlug?: string): Promise<ApiResponse<SubscribeResult>> {
-    const { data } = await apiClient.post<SubscribeResult>(
-      '/billing/subscribe',
-      planSlug ? { planSlug } : {},
-    );
+  async subscribe(opts: SubscribeOptions = {}): Promise<ApiResponse<SubscribeResult>> {
+    const body: SubscribeOptions = {};
+    if (opts.planSlug) body.planSlug = opts.planSlug;
+    if (opts.billingPeriod) body.billingPeriod = opts.billingPeriod;
+    if (opts.couponCode?.trim()) body.couponCode = opts.couponCode.trim();
+    const { data } = await apiClient.post<SubscribeResult>('/billing/subscribe', body);
+    return { success: true, data, message: 'OK' };
+  },
+
+  /** Price a plan/period/coupon for this tenant. No side effects. */
+  async previewPricing(opts: SubscribeOptions = {}): Promise<ApiResponse<PricingPreview>> {
+    const body: SubscribeOptions = {};
+    if (opts.planSlug) body.planSlug = opts.planSlug;
+    if (opts.billingPeriod) body.billingPeriod = opts.billingPeriod;
+    if (opts.couponCode?.trim()) body.couponCode = opts.couponCode.trim();
+    const { data } = await apiClient.post<PricingPreview>('/billing/pricing/preview', body);
     return { success: true, data, message: 'OK' };
   },
 

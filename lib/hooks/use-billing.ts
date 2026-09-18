@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { billingService } from '@/lib/api/services/billing.service';
+import { billingService, type SubscribeOptions } from '@/lib/api/services/billing.service';
 import { handleApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 
@@ -7,6 +7,8 @@ export const billingKeys = {
   all: ['billing'] as const,
   subscription: () => [...billingKeys.all, 'subscription'] as const,
   payments: () => [...billingKeys.all, 'payments'] as const,
+  preview: (opts: SubscribeOptions) =>
+    [...billingKeys.all, 'preview', opts.planSlug ?? '', opts.billingPeriod ?? '', opts.couponCode ?? ''] as const,
 };
 
 export function useBillingSubscription() {
@@ -38,12 +40,31 @@ export function useBillingPayments() {
 
 export function useSubscribe() {
   return useMutation({
-    mutationFn: async (planSlug?: string) => {
-      const res = await billingService.subscribe(planSlug);
+    mutationFn: async (opts: SubscribeOptions = {}) => {
+      const res = await billingService.subscribe(opts);
       if (!res.success || !res.data) throw new Error(res.message);
       return res.data;
     },
     onError: (e) => toast.error(handleApiError(e)),
+  });
+}
+
+/**
+ * Live quote for the plan picker: list price, sale/coupon/manual discount,
+ * free months. Re-runs when the plan, period or code changes. The coupon
+ * endpoint is throttled (10/min), so callers should debounce code input.
+ */
+export function usePricingPreview(opts: SubscribeOptions, enabled = true) {
+  return useQuery({
+    queryKey: billingKeys.preview(opts),
+    queryFn: async () => {
+      const res = await billingService.previewPricing(opts);
+      if (!res.success || !res.data) throw new Error(res.message);
+      return res.data;
+    },
+    enabled,
+    staleTime: 60 * 1000,
+    retry: false,
   });
 }
 

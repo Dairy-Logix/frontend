@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { usePublicPlans, useSubmitSignup } from "@/lib/hooks/use-signup";
+import { signupService, type PublicCouponCheck } from "@/lib/api/services/signup.service";
 import { usePlatformStatus } from "@/lib/hooks/use-platform";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 
@@ -68,7 +70,8 @@ interface FormState {
   state: string;
   pincode: string;
   gstNumber: string;
-  planSlug: "basic" | "standard" | "premium";
+  planSlug: string;
+  couponCode: string;
 }
 
 const initialForm: FormState = {
@@ -83,6 +86,7 @@ const initialForm: FormState = {
   pincode: "",
   gstNumber: "",
   planSlug: "standard",
+  couponCode: "",
 };
 
 const steps = [
@@ -93,14 +97,68 @@ const steps = [
 
 const formatPrice = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 
+/** Reads ?plan= / ?code=, so it must sit under a Suspense boundary. */
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageInner />
+    </Suspense>
+  );
+}
+
+function SignupPageInner() {
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan")?.toLowerCase() ?? "";
+  const codeParam = searchParams.get("code")?.toUpperCase() ?? "";
+
   const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>({
+    ...initialForm,
+    planSlug: planParam || initialForm.planSlug,
+    couponCode: codeParam,
+  });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   const { data: plans, isLoading: loadingPlans } = usePublicPlans();
   const { data: platform } = usePlatformStatus();
   const submit = useSubmitSignup();
+
+  // Once the catalog arrives, fall back to a real plan if ?plan= was bogus or
+  // the default slug does not exist any more.
+  useEffect(() => {
+    if (!plans?.length) return;
+    if (plans.some((p) => p.slug === form.planSlug)) return;
+    const preferred = plans.find((p) => p.highlight) ?? plans[Math.min(1, plans.length - 1)];
+    setForm((f) => ({ ...f, planSlug: preferred.slug }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans]);
+
+  // Coupon check (catalog rules only; tenant rules re-run at subscribe).
+  const [couponCheck, setCouponCheck] = useState<PublicCouponCheck | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
+  useEffect(() => {
+    const code = form.couponCode.trim();
+    if (!code) {
+      setCouponCheck(null);
+      return;
+    }
+    let cancelled = false;
+    setCheckingCoupon(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await signupService.checkCoupon({ code, planSlug: form.planSlug });
+        if (!cancelled) setCouponCheck(res.data ?? null);
+      } catch {
+        if (!cancelled) setCouponCheck({ valid: false, message: "Could not check the code right now." });
+      } finally {
+        if (!cancelled) setCheckingCoupon(false);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [form.couponCode, form.planSlug]);
 
   const setField = (key: keyof FormState, value: string) => {
     setForm((p) => ({ ...p, [key]: value }));
@@ -140,6 +198,7 @@ export default function SignupPage() {
         pincode: form.pincode.trim() || undefined,
         gstNumber: form.gstNumber.trim() || undefined,
         planSlug: form.planSlug,
+        couponCode: couponCheck?.valid ? form.couponCode.trim().toUpperCase() : undefined,
       },
       { onSuccess: () => setStep(4) },
     );
@@ -362,20 +421,64 @@ export default function SignupPage() {
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-lg font-bold">
-                              {formatPrice(plan.priceInPaise)}
+                              {formatPrice(plan.pricing?.monthly?.chargeInPaise ?? plan.priceInPaise)}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              /{plan.billingPeriod === "monthly" ? "mo" : "yr"}
-                            </p>
+                            {plan.pricing?.monthly && plan.pricing.monthly.chargeInPaise < plan.pricing.monthly.listInPaise && (
+                              <p className="text-xs text-muted-foreground line-through">
+                                {formatPrice(plan.pricing.monthly.listInPaise)}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">/mo</p>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-3">
                           {plan.trialDays}-day free trial · GST inclusive
+                          {plan.pricing?.monthly?.discountSource === "sale" && plan.pricing.monthly.discountLabel
+                            ? ` · ${plan.pricing.monthly.discountLabel}`
+                            : ""}
                         </p>
                       </button>
                     );
                   })
                 )}
+
+                <div className="pt-2 space-y-1">
+                  <Label htmlFor="signup-coupon" className="text-xs text-muted-foreground">
+                    Have a coupon code? (optional)
+                  </Label>
+                  <Input
+                    id="signup-coupon"
+                    placeholder="e.g. WELCOME20"
+                    className="font-mono uppercase"
+                    maxLength={40}
+                    value={form.couponCode}
+                    onChange={(e) => setField("couponCode", e.target.value.toUpperCase())}
+                  />
+                  {form.couponCode.trim() && (
+                    <p
+                      className={cn(
+                        "text-xs",
+                        checkingCoupon
+                          ? "text-muted-foreground"
+                          : couponCheck?.valid
+                            ? "text-primary"
+                            : "text-destructive",
+                      )}
+                    >
+                      {checkingCoupon
+                        ? "Checking…"
+                        : couponCheck?.valid
+                          ? `${couponCheck.code}: ${
+                              couponCheck.type === "percent"
+                                ? `${couponCheck.value}% off`
+                                : couponCheck.type === "flat"
+                                  ? `${formatPrice(couponCheck.value ?? 0)} off`
+                                  : `${couponCheck.value} free month${couponCheck.value === 1 ? "" : "s"}`
+                            } — applied when your trial ends and you subscribe`
+                          : couponCheck?.message ?? ""}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -403,9 +506,19 @@ export default function SignupPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-semibold">{selectedPlan.label} plan</span>
                     <span className="text-base font-bold">
-                      {formatPrice(selectedPlan.priceInPaise)}/mo
+                      {formatPrice(selectedPlan.pricing?.monthly?.chargeInPaise ?? selectedPlan.priceInPaise)}/mo
+                      {selectedPlan.pricing?.monthly && selectedPlan.pricing.monthly.chargeInPaise < selectedPlan.pricing.monthly.listInPaise && (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
+                          {formatPrice(selectedPlan.pricing.monthly.listInPaise)}
+                        </span>
+                      )}
                     </span>
                   </div>
+                  {couponCheck?.valid && form.couponCode.trim() && (
+                    <p className="text-xs text-primary">
+                      Coupon {couponCheck.code} will be applied when you subscribe.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     First {selectedPlan.trialDays} days free. After that, you'll be asked to pay
                     via UPI Autopay, card, or netbanking.

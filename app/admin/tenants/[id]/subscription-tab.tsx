@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Plus, XCircle, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, RefreshCw, Plus, XCircle, ArrowUpDown, ArrowDown, ArrowUp, Percent } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,6 +34,7 @@ import {
   useExtendTrial,
   useAdminForceCancel,
   useAdminSyncBilling,
+  useSetManualDiscount,
 } from "@/lib/hooks/use-admin-billing";
 import { useChangeTenantPlan, useTenant, useTenantStats } from "@/lib/hooks/use-tenants";
 import { usePublicPlans } from "@/lib/hooks/use-plans";
@@ -134,6 +137,18 @@ export function AdminSubscriptionTab({ tenantId }: { tenantId: string }) {
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [confirmChange, setConfirmChange] = useState(false);
 
+  // Phase 3: negotiated discount. Form is seeded from the tenant record.
+  const setDiscount = useSetManualDiscount(tenantId);
+  const [discountPct, setDiscountPct] = useState<string>("");
+  const [discountReason, setDiscountReason] = useState<string>("");
+  const [discountUntil, setDiscountUntil] = useState<string>("");
+  useEffect(() => {
+    if (!tenant) return;
+    setDiscountPct(tenant.manualDiscountPercent ? String(tenant.manualDiscountPercent) : "");
+    setDiscountReason(tenant.manualDiscountReason ?? "");
+    setDiscountUntil(tenant.manualDiscountUntil ? tenant.manualDiscountUntil.slice(0, 10) : "");
+  }, [tenant?.manualDiscountPercent, tenant?.manualDiscountReason, tenant?.manualDiscountUntil]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const currentPlan = useMemo(
     () => plans?.find((p) => p.slug === sub?.planSlug),
     [plans, sub?.planSlug],
@@ -185,7 +200,17 @@ export function AdminSubscriptionTab({ tenantId }: { tenantId: string }) {
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Plan</p>
-              <p className="font-medium capitalize">{sub.planSlug}</p>
+              <p className="font-medium capitalize">{currentPlan?.label ?? sub.planSlug}</p>
+              {sub.chargeInPaise != null ? (
+                <p className="text-xs text-muted-foreground">
+                  {formatPrice(sub.chargeInPaise)}/{sub.billingPeriod === "yearly" ? "yr" : "mo"}
+                  {sub.discountPercent && sub.listInPaise ? (
+                    <> · <span className="line-through">{formatPrice(sub.listInPaise)}</span> ({sub.discountLabel ?? `${sub.discountPercent}% off`})</>
+                  ) : null}
+                </p>
+              ) : currentPlan ? (
+                <p className="text-xs text-muted-foreground">{formatPrice(currentPlan.priceInPaise)}/mo (catalog)</p>
+              ) : null}
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">Period Ends</p>
@@ -297,6 +322,61 @@ export function AdminSubscriptionTab({ tenantId }: { tenantId: string }) {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-4 w-4" />
+            Negotiated discount
+          </CardTitle>
+          <CardDescription>
+            A percentage off the list price for this tenant only. It applies the next time they
+            subscribe or switch plan; their current locked amount is unchanged. If a plan sale or a
+            coupon is bigger, the customer gets that instead. Set 0 to clear.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {tenant?.manualDiscountPercent ? (
+            <p className="text-sm">
+              Currently <b>{tenant.manualDiscountPercent}% off</b>
+              {tenant.manualDiscountReason ? ` · ${tenant.manualDiscountReason}` : ""}
+              {tenant.manualDiscountUntil ? ` · until ${formatDate(tenant.manualDiscountUntil)}` : ""}
+              {tenant.manualDiscountSetBy ? (
+                <span className="text-xs text-muted-foreground"> (set by {tenant.manualDiscountSetBy})</span>
+              ) : null}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No discount set.</p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-[110px_1fr_170px_auto] sm:items-end">
+            <div className="space-y-1">
+              <Label htmlFor="md-pct" className="text-xs text-muted-foreground">Percent</Label>
+              <Input id="md-pct" type="number" min={0} max={100} value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="md-reason" className="text-xs text-muted-foreground">Reason (shown to the tenant)</Label>
+              <Input id="md-reason" maxLength={200} placeholder="Founding customer" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="md-until" className="text-xs text-muted-foreground">Until (blank = no end)</Label>
+              <Input id="md-until" type="date" value={discountUntil} onChange={(e) => setDiscountUntil(e.target.value)} />
+            </div>
+            <Button
+              variant="outline"
+              disabled={setDiscount.isPending || discountPct === ""}
+              onClick={() =>
+                setDiscount.mutate({
+                  percent: parseInt(discountPct) || 0,
+                  reason: discountReason.trim() || undefined,
+                  until: discountUntil ? new Date(`${discountUntil}T23:59:59`).toISOString() : undefined,
+                })
+              }
+            >
+              {setDiscount.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

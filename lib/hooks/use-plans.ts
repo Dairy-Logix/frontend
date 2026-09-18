@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { plansService, type UpdatePlanInput } from '@/lib/api/services/plans.service';
+import {
+  plansService,
+  type CreatePlanInput,
+  type UpdatePlanInput,
+} from '@/lib/api/services/plans.service';
 import { handleApiError } from '@/lib/api/client';
 
 export const planKeys = {
@@ -52,6 +56,42 @@ export function useUpdatePlan() {
       // Public catalog + any tenant plan caches may now be stale.
       queryClient.invalidateQueries({ queryKey: planKeys.public() });
       toast.success(`Plan "${data.label}" updated successfully`);
+    },
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/** Super-admin: add a new tier to the catalog. */
+export function useCreatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreatePlanInput) => {
+      const res = await plansService.create(input);
+      if (!res.success || !res.data) throw new Error(res.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: planKeys.adminList() });
+      queryClient.invalidateQueries({ queryKey: planKeys.public() });
+      toast.success(`Plan "${data.label}" created`);
+    },
+    onError: (error) => toast.error(handleApiError(error)),
+  });
+}
+
+/** Super-admin: archive a plan (deactivate + hide). Server refuses while in use. */
+export function useArchivePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      const res = await plansService.archive(slug);
+      if (!res.success || !res.data) throw new Error(res.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: planKeys.adminList() });
+      queryClient.invalidateQueries({ queryKey: planKeys.public() });
+      toast.success(`Plan "${data.label}" archived`);
     },
     onError: (error) => toast.error(handleApiError(error)),
   });

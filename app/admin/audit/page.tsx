@@ -15,7 +15,13 @@ import type { AuditEntry } from "@/lib/api/services/audit.service";
 const ACTION_LABELS: Record<string, string> = {
   "tenant.plan_changed": "Plan changed",
   "tenant.status_changed": "Status changed",
+  "plan.created": "Plan created",
   "plan.updated": "Plan edited",
+  "plan.archived": "Plan archived",
+  "coupon.created": "Coupon created",
+  "coupon.updated": "Coupon edited",
+  "coupon.deleted": "Coupon removed",
+  "billing.manual_discount_set": "Manual discount",
   "platform.settings_updated": "Platform settings",
   "billing.trial_extended": "Trial extended",
   "billing.subscription_cancelled": "Subscription cancelled",

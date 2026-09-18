@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminBillingService } from '@/lib/api/services/admin-billing.service';
+import {
+  adminBillingService,
+  type ManualDiscountInput,
+} from '@/lib/api/services/admin-billing.service';
 import { handleApiError } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { tenantKeys } from './use-tenants';
@@ -10,7 +13,38 @@ export const adminBillingKeys = {
     [...adminBillingKeys.all, 'sub', tenantId] as const,
   payments: (tenantId: string) =>
     [...adminBillingKeys.all, 'pay', tenantId] as const,
+  overview: () => [...adminBillingKeys.all, 'overview'] as const,
 };
+
+/** Platform MRR from locked subscription charges (super-admin). */
+export function useBillingOverview() {
+  return useQuery({
+    queryKey: adminBillingKeys.overview(),
+    queryFn: async () => {
+      const res = await adminBillingService.getOverview();
+      if (!res.success || !res.data) throw new Error(res.message);
+      return res.data;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useSetManualDiscount(tenantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ManualDiscountInput) => {
+      const res = await adminBillingService.setManualDiscount(tenantId, input);
+      if (!res.success) throw new Error(res.message);
+      return res.data;
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: tenantKeys.detail(tenantId) });
+      qc.invalidateQueries({ queryKey: adminBillingKeys.overview() });
+      toast.success(input.percent > 0 ? `${input.percent}% discount saved` : 'Discount cleared');
+    },
+    onError: (e) => toast.error(handleApiError(e)),
+  });
+}
 
 export function useAdminTenantSubscription(tenantId: string) {
   return useQuery({

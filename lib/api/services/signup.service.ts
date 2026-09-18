@@ -12,7 +12,8 @@ export interface CreateSignupInput {
   state?: string;
   pincode?: string;
   gstNumber?: string;
-  planSlug: 'basic' | 'standard' | 'premium';
+  planSlug: string;
+  couponCode?: string;
 }
 
 export interface SignupSubmitResult {
@@ -40,22 +41,65 @@ export interface VerifySignupResult {
   trialEnd: string;
 }
 
+export type BillingPeriod = 'monthly' | 'yearly';
+export type DiscountSource = 'none' | 'sale' | 'coupon' | 'manual';
+
+/** Computed list-vs-charge for one billing period (sale already applied). */
+export interface PriceQuote {
+  period: BillingPeriod;
+  listInPaise: number;
+  chargeInPaise: number;
+  discountPercent: number;
+  discountAmountInPaise: number;
+  discountSource: DiscountSource;
+  discountLabel?: string;
+  discountEndsAt?: string;
+}
+
 export interface PublicPlan {
-  slug: 'basic' | 'standard' | 'premium';
+  slug: string;
   label: string;
   description: string;
   priceInPaise: number;
+  yearlyPriceInPaise: number | null;
   currency: string;
   billingPeriod: string;
   trialDays: number;
   features: Record<string, boolean>;
   limits: Record<string, number>;
   sortOrder: number;
+  badge: string | null;
+  highlight: boolean;
+  pricing: { monthly: PriceQuote; yearly?: PriceQuote };
+}
+
+export interface PublicCouponCheck {
+  valid: boolean;
+  reason?: string;
+  message?: string;
+  code?: string;
+  type?: 'percent' | 'flat' | 'free_months';
+  value?: number;
+  description?: string | null;
+  endsAt?: string | null;
 }
 
 export const signupService = {
   async listPublicPlans(): Promise<ApiResponse<PublicPlan[]>> {
     const { data } = await apiClient.get<PublicPlan[]>('/public/plans');
+    return { success: true, data, message: 'OK' };
+  },
+
+  /** Catalog-level coupon check before an account exists. Throttled server-side. */
+  async checkCoupon(input: {
+    code: string;
+    planSlug: string;
+    billingPeriod?: BillingPeriod;
+  }): Promise<ApiResponse<PublicCouponCheck>> {
+    const { data } = await apiClient.post<PublicCouponCheck>(
+      '/public/coupons/check',
+      input,
+    );
     return { success: true, data, message: 'OK' };
   },
 

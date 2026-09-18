@@ -15,6 +15,7 @@ import {
   CreditCard,
   UserPlus,
   ScrollText,
+  TicketPercent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +35,7 @@ const navigation = [
   { key: "users", href: "/admin/users", icon: Users },
   { key: "plans", href: "/admin/plans", icon: Package },
   { key: "billing", href: "/admin/billing", icon: CreditCard },
+  { key: "coupons", href: "/admin/coupons", icon: TicketPercent },
   { key: "configurations", href: "/admin/configurations", icon: Cog },
   { key: "notifications", href: "/admin/notifications", icon: Bell },
   { key: "reports", href: "/admin/reports", icon: BarChart3 },

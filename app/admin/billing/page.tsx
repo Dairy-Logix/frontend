@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTenants } from "@/lib/hooks";
 import { useAdminPlans } from "@/lib/hooks/use-plans";
 import { useSignupStats } from "@/lib/hooks/use-admin-signups";
+import { useBillingOverview } from "@/lib/hooks/use-admin-billing";
 import type { Tenant } from "@/lib/types";
 
 const subscriptionStatusColorMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "error" | "info" }> = {
@@ -45,6 +46,8 @@ export default function BillingPage() {
   });
   const { data: plans } = useAdminPlans();
   const { data: signupStats } = useSignupStats();
+  // Locked charges per subscription (post-discount, yearly normalised to monthly).
+  const { data: overview } = useBillingOverview();
 
   const tenants = useMemo(() => (tenantsData?.data ?? []) as TenantRow[], [tenantsData]);
 
@@ -61,13 +64,16 @@ export default function BillingPage() {
     for (const t of tenants) {
       const status = (t.subscriptionStatus as string) ?? "active";
       if (status in counts) counts[status as keyof typeof counts] += 1;
-      // MRR = recurring revenue from paying (active) subscriptions only.
+      // MRR = recurring revenue from paying (active) subscriptions only. Prefer
+      // the locked charge on the subscription row (discounts, yearly) and fall
+      // back to the catalog price for rows without a pricing snapshot.
       if (status === "active") {
-        mrrPaise += priceBySlug[(t.subscriptionPlan as string) ?? ""] ?? 0;
+        const locked = overview?.perTenant?.[(t._id ?? t.id) as string]?.monthlyPaise;
+        mrrPaise += locked ?? priceBySlug[(t.subscriptionPlan as string) ?? ""] ?? 0;
       }
     }
     return { counts, mrrPaise };
-  }, [tenants, priceBySlug]);
+  }, [tenants, priceBySlug, overview]);
 
   // Derived SaaS metrics (point-in-time — no historical trend yet).
   const arrPaise = metrics.mrrPaise * 12;
@@ -117,9 +123,18 @@ export default function BillingPage() {
       sortable: false,
       cell: (row) => {
         const status = (row.subscriptionStatus as string) ?? "active";
-        const paise = priceBySlug[(row.subscriptionPlan as string) ?? ""] ?? 0;
+        const locked = overview?.perTenant?.[(row._id ?? row.id) as string];
+        const paise = locked?.monthlyPaise ?? priceBySlug[(row.subscriptionPlan as string) ?? ""] ?? 0;
         return status === "active" ? (
-          <span className="font-medium">{formatINR(paise)}</span>
+          <span className="font-medium">
+            {formatINR(paise)}
+            {locked && locked.discountSource !== "none" && locked.discountPercent > 0 && (
+              <span className="ml-1 text-xs text-muted-foreground">-{locked.discountPercent}%</span>
+            )}
+            {locked?.billingPeriod === "yearly" && (
+              <span className="ml-1 text-xs text-muted-foreground">(yearly)</span>
+            )}
+          </span>
         ) : (
           <span className="text-muted-foreground">—</span>
         );

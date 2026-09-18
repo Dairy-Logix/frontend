@@ -5,7 +5,47 @@ import type {
   BillingPayment,
 } from './billing.service';
 
+export interface BillingOverview {
+  mrrPaise: number;
+  activeCount: number;
+  discountedCount: number;
+  perTenant: Record<
+    string,
+    {
+      monthlyPaise: number;
+      chargeInPaise: number;
+      billingPeriod: string;
+      discountSource: string;
+      discountPercent: number;
+    }
+  >;
+}
+
+export interface ManualDiscountInput {
+  percent: number;
+  reason?: string;
+  until?: string;
+}
+
 export const adminBillingService = {
+  /** Platform MRR + per-tenant locked charge, computed from subscription rows. */
+  async getOverview(): Promise<ApiResponse<BillingOverview>> {
+    const { data } = await apiClient.get<BillingOverview>('/admin/billing/overview');
+    return { success: true, data, message: 'OK' };
+  },
+
+  /** Negotiated discount for one tenant. percent=0 clears it. */
+  async setManualDiscount(
+    tenantId: string,
+    input: ManualDiscountInput,
+  ): Promise<ApiResponse<any>> {
+    const { data } = await apiClient.patch(
+      `/admin/billing/tenants/${tenantId}/discount`,
+      input,
+    );
+    return { success: true, data, message: 'Discount saved' };
+  },
+
   async getSubscription(
     tenantId: string,
   ): Promise<ApiResponse<BillingSubscription | null>> {

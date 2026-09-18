@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -56,6 +58,7 @@ import {
   useSubscribe,
   useCancelSubscription,
   billingKeys,
+  usePricingPreview,
 } from "@/lib/hooks/use-billing";
 import { billingService } from "@/lib/api/services/billing.service";
 import { usePublicPlans } from "@/lib/hooks/use-signup";
@@ -189,6 +192,15 @@ export default function BillingPage() {
   const router = useRouter();
 
   const [selectedPlan, setSelectedPlan] = useState<string>("");
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
+  const [couponInput, setCouponInput] = useState<string>("");
+  // Debounced copy of the coupon field so the (throttled) preview endpoint
+  // is not hit on every keystroke.
+  const [couponCode, setCouponCode] = useState<string>("");
+  useEffect(() => {
+    const t = setTimeout(() => setCouponCode(couponInput.trim().toUpperCase()), 500);
+    return () => clearTimeout(t);
+  }, [couponInput]);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [celebrationPlanLabel, setCelebrationPlanLabel] = useState<string | null>(
     null,
@@ -238,10 +250,26 @@ export default function BillingPage() {
   const targetPlan = plans?.find(
     (p) => p.slug === (selectedPlan || sub?.planSlug),
   );
+  const anyYearly = useMemo(() => (plans ?? []).some((p) => p.yearlyPriceInPaise != null), [plans]);
+  const effectivePeriod: "monthly" | "yearly" =
+    billingPeriod === "yearly" && targetPlan?.yearlyPriceInPaise != null ? "yearly" : "monthly";
+  const showSubscribeCard =
+    !!sub && (sub.status === "trialing" || sub.status === "cancelled" || sub.status === "locked" || sub.status === "past_due" || !sub.razorpaySubscriptionId);
+  // Live quote from the backend: sale / manual / coupon precedence is decided
+  // server-side so what is shown here is exactly what Razorpay will charge.
+  const preview = usePricingPreview(
+    { planSlug: targetPlan?.slug, billingPeriod: effectivePeriod, couponCode: couponCode || undefined },
+    !!targetPlan && showSubscribeCard,
+  );
+  const quote = preview.data;
+  const periodSuffix = effectivePeriod === "yearly" ? "/yr" : "/mo";
+  // What the current subscription actually charges (locked at subscribe time).
+  const lockedCharge = sub?.chargeInPaise ?? currentPlan?.pricing?.monthly?.chargeInPaise ?? currentPlan?.priceInPaise;
+  const lockedSuffix = sub?.billingPeriod === "yearly" ? "/yr" : "/mo";
 
   const handleSubscribe = () => {
     const planForFlow = selectedPlan || sub?.planSlug;
-    subscribe.mutate(planForFlow, {
+    subscribe.mutate({ planSlug: planForFlow, billingPeriod: effectivePeriod, couponCode: couponCode || undefined }, {
       onSuccess: async (data) => {
         // Mark that we kicked off a subscribe in this session, so the
         // celebration banner shows for the right tenant once the webhook
@@ -414,11 +442,14 @@ export default function BillingPage() {
                   {celebrationPlanLabel ?? sub.planSlug}
                 </span>
               </div>
-              {currentPlan && (
+              {lockedCharge != null && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Amount</span>
                   <span className="font-medium">
-                    {formatPrice(currentPlan.priceInPaise)} / month
+                    {formatPrice(lockedCharge)} {lockedSuffix === "/yr" ? "/ year" : "/ month"}
+                    {sub.discountPercent ? (
+                      <span className="text-xs text-muted-foreground"> ({sub.discountPercent}% off)</span>
+                    ) : null}
                   </span>
                 </div>
               )}
@@ -564,10 +595,22 @@ export default function BillingPage() {
             <div className="grid gap-4 sm:grid-cols-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Plan</p>
-                <p className="font-medium capitalize">{sub.planSlug}</p>
-                {currentPlan && (
+                <p className="font-medium capitalize">{currentPlan?.label ?? sub.planSlug}</p>
+                {lockedCharge != null && (
                   <p className="text-xs text-muted-foreground">
-                    {formatPrice(currentPlan.priceInPaise)}/mo
+                    {formatPrice(lockedCharge)}{lockedSuffix}
+                    {sub.discountPercent && sub.listInPaise ? (
+                      <>
+                        {" "}
+                        <span className="line-through">{formatPrice(sub.listInPaise)}</span>
+                        {sub.discountLabel ? ` · ${sub.discountLabel}` : ""}
+                      </>
+                    ) : null}
+                  </p>
+                )}
+                {sub.pendingCouponCode && !sub.razorpaySubscriptionId && (
+                  <p className="text-xs text-primary mt-1">
+                    Code {sub.pendingCouponCode} will be applied when you subscribe
                   </p>
                 )}
               </div>
@@ -687,33 +730,116 @@ export default function BillingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {anyYearly && (
+                <div className="inline-flex rounded-lg border p-1 text-sm">
+                  {(["monthly", "yearly"] as const).map((per) => (
+                    <button
+                      key={per}
+                      type="button"
+                      onClick={() => setBillingPeriod(per)}
+                      className={`px-3 py-1 rounded-md capitalize transition-colors ${billingPeriod === per ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {per}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-3">
                 {plans?.map((p) => {
                   const selected = (selectedPlan || sub.planSlug) === p.slug;
+                  const q =
+                    billingPeriod === "yearly" && p.pricing?.yearly ? p.pricing.yearly : p.pricing?.monthly;
+                  const list = q?.listInPaise ?? p.priceInPaise;
+                  const charge = q?.chargeInPaise ?? p.priceInPaise;
+                  const suffix = q?.period === "yearly" ? "/yr" : "/mo";
+                  const unavailable = billingPeriod === "yearly" && !p.pricing?.yearly;
                   return (
                     <button
                       key={p.slug}
                       type="button"
                       onClick={() => setSelectedPlan(p.slug)}
-                      className={`text-left rounded-lg border p-3 transition-colors ${selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                      className={`relative text-left rounded-lg border p-3 transition-colors ${selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
                     >
+                      {p.badge && (
+                        <Badge className="absolute -top-2 right-2 text-[10px]">{p.badge}</Badge>
+                      )}
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{p.label}</span>
                         {selected && <CheckCircle2 className="h-4 w-4 text-primary" />}
                       </div>
                       <p className="text-lg font-bold mt-1">
-                        {formatPrice(p.priceInPaise)}
-                        <span className="text-xs font-normal text-muted-foreground">
-                          /mo
-                        </span>
+                        {formatPrice(charge)}
+                        <span className="text-xs font-normal text-muted-foreground">{suffix}</span>
+                        {charge < list && (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
+                            {formatPrice(list)}
+                          </span>
+                        )}
                       </p>
+                      {q?.discountSource === "sale" && (
+                        <p className="text-xs text-primary">{q.discountLabel}</p>
+                      )}
+                      {unavailable && (
+                        <p className="text-xs text-muted-foreground">Monthly only</p>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="space-y-1">
+                  <Label htmlFor="coupon" className="text-xs text-muted-foreground">
+                    Have a code?
+                  </Label>
+                  <Input
+                    id="coupon"
+                    placeholder="Coupon code"
+                    className="font-mono uppercase sm:max-w-xs"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    maxLength={40}
+                  />
+                  {quote?.couponError && couponCode && (
+                    <p className="text-xs text-destructive">{quote.couponError.message}</p>
+                  )}
+                  {quote?.couponCode && (
+                    <p className="text-xs text-primary">
+                      {quote.couponCode} applied
+                      {quote.freeMonths ? ` · first ${quote.freeMonths} month${quote.freeMonths === 1 ? "" : "s"} free` : ""}
+                    </p>
+                  )}
+                  {quote?.notes?.map((n) => (
+                    <p key={n} className="text-xs text-muted-foreground">{n}</p>
+                  ))}
+                </div>
+                {quote && (
+                  <div className="rounded-lg border bg-muted/30 px-4 py-2 text-sm">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-muted-foreground">You pay</span>
+                      <span className="text-lg font-bold">{formatPrice(quote.chargeInPaise)}</span>
+                      <span className="text-xs text-muted-foreground">{periodSuffix}</span>
+                      {quote.discountAmountInPaise > 0 && (
+                        <span className="text-xs text-muted-foreground line-through">{formatPrice(quote.listInPaise)}</span>
+                      )}
+                    </div>
+                    {quote.discountAmountInPaise > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {quote.discountPercent}% off · {quote.discountLabel}
+                      </p>
+                    )}
+                    {quote.freeMonths > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        First charge after {quote.freeMonths} free month{quote.freeMonths === 1 ? "" : "s"}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Button
                 onClick={handleSubscribe}
-                disabled={subscribe.isPending || !targetPlan}
+                disabled={subscribe.isPending || !targetPlan || preview.isFetching}
                 className="w-full sm:w-auto"
               >
                 {subscribe.isPending ? (
@@ -722,7 +848,7 @@ export default function BillingPage() {
                   <CreditCard className="h-4 w-4" />
                 )}
                 {targetPlan
-                  ? `${sub.status === "cancelled" ? "Re-subscribe" : "Subscribe"} — ${targetPlan.label} ${formatPrice(targetPlan.priceInPaise)}/mo`
+                  ? `${sub.status === "cancelled" ? "Re-subscribe" : "Subscribe"} — ${targetPlan.label} ${formatPrice(quote?.chargeInPaise ?? targetPlan.priceInPaise)}${periodSuffix}`
                   : `Subscribe to ${sub.planSlug}`}
                 <ArrowUpRight className="h-4 w-4" />
               </Button>
