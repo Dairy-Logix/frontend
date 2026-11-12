@@ -39,7 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { OrderPrintTemplate } from "@/lib/types";
+import type { OrderPrintTemplate, Product } from "@/lib/types";
 
 import {
   useAgencies,
@@ -63,6 +63,10 @@ interface MatrixCell {
   shopId: string;
   shopName: string;
   productQuantities: Record<string, number>;
+  // Unit price stored on the saved order line, keyed by productId. Orders
+  // snapshot the product price at placement, so a saved row must be valued
+  // at that snapshot — not at whatever the product costs today.
+  productUnitPrices: Record<string, number>;
   totalAmount: number;
   orderId: string | null;
   orderStatus: string | null;
@@ -160,6 +164,7 @@ export default function OrdersPage() {
     // Build matrix cells
     const cells: MatrixCell[] = shopsByAgency.map((shop) => {
       const productQuantities: Record<string, number> = {};
+      const productUnitPrices: Record<string, number> = {};
       let totalAmount = 0;
 
       // Initialize all products with 0
@@ -177,22 +182,32 @@ export default function OrdersPage() {
         latestOrder.items.forEach((item) => {
           if (productQuantities[item.productId] !== undefined) {
             productQuantities[item.productId] = item.quantity;
+            if (typeof item.unitPrice === "number") {
+              productUnitPrices[item.productId] = item.unitPrice;
+            }
           }
         });
       }
 
-      // Calculate total amount: qty (selling units) × sellingPricePerUnit.
-      // sellingPricePerUnit is the whole-crate price (or per-piece for Piece
-      // products); quantityPerUnit is informational and must not scale it.
+      // Row amount: saved quantities are valued at the price stored on the
+      // order line; only unsaved edits preview today's selling price (the
+      // backend reprices the whole order on save). Price is per selling unit
+      // (whole crate / single piece); quantityPerUnit must not scale it.
       activeProducts.forEach((product) => {
-        const qty = editedQuantities[shop.id]?.[product.id] ?? productQuantities[product.id];
-        totalAmount += qty * product.sellingPricePerUnit;
+        const edited = editedQuantities[shop.id]?.[product.id];
+        const qty = edited ?? productQuantities[product.id];
+        const price =
+          edited !== undefined
+            ? product.sellingPricePerUnit
+            : productUnitPrices[product.id] ?? product.sellingPricePerUnit;
+        totalAmount += qty * price;
       });
 
       return {
         shopId: shop.id,
         shopName: shop.shopName,
         productQuantities,
+        productUnitPrices,
         totalAmount,
         orderId: latestOrder?.id ?? null,
         orderStatus: latestOrder?.status ?? null,
@@ -221,12 +236,16 @@ export default function OrdersPage() {
     });
     filteredCells.forEach((cell) => {
       matrixData.products.forEach((product) => {
-        const qty =
-          editedQuantities[cell.shopId]?.[product.id] ??
-          cell.productQuantities[product.id] ??
-          0;
+        const edited = editedQuantities[cell.shopId]?.[product.id];
+        const qty = edited ?? cell.productQuantities[product.id] ?? 0;
+        // Saved cells carry the order line's stored price; unsaved edits
+        // preview today's selling price (backend reprices on save).
+        const price =
+          edited !== undefined
+            ? product.sellingPricePerUnit
+            : cell.productUnitPrices[product.id] ?? product.sellingPricePerUnit;
         productTotals[product.id] += qty;
-        grandTotal += qty * product.sellingPricePerUnit;
+        grandTotal += qty * price;
       });
     });
     return { productTotals, grandTotal };
@@ -485,13 +504,23 @@ export default function OrdersPage() {
     return editedQuantities[shopId]?.[productId] ?? cell.productQuantities[productId] ?? 0;
   }
 
+  // Unit price to value a cell at: today's selling price for an unsaved edit
+  // (the backend will reprice on save), otherwise the price snapshotted on the
+  // saved order line. Falls back to today's price for products the order
+  // never had.
+  function getCellUnitPrice(cell: MatrixCell, product: Product): number {
+    const edited = editedQuantities[cell.shopId]?.[product.id];
+    if (edited !== undefined) return product.sellingPricePerUnit;
+    return cell.productUnitPrices[product.id] ?? product.sellingPricePerUnit;
+  }
+
   function getRowTotal(shopId: string): number {
     const cell = matrixData.cells.find((c) => c.shopId === shopId);
     if (!cell) return 0;
     let total = 0;
     matrixData.products.forEach((product) => {
       const qty = getCellValue(shopId, product.id);
-      total += qty * product.sellingPricePerUnit;
+      total += qty * getCellUnitPrice(cell, product);
     });
     return total;
   }
