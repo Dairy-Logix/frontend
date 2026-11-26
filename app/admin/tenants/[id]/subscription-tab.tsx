@@ -63,6 +63,7 @@ const FEATURE_LABELS: Record<string, string> = {
   appNotifications: "In-app notifications",
   storeMobileApp: "Store mobile app",
   printTemplates: "Print templates",
+  myStore: "My Store",
 };
 
 const LIMIT_LABELS: Record<string, string> = {
@@ -264,18 +265,16 @@ export function AdminSubscriptionTab({ tenantId }: { tenantId: string }) {
             </Select>
             <Button
               onClick={() => setConfirmChange(true)}
-              disabled={
-                !selectedPlan ||
-                selectedPlan === sub.planSlug ||
-                changePlan.isPending
-              }
+              disabled={!selectedPlan || changePlan.isPending}
             >
               {changePlan.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <ArrowUpDown className="h-4 w-4" />
               )}
-              Apply plan
+              {selectedPlan && selectedPlan === sub.planSlug
+                ? "Re-sync plan"
+                : "Apply plan"}
             </Button>
           </div>
 

@@ -20,6 +20,7 @@ const FEATURE_REQUIRED_PLAN: Record<FeatureKey, "standard" | "premium" | null> =
   bulkImport: "premium",
   advancedAnalytics: "premium",
   printTemplates: "premium",
+  myStore: "premium",
 };
 
 const FEATURE_LABELS: Record<FeatureKey, string> = {
@@ -33,6 +34,7 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   appNotifications: "In-app notifications",
   storeMobileApp: "Store mobile app",
   printTemplates: "Print templates",
+  myStore: "My Store",
 };
 
 interface FeatureLockedCardProps {

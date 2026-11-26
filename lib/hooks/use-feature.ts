@@ -38,6 +38,7 @@ export function useTenantFeatures(): SubscriptionFeatures {
     appNotifications: false,
     storeMobileApp: false,
     printTemplates: false,
+    myStore: false,
   };
 
   if (user?.role === 'super_admin') {
@@ -52,6 +53,7 @@ export function useTenantFeatures(): SubscriptionFeatures {
       appNotifications: true,
       storeMobileApp: true,
       printTemplates: true,
+      myStore: true,
     };
   }
 

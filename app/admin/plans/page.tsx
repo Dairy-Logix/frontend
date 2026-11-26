@@ -65,6 +65,7 @@ const FEATURE_LABELS: Record<string, string> = {
   appNotifications: "In-App Notifications",
   storeMobileApp: "Store Mobile App",
   printTemplates: "Print Templates",
+  myStore: "My Store",
 };
 
 // Human labels for the numeric limits (keys mirror TenantLimits).

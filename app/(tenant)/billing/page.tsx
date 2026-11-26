@@ -98,6 +98,7 @@ const FEATURE_LABELS: Record<string, string> = {
   appNotifications: "In-app notifications",
   storeMobileApp: "Store mobile app",
   printTemplates: "Print templates",
+  myStore: "My Store",
 };
 
 // Features listed in the plan catalog but not yet implemented in the app.

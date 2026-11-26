@@ -21,6 +21,7 @@ const featureLabels: Record<string, string> = {
   appNotifications: "In-app notifications",
   storeMobileApp: "Store mobile application",
   printTemplates: "Print templates",
+  myStore: "My Store",
 };
 
 const CORE_FEATURES = [

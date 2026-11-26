@@ -161,6 +161,7 @@ export interface SubscriptionFeatures {
   appNotifications: boolean;
   storeMobileApp: boolean;
   printTemplates: boolean;
+  myStore: boolean;
 }
 
 export interface SubscriptionLimits {
