@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarX2, Delete, Loader2, RotateCcw, Search, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,106 @@ function CompleteSaleDialog({
   );
 }
 
+const ProductCard = memo(function ProductCard({
+  item,
+  unit,
+  qty,
+  otherQty,
+  onKey,
+  onUnit,
+}: {
+  item: MyStoreItem;
+  unit: Unit;
+  qty: number;
+  otherQty: number;
+  onKey: (productId: string, unit: Unit, key: string) => void;
+  onUnit: (productId: string, unit: Unit) => void;
+}) {
+  const otherUnit: Unit = unit === "crate" ? "piece" : "crate";
+  const price = unitPrice(item, unit);
+  const keys = ["7", "8", "9", "4", "5", "6", "1", "2", "3", unit === "crate" ? "half" : "clear", "0", "back"];
+  return (
+  <div
+    className="select-none space-y-1.5 rounded-xl border bg-card p-2 shadow-sm"
+  >
+    {/* Name + P / C switch */}
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{item.name}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {inr(price)} / {unit}
+          {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
+        </p>
+      </div>
+      {canCrate(item) && (
+        <div className="flex shrink-0 overflow-hidden rounded-md border text-xs font-bold">
+          {(["piece", "crate"] as Unit[]).map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => onUnit(item.productId, u)}
+              className={cn(
+                "h-7 w-7 touch-manipulation transition-colors",
+                unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+              aria-label={u === "piece" ? "Sell by piece" : "Sell by crate"}
+              aria-pressed={unit === u}
+            >
+              {u === "piece" ? "P" : "C"}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Quantity display */}
+    <div
+      className={cn(
+        "flex h-[72px] items-center justify-between rounded-lg border px-2.5",
+        qty > 0 ? "bg-primary/10" : "bg-muted/40",
+      )}
+    >
+      <span className="text-xs text-muted-foreground">
+        {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
+      </span>
+      <span className={cn("text-6xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
+        {qty}
+      </span>
+    </div>
+
+    {/* Keypad */}
+    <div className="relative w-full overflow-hidden rounded-xl bg-muted">
+      {item.photoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.photoUrl}
+          alt=""
+          draggable={false}
+  loading="lazy"
+  decoding="async"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
+        />
+      )}
+      <div className="relative grid grid-cols-3 gap-1 p-1">
+      {keys.map((k) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => onKey(item.productId, unit, k)}
+          className="flex aspect-[3/2] w-full touch-manipulation items-center justify-center rounded-lg border bg-background/75 text-2xl font-bold active:bg-accent"
+          aria-label={
+            k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
+          }
+        >
+          {k === "back" ? <Delete className="h-6 w-6" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-6 w-6" /> : k}
+        </button>
+      ))}
+      </div>
+    </div>
+  </div>
+  );
+});
+
 function loadSession(storageKey: string): Session {
   try {
     const raw = localStorage.getItem(storageKey);
@@ -221,19 +321,26 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     }
   };
 
+  // Debounced so rapid keypad taps don't each hit storage synchronously.
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(session));
-    } catch {
-      /* storage unavailable — the calculator still works in memory */
-    }
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(session));
+      } catch {
+        /* storage unavailable — the calculator still works in memory */
+      }
+    }, 250);
+    return () => clearTimeout(t);
   }, [session, storageKey]);
 
   const selectedUnit = (item: MyStoreItem): Unit =>
     canCrate(item) && session.units[item.productId] !== "piece" ? "crate" : "piece";
 
-  const setUnit = (productId: string, unit: Unit) =>
-    setSession((s) => ({ ...s, units: { ...s.units, [productId]: unit } }));
+  const setUnit = useCallback(
+    (productId: string, unit: Unit) =>
+      setSession((s) => ({ ...s, units: { ...s.units, [productId]: unit } })),
+    [],
+  );
 
   /**
    * Keypad entry for one product line. Digits append (max 3 digits), "back"
@@ -372,89 +479,17 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
         <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto pb-2 md:grid-cols-3 lg:grid-cols-5">
           {filtered.map((item) => {
             const unit = selectedUnit(item);
-            const qty = session.cart[lineKey(item.productId, unit)] ?? 0;
-            const otherUnit: Unit = unit === "crate" ? "piece" : "crate";
-            const otherQty = session.cart[lineKey(item.productId, otherUnit)] ?? 0;
-            const price = unitPrice(item, unit);
-            const keys = ["7", "8", "9", "4", "5", "6", "1", "2", "3", unit === "crate" ? "half" : "clear", "0", "back"];
+            const other: Unit = unit === "crate" ? "piece" : "crate";
             return (
-              <div
+              <ProductCard
                 key={item.productId}
-                className="select-none space-y-1.5 rounded-xl border bg-card p-2 shadow-sm"
-              >
-                {/* Name + P / C switch */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{item.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {inr(price)} / {unit}
-                      {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
-                    </p>
-                  </div>
-                  {canCrate(item) && (
-                    <div className="flex shrink-0 overflow-hidden rounded-md border text-xs font-bold">
-                      {(["piece", "crate"] as Unit[]).map((u) => (
-                        <button
-                          key={u}
-                          type="button"
-                          onClick={() => setUnit(item.productId, u)}
-                          className={cn(
-                            "h-7 w-7 touch-manipulation transition-colors",
-                            unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-                          )}
-                          aria-label={u === "piece" ? "Sell by piece" : "Sell by crate"}
-                          aria-pressed={unit === u}
-                        >
-                          {u === "piece" ? "P" : "C"}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Quantity display */}
-                <div
-                  className={cn(
-                    "flex h-[72px] items-center justify-between rounded-lg border px-2.5",
-                    qty > 0 ? "bg-primary/10" : "bg-muted/40",
-                  )}
-                >
-                  <span className="text-xs text-muted-foreground">
-                    {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
-                  </span>
-                  <span className={cn("text-6xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
-                    {qty}
-                  </span>
-                </div>
-
-                {/* Keypad */}
-                <div className="relative w-full overflow-hidden rounded-xl bg-muted">
-                  {item.photoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.photoUrl}
-                      alt=""
-                      draggable={false}
-                      className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
-                    />
-                  )}
-                  <div className="relative grid grid-cols-3 gap-1 p-1">
-                  {keys.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => pressKey(item.productId, unit, k)}
-                      className="flex aspect-[3/2] w-full touch-manipulation items-center justify-center rounded-lg border bg-background/75 text-2xl font-bold backdrop-blur-[1px] active:bg-accent"
-                      aria-label={
-                        k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
-                      }
-                    >
-                      {k === "back" ? <Delete className="h-6 w-6" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-6 w-6" /> : k}
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              </div>
+                item={item}
+                unit={unit}
+                qty={session.cart[lineKey(item.productId, unit)] ?? 0}
+                otherQty={session.cart[lineKey(item.productId, other)] ?? 0}
+                onKey={pressKey}
+                onUnit={setUnit}
+              />
             );
           })}
           {filtered.length === 0 && (
