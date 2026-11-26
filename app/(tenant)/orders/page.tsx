@@ -10,6 +10,7 @@ import {
   Clock,
   IndianRupee,
   Edit3,
+  Lock,
   Save,
   Search,
   Loader2 as LoaderIcon,
@@ -70,6 +71,9 @@ interface MatrixCell {
   totalAmount: number;
   orderId: string | null;
   orderStatus: string | null;
+  // Dealer-placed order still pending: only the dealer may edit it until the
+  // admin confirms (enforced server-side; mirrored here so the cells lock).
+  dealerLocked: boolean;
 }
 
 // --- Main Page ---
@@ -211,6 +215,11 @@ export default function OrdersPage() {
         totalAmount,
         orderId: latestOrder?.id ?? null,
         orderStatus: latestOrder?.status ?? null,
+        dealerLocked:
+          !!latestOrder &&
+          latestOrder.status === "placed" &&
+          !!shop.userId &&
+          latestOrder.createdBy === shop.userId,
       };
     });
 
@@ -250,6 +259,11 @@ export default function OrdersPage() {
     });
     return { productTotals, grandTotal };
   }, [filteredCells, matrixData.products, editedQuantities]);
+
+  const lockedCount = useMemo(
+    () => filteredCells.filter((c) => c.dealerLocked).length,
+    [filteredCells]
+  );
 
   const pendingCells = useMemo(
     () =>
@@ -299,11 +313,21 @@ export default function OrdersPage() {
     const row = Number(input.dataset.row);
     const col = Number(input.dataset.col);
     if (Number.isNaN(row) || Number.isNaN(col)) return;
-    const target = input
-      .closest("table")
-      ?.querySelector<HTMLInputElement>(
-        `input[data-row="${row + move[0]}"][data-col="${col + move[1]}"]`,
+    // Locked rows render no input, so keep stepping in the same direction
+    // until an editable cell turns up (or we run off the matrix).
+    const table = input.closest("table");
+    let target: HTMLInputElement | null | undefined = null;
+    for (let step = 1; step <= 500; step++) {
+      const r = row + move[0] * step;
+      const c = col + move[1] * step;
+      if (r < 0 || c < 0) break;
+      target = table?.querySelector<HTMLInputElement>(
+        `input[data-row="${r}"][data-col="${c}"]`,
       );
+      if (target) break;
+      // Past the last row/column nothing will ever match.
+      if (r > filteredCells.length || c > matrixData.products.length) break;
+    }
     e.preventDefault();
     if (!target) return;
     target.focus();
@@ -379,8 +403,21 @@ export default function OrdersPage() {
 
     const promises: Promise<unknown>[] = [];
 
+    // A dealer may have placed an order after the admin entered Edit Mode. Its
+    // row is now locked (the server would reject the edit), so leave it out of
+    // the save and tell the admin which stores were skipped.
+    const lockedShopIds = new Set(
+      matrixData.cells.filter((c) => c.dealerLocked).map((c) => c.shopId)
+    );
+    const skippedShopNames: string[] = [];
+
     // Group all edits by shopId, then decide per-shop whether to update or create
     Object.entries(editedQuantities).forEach(([shopId, editedProducts]) => {
+      if (lockedShopIds.has(shopId)) {
+        const name = matrixData.cells.find((c) => c.shopId === shopId)?.shopName;
+        if (name) skippedShopNames.push(name);
+        return;
+      }
       // Find the latest order for this shop
       const shopOrders = orders.filter((o) => o.shopId === shopId);
       const existingOrder = shopOrders.length > 0
@@ -450,7 +487,13 @@ export default function OrdersPage() {
       setIsEditMode(false);
       setEditedQuantities({});
       setEditedInputs({});
-      toast.success("Changes saved successfully");
+      if (skippedShopNames.length > 0) {
+        toast.warning(
+          `Not saved — the dealer placed an order that needs confirming first: ${skippedShopNames.join(", ")}`
+        );
+      } else {
+        toast.success("Changes saved successfully");
+      }
     } catch (error) {
       toast.error("Failed to save some changes");
     }
@@ -851,6 +894,19 @@ export default function OrdersPage() {
           </div>
         }
       />
+      {isEditMode && lockedCount > 0 && (
+        <Alert className="border-amber-500/30 bg-amber-500/10">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription>
+            <span>
+              {lockedCount} dealer-placed order{lockedCount > 1 ? "s are" : " is"} locked
+              (marked <b>Confirm to edit</b>). Confirm {lockedCount > 1 ? "them" : "it"} first, then{" "}
+              {lockedCount > 1 ? "they" : "it"} can be edited here. Until then only the dealer can change{" "}
+              {lockedCount > 1 ? "them" : "it"}.
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
       <TransferWizard
         open={transferWizardOpen}
         onOpenChange={setTransferWizardOpen}
@@ -1050,7 +1106,18 @@ export default function OrdersPage() {
                     }`}
                   >
                     <td className="order-row-sticky py-2 px-4 font-medium bg-background sticky left-0 z-10 border-r border-border">
-                      {cell.shopName}
+                      <span className="inline-flex items-center gap-1.5">
+                        {cell.shopName}
+                        {cell.dealerLocked && (
+                          <span
+                            title="Placed by the dealer — confirm this order before editing it. Until then only the dealer can change it."
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
+                          >
+                            <Lock className="h-3 w-3" />
+                            Confirm to edit
+                          </span>
+                        )}
+                      </span>
                     </td>
                     {matrixData.products.map((product, colIndex) => {
                       const value = getCellValue(cell.shopId, product.id);
@@ -1060,10 +1127,10 @@ export default function OrdersPage() {
                         <td
                           key={product.id}
                           className={`text-center border-r border-border/50 ${
-                            isEditMode ? "p-0" : "py-2 px-1"
+                            isEditMode && !cell.dealerLocked ? "p-0" : "py-2 px-1"
                           }`}
                         >
-                          {isEditMode ? (
+                          {isEditMode && !cell.dealerLocked ? (
                             <Input
                               type="number"
                               min="0"

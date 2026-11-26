@@ -61,6 +61,7 @@ function normalize(raw: any): any {
     shopId: raw.shopkeeperId?._id || raw.shopkeeperId || raw.shopId,
     shopkeeperName: raw.shopkeeperName || '',
     placedAt: raw.placedAt || raw.createdAt,
+    createdBy: raw.createdBy?._id ? String(raw.createdBy._id) : raw.createdBy ? String(raw.createdBy) : undefined,
     status: normalizeStatus(raw.status),
     items: (raw.items || []).map(normalizeOrderItem),
   };

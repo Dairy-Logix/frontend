@@ -710,6 +710,8 @@ export interface Order {
   total: number;
   notes?: string;
   placedAt: string;
+  /** User id that created the order (the dealer's own user for dealer-placed orders). */
+  createdBy?: string;
   confirmedAt?: string;
   dispatchedAt?: string;
   deliveredAt?: string;
