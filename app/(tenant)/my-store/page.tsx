@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarX2, Delete, Loader2, Minus, RotateCcw, Search, Settings, X } from "lucide-react";
+import { CalendarX2, Delete, Loader2, RotateCcw, Search, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -235,13 +235,31 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   const setUnit = (productId: string, unit: Unit) =>
     setSession((s) => ({ ...s, units: { ...s.units, [productId]: unit } }));
 
-  const adjust = useCallback((productId: string, unit: Unit, delta: number) => {
+  /**
+   * Keypad entry for one product line. Digits append (max 3 digits), "back"
+   * deletes the last digit (or the ".5"), "clear" zeroes it, and "half"
+   * (crate only) toggles an extra half crate.
+   */
+  const pressKey = useCallback((productId: string, unit: Unit, key: string) => {
     setSession((s) => {
-      const key = lineKey(productId, unit);
-      const next = Math.max(0, (s.cart[key] ?? 0) + delta);
+      const lk = lineKey(productId, unit);
+      const current = s.cart[lk] ?? 0;
+      const str = current === 0 ? "" : String(current);
+      let next = current;
+      if (key === "clear") next = 0;
+      else if (key === "half") {
+        next = current % 1 === 0.5 ? current - 0.5 : current + 0.5;
+      } else if (key === "back") {
+        if (current % 1 === 0.5) next = Math.floor(current);
+        else next = str.length > 1 ? Number(str.slice(0, -1)) : 0;
+      } else {
+        // Digit: ignore once a ".5" is present or 3 digits are entered.
+        if (str.includes(".") || str.length >= 3) return s;
+        next = Number(str + key);
+      }
       const cart = { ...s.cart };
-      if (next === 0) delete cart[key];
-      else cart[key] = next;
+      if (next <= 0) delete cart[lk];
+      else cart[lk] = next;
       return { ...s, cart };
     });
   }, []);
@@ -351,67 +369,37 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
           </label>
         </div>
 
-        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 content-start gap-3 overflow-y-auto pb-2 sm:grid-cols-3 xl:grid-cols-4">
+        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto pb-2 md:grid-cols-3 lg:grid-cols-5">
           {filtered.map((item) => {
             const unit = selectedUnit(item);
             const qty = session.cart[lineKey(item.productId, unit)] ?? 0;
             const otherUnit: Unit = unit === "crate" ? "piece" : "crate";
             const otherQty = session.cart[lineKey(item.productId, otherUnit)] ?? 0;
+            const price = unitPrice(item, unit);
+            const keys = ["7", "8", "9", "4", "5", "6", "1", "2", "3", unit === "crate" ? "half" : "clear", "0", "back"];
             return (
               <div
                 key={item.productId}
-                className="select-none overflow-hidden rounded-2xl border bg-card shadow-sm"
+                className="select-none space-y-1.5 rounded-xl border bg-card p-2 shadow-sm"
               >
-                <div className="relative aspect-square w-full bg-muted">
-                  <button
-                    type="button"
-                    onClick={() => adjust(item.productId, unit, 1)}
-                    className="absolute inset-0 touch-manipulation active:scale-[0.98]"
-                    aria-label={`Add one ${unit} of ${item.name}`}
-                  >
-                    {item.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.photoUrl}
-                        alt={item.name}
-                        draggable={false}
-                        className={cn(
-                          "absolute inset-0 h-full w-full object-cover transition-opacity",
-                          qty > 0 || otherQty > 0 ? "opacity-40" : "opacity-90",
-                        )}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-muted-foreground/40">
-                        {item.name[0]}
-                      </div>
-                    )}
-                    <span
-                      className={cn(
-                        "absolute inset-0 flex items-center justify-center text-6xl font-extrabold drop-shadow",
-                        qty > 0 ? "text-foreground" : "text-transparent",
-                      )}
-                    >
-                      {qty > 0 ? qty : ""}
-                    </span>
-                  </button>
-
-                  {/* Count of the other unit (top-left) */}
-                  {otherQty > 0 && (
-                    <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-foreground">
-                      {otherQty} {otherUnit === "crate" ? "C" : "P"}
-                    </span>
-                  )}
-
-                  {/* P / C unit switch (top-right) */}
+                {/* Name + P / C switch */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{item.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {inr(price)} / {unit}
+                      {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
+                    </p>
+                  </div>
                   {canCrate(item) && (
-                    <div className="absolute right-1.5 top-1.5 flex overflow-hidden rounded-md border bg-background/90 text-xs font-bold shadow-sm backdrop-blur">
+                    <div className="flex shrink-0 overflow-hidden rounded-md border text-xs font-bold">
                       {(["piece", "crate"] as Unit[]).map((u) => (
                         <button
                           key={u}
                           type="button"
                           onClick={() => setUnit(item.productId, u)}
                           className={cn(
-                            "h-8 w-8 touch-manipulation transition-colors",
+                            "h-7 w-7 touch-manipulation transition-colors",
                             unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground",
                           )}
                           aria-label={u === "piece" ? "Sell by piece" : "Sell by crate"}
@@ -424,38 +412,36 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
                   )}
                 </div>
 
-                <div className="flex items-start justify-between gap-2 p-2.5">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {inr(unitPrice(item, unit))} / {unit}
-                      {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    {unit === "crate" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 w-9 px-0 text-sm font-bold"
-                        onClick={() => adjust(item.productId, "crate", 0.5)}
-                        aria-label={`Add half a crate of ${item.name}`}
-                      >
-                        .5
-                      </Button>
-                    )}
-                    <Button
+                {/* Quantity display */}
+                <div
+                  className={cn(
+                    "flex h-12 items-center justify-between rounded-lg border px-2.5",
+                    qty > 0 ? "bg-primary/10" : "bg-muted/40",
+                  )}
+                >
+                  <span className="text-xs text-muted-foreground">
+                    {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
+                  </span>
+                  <span className={cn("text-4xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
+                    {qty}
+                  </span>
+                </div>
+
+                {/* Keypad */}
+                <div className="mx-auto grid max-w-[190px] grid-cols-3 gap-1.5">
+                  {keys.map((k) => (
+                    <button
+                      key={k}
                       type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 shrink-0"
-                      disabled={qty === 0}
-                    onClick={() => adjust(item.productId, unit, -1)}
-                    aria-label={`Remove one ${unit} of ${item.name}`}
-                  >
-                    <Minus className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      onClick={() => pressKey(item.productId, unit, k)}
+                      className="flex aspect-square w-full touch-manipulation items-center justify-center rounded-lg border bg-background text-2xl font-bold active:bg-accent"
+                      aria-label={
+                        k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
+                      }
+                    >
+                      {k === "back" ? <Delete className="h-6 w-6" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-6 w-6" /> : k}
+                    </button>
+                  ))}
                 </div>
               </div>
             );
@@ -467,10 +453,10 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
       </section>
 
       {/* Cart panel */}
-      <aside className="flex w-full flex-col rounded-2xl border bg-card lg:w-[250px] xl:w-[270px]">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <aside className="flex w-full flex-col rounded-2xl border bg-card lg:w-[220px] xl:w-[235px]">
+        <div className="flex items-center justify-between gap-1 border-b px-3 py-3">
           <h2 className="font-semibold">{todayLabel}</h2>
-          <Button variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={() => setConfirmReset(true)}>
+          <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={() => setConfirmReset(true)}>
             <CalendarX2 className="mr-1.5 h-4 w-4" /> Reset day
           </Button>
         </div>
