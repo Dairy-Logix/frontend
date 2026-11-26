@@ -415,26 +415,36 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
                 {/* Quantity display */}
                 <div
                   className={cn(
-                    "flex h-12 items-center justify-between rounded-lg border px-2.5",
+                    "flex h-[72px] items-center justify-between rounded-lg border px-2.5",
                     qty > 0 ? "bg-primary/10" : "bg-muted/40",
                   )}
                 >
                   <span className="text-xs text-muted-foreground">
                     {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
                   </span>
-                  <span className={cn("text-4xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
+                  <span className={cn("text-6xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
                     {qty}
                   </span>
                 </div>
 
                 {/* Keypad */}
-                <div className="mx-auto grid max-w-[190px] grid-cols-3 gap-1.5">
+                <div className="relative w-full overflow-hidden rounded-xl bg-muted">
+                  {item.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.photoUrl}
+                      alt=""
+                      draggable={false}
+                      className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
+                    />
+                  )}
+                  <div className="relative grid grid-cols-3 gap-1 p-1">
                   {keys.map((k) => (
                     <button
                       key={k}
                       type="button"
                       onClick={() => pressKey(item.productId, unit, k)}
-                      className="flex aspect-square w-full touch-manipulation items-center justify-center rounded-lg border bg-background text-2xl font-bold active:bg-accent"
+                      className="flex aspect-[3/2] w-full touch-manipulation items-center justify-center rounded-lg border bg-background/75 text-2xl font-bold backdrop-blur-[1px] active:bg-accent"
                       aria-label={
                         k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
                       }
@@ -442,6 +452,7 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
                       {k === "back" ? <Delete className="h-6 w-6" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-6 w-6" /> : k}
                     </button>
                   ))}
+                  </div>
                 </div>
               </div>
             );
