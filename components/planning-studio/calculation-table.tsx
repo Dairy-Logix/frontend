@@ -146,24 +146,44 @@ export function CalculationTable({
     }
   }
 
+  function getTyped(productId: string): { agencyId: string; value: number } | null {
+    for (const a of agencies) {
+      const v = inputs[productId]?.[a.id];
+      if (v === "" || v === undefined) continue;
+      const n = Number(v);
+      if (!Number.isNaN(n) && n > 0) return { agencyId: a.id, value: n };
+    }
+    return null;
+  }
+
+  /**
+   * What gets PERSISTED. A typed fixed quantity is stored for the typed agency
+   * only; the other agency is the live remainder (total − fixed), so it stays
+   * correct when tomorrow's total changes and never goes stale in the DB.
+   */
+  function getStoredQty(
+    productId: string,
+    agencyId: string,
+    total: number,
+  ): number | null {
+    if (rowHasInput(inputs, productId)) {
+      const typed = getTyped(productId);
+      return typed && typed.agencyId === agencyId ? typed.value : null;
+    }
+    if (radio[productId] === agencyId) return total;
+    return null;
+  }
+
+  /** What is SHOWN as the final order (fixed qty + live remainder). */
   function getDesiredQty(
     productId: string,
     agencyId: string,
     total: number,
   ): number | null {
     if (rowHasInput(inputs, productId)) {
-      let typedAgencyId: string | null = null;
-      let typedValue = 0;
-      for (const a of agencies) {
-        const v = inputs[productId]?.[a.id];
-        if (v === "" || v === undefined) continue;
-        const n = Number(v);
-        if (!Number.isNaN(n) && n > 0) {
-          typedAgencyId = a.id;
-          typedValue = n;
-          break;
-        }
-      }
+      const typed = getTyped(productId);
+      const typedAgencyId = typed?.agencyId ?? null;
+      const typedValue = Math.min(typed?.value ?? 0, total);
       if (typedAgencyId === null) return 0;
       if (agencyId === typedAgencyId) return typedValue;
       return Math.max(0, total - typedValue);
@@ -172,43 +192,38 @@ export function CalculationTable({
     return null;
   }
 
-  function isColumnDirty(agencyId: string): boolean {
-    for (const row of rows) {
-      const desired = getDesiredQty(row.productId, agencyId, row.total);
-      const saved = row.savedQuantities[agencyId];
-      const hasSaved = agencyId in row.savedQuantities;
+  /** Entries needed so the DB matches the table for this agency's column. */
+  function buildColumnPayload(agencyId: string): FormulaQuantityEntry[] {
+    const payload: FormulaQuantityEntry[] = [];
+    const push = (productId: string, aId: string, desired: number | null, row: PreviewRow) => {
+      const saved = row.savedQuantities[aId];
+      const hasSaved = aId in row.savedQuantities;
       if (desired === null) {
-        if (hasSaved) return true;
+        if (hasSaved) {
+          payload.push({ productId, agencyId: aId, quantity: null as unknown as number });
+        }
       } else if (saved !== desired) {
-        return true;
+        payload.push({ productId, agencyId: aId, quantity: desired });
+      }
+    };
+    for (const row of rows) {
+      push(row.productId, agencyId, getStoredQty(row.productId, agencyId, row.total), row);
+      // Typed in this column: the other agency is the remainder, so drop its stored value.
+      if (getTyped(row.productId)?.agencyId === agencyId && rowHasInput(inputs, row.productId)) {
+        for (const a of agencies) {
+          if (a.id !== agencyId) push(row.productId, a.id, null, row);
+        }
       }
     }
-    return false;
+    return payload;
+  }
+
+  function isColumnDirty(agencyId: string): boolean {
+    return buildColumnPayload(agencyId).length > 0;
   }
 
   function handleSaveColumn(agencyId: string) {
-    const payload: FormulaQuantityEntry[] = [];
-    for (const row of rows) {
-      const desired = getDesiredQty(row.productId, agencyId, row.total);
-      const saved = row.savedQuantities[agencyId];
-      const hasSaved = agencyId in row.savedQuantities;
-
-      if (desired === null) {
-        if (hasSaved) {
-          payload.push({
-            productId: row.productId,
-            agencyId,
-            quantity: null as unknown as number,
-          });
-        }
-      } else if (saved !== desired) {
-        payload.push({
-          productId: row.productId,
-          agencyId,
-          quantity: desired,
-        });
-      }
-    }
+    const payload = buildColumnPayload(agencyId);
     if (payload.length === 0) return;
     setActiveSavingAgencyId(agencyId);
     onSave(payload);
