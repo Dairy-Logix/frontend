@@ -350,7 +350,7 @@ const KeypadPanel = memo(function KeypadPanel({
                 k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
               }
             >
-              {k === "back" ? <Delete className="h-7 w-7" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-7 w-7" /> : k}
+              {k === "back" ? <Delete className="h-7 w-7" /> : k === "half" ? ".5" : k === "clear" ? "AC" : k}
             </button>
           ))}
         </div>
