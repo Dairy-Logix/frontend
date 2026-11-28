@@ -10,7 +10,8 @@ import { handleApiError } from '@/lib/api/client';
 export const planningStudioKeys = {
   all: ['planning-studio'] as const,
   formula: () => [...planningStudioKeys.all, 'formula'] as const,
-  preview: () => [...planningStudioKeys.all, 'preview'] as const,
+  preview: (date?: string) =>
+    [...planningStudioKeys.all, 'preview', date ?? 'default'] as const,
 };
 
 export function useAgencyFormula() {
@@ -40,7 +41,7 @@ export function useSaveAgencyFormula() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: planningStudioKeys.formula() });
-      queryClient.invalidateQueries({ queryKey: planningStudioKeys.preview() });
+      queryClient.invalidateQueries({ queryKey: planningStudioKeys.all });
       toast.success('Formula saved');
     },
     onError: (error) => {
@@ -49,11 +50,11 @@ export function useSaveAgencyFormula() {
   });
 }
 
-export function useAgencyFormulaPreview(enabled: boolean) {
+export function useAgencyFormulaPreview(enabled: boolean, date?: string) {
   return useQuery({
-    queryKey: planningStudioKeys.preview(),
+    queryKey: planningStudioKeys.preview(date),
     queryFn: async () => {
-      const response = await planningStudioService.getFormulaPreview();
+      const response = await planningStudioService.getFormulaPreview(date);
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to fetch preview');
       }
@@ -64,13 +65,14 @@ export function useAgencyFormulaPreview(enabled: boolean) {
   });
 }
 
-export function useSaveFormulaQuantities() {
+export function useSaveFormulaQuantities(date?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (quantities: FormulaQuantityEntry[]) => {
       const response = await planningStudioService.saveFormulaQuantities(
         quantities,
+        date,
       );
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to save quantities');
@@ -78,7 +80,7 @@ export function useSaveFormulaQuantities() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: planningStudioKeys.preview() });
+      queryClient.invalidateQueries({ queryKey: planningStudioKeys.all });
       toast.success('Quantities saved');
     },
     onError: (error) => {

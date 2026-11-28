@@ -34,6 +34,8 @@ export interface AgencyFormulaPreview {
   agencies: PreviewAgency[];
   rows: PreviewRow[];
   computedAt: string;
+  /** YYYY-MM-DD the preview was computed for. */
+  orderDate?: string;
   dateRange: { start: string; end: string };
   timezone: string;
 }
@@ -70,9 +72,12 @@ export const planningStudioService = {
     };
   },
 
-  async getFormulaPreview(): Promise<ApiResponse<AgencyFormulaPreview>> {
+  async getFormulaPreview(
+    date?: string
+  ): Promise<ApiResponse<AgencyFormulaPreview>> {
     const { data } = await apiClient.get<AgencyFormulaPreview>(
-      '/planning-studio/agency-formula/preview'
+      '/planning-studio/agency-formula/preview',
+      { params: date ? { date } : undefined }
     );
     return {
       success: true,
@@ -82,11 +87,13 @@ export const planningStudioService = {
   },
 
   async saveFormulaQuantities(
-    quantities: FormulaQuantityEntry[]
+    quantities: FormulaQuantityEntry[],
+    date?: string
   ): Promise<ApiResponse<{ saved: number }>> {
     const { data } = await apiClient.put<{ saved: number }>(
       '/planning-studio/agency-formula/quantities',
-      { quantities }
+      { quantities },
+      { params: date ? { date } : undefined }
     );
     return {
       success: true,
