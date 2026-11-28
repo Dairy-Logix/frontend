@@ -419,7 +419,12 @@ export default function OrdersPage() {
     const skippedShopNames: string[] = [];
 
     // Group all edits by shopId, then decide per-shop whether to update or create
+    // Only shops listed under the selected agency may be saved here. Edits are
+    // keyed by shop, so edits left over from another agency tab must never be
+    // written to this agency.
+    const visibleShopIds = new Set(matrixData.cells.map((c) => c.shopId));
     Object.entries(editedQuantities).forEach(([shopId, editedProducts]) => {
+      if (!visibleShopIds.has(shopId)) return;
       if (lockedShopIds.has(shopId)) {
         const name = matrixData.cells.find((c) => c.shopId === shopId)?.shopName;
         if (name) skippedShopNames.push(name);
@@ -1042,7 +1047,20 @@ export default function OrdersPage() {
         transition={{ duration: 0.3 }}
         className="glass rounded-xl p-1"
       >
-        <Tabs value={selectedAgencyId} onValueChange={setSelectedAgencyId}>
+        <Tabs
+          value={selectedAgencyId}
+          onValueChange={(id) => {
+            if (id === selectedAgencyId) return;
+            // Unsaved edits belong to the agency they were typed under.
+            if (hasChanges) {
+              setEditedQuantities({});
+              setEditedInputs({});
+              setHasChanges(false);
+              toast.info("Unsaved changes were discarded when switching agency");
+            }
+            setSelectedAgencyId(id);
+          }}
+        >
           <TabsList className="w-full bg-muted/30 justify-start p-1">
             {agencies.map((agency) => {
               const shopCount = shopkeepers.filter(
