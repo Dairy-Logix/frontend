@@ -2,19 +2,10 @@
 
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarX2, Delete, Loader2, RotateCcw, Settings, X } from "lucide-react";
+import { ArrowLeft, CalendarX2, Delete, History, Loader2, RotateCcw, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +20,18 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useMyStoreItems } from "@/lib/hooks/use-my-store";
 import type { MyStoreItem } from "@/lib/api/services/my-store.service";
+import {
+  CloseDayDialog,
+  HistoryDialog,
+  dayHasData,
+  historyKey,
+  loadHistory,
+  saveHistory,
+  storageAvailable,
+  type DayInfo,
+  type Opening,
+  type Sale,
+} from "./day-tools";
 
 type Unit = "piece" | "crate";
 
@@ -38,6 +41,8 @@ interface Session {
   units: Record<string, Unit>; // per-card selected unit
   dayTotal: number;
   saleCount: number;
+  /** Optional start-of-day figures (opening cash / stock); absent = calculator-only day. */
+  day?: DayInfo | null;
 }
 
 const EMPTY: Session = { cart: {}, units: {}, dayTotal: 0, saleCount: 0 };
@@ -50,127 +55,125 @@ const unitPrice = (item: MyStoreItem, unit: Unit) =>
   unit === "crate" ? item.cratePrice ?? 0 : item.piecePrice;
 const canCrate = (item: MyStoreItem) => item.category === "Crate" && !!item.cratePrice;
 
-function CompleteSaleDialog({
+const PAY_KEYS = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "00", "0", "back"];
+const QUICK_AMOUNTS = [100, 200, 500, 2000];
+
+/**
+ * Payment mode of the keypad column: the same pad, now typing the amount the
+ * customer hands over. Shows the return / still-to-collect figure live.
+ */
+const PaymentPanel = memo(function PaymentPanel({
   total,
-  onCancel,
-  onComplete,
+  itemCount,
+  received,
+  onKey,
+  onQuick,
+  onExact,
+  onClear,
+  onBack,
+  onConfirm,
 }: {
   total: number;
-  onCancel: () => void;
-  onComplete: (dontAskAgain: boolean) => void;
+  itemCount: number;
+  received: string;
+  onKey: (key: string) => void;
+  onQuick: (amount: number) => void;
+  onExact: () => void;
+  onClear: () => void;
+  onBack: () => void;
+  onConfirm: () => void;
 }) {
-  const [other, setOther] = useState<string>(""); // amount received, typed on the pad
-  const [dontAsk, setDontAsk] = useState(false);
-
-  const pressKey = (k: string) =>
-    setOther((v) => {
-      if (k === "back") return v.slice(0, -1);
-      if (v === "" && (k === "0" || k === "00")) return v; // no leading zeros
-      return v.length + k.length > 7 ? v : v + k; // cap at 9,999,999
-    });
-
-  const received = Number(other) > 0 ? Number(other) : null;
-  const diff = received === null ? null : Math.round((received - total) * 100) / 100;
+  const amount = Number(received) > 0 ? Number(received) : null;
+  const diff = amount === null ? null : Math.round((amount - total) * 100) / 100;
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-h-[96vh] max-w-2xl gap-3 p-4 sm:p-5">
-        <DialogHeader className="space-y-0">
-          <DialogTitle>Complete sale</DialogTitle>
-          <DialogDescription className="sr-only">
-            Enter the amount received to see the change to return.
-          </DialogDescription>
-        </DialogHeader>
+    <section className="flex min-h-[420px] flex-1 select-none flex-col gap-2 overflow-hidden rounded-2xl border bg-card p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="ghost" size="sm" className="-ml-1 h-8 px-2" onClick={onBack}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {itemCount} {itemCount === 1 ? "item" : "items"}
+        </span>
+      </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* Left: totals and change */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-2xl font-bold">{inr(total)}</span>
-            </div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-muted-foreground">Total</span>
+        <span className="text-3xl font-extrabold">{inr(total)}</span>
+      </div>
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Amount received</p>
-              <div className="flex gap-1">
-                <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => setOther(String(total))}>
-                  Exact
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setOther("")}>
-                  Clear
-                </Button>
-              </div>
-            </div>
-            <div
-              className={cn(
-                "flex h-12 items-center justify-end rounded-lg border bg-muted/40 px-3 text-2xl font-bold",
-                other === "" && "text-muted-foreground/50",
-              )}
-              aria-live="polite"
-            >
-              {other === "" ? "₹0" : inr(Number(other))}
-            </div>
-
-            <div
-              className={cn(
-                "flex flex-1 flex-col items-center justify-center rounded-xl px-3 py-2 text-center",
-                diff === null && "bg-muted text-muted-foreground",
-                diff !== null && diff >= 0 && "bg-green-500/10 text-green-600 dark:text-green-400",
-                diff !== null && diff < 0 && "bg-red-500/10 text-red-600 dark:text-red-400",
-              )}
-            >
-              {diff === null ? (
-                <p className="text-sm">Enter the amount received</p>
-              ) : diff > 0 ? (
-                <>
-                  <p className="text-sm">Return to customer</p>
-                  <p className="text-4xl font-extrabold leading-tight">{inr(diff)}</p>
-                </>
-              ) : diff === 0 ? (
-                <p className="font-semibold">Exact amount — no change</p>
-              ) : (
-                <>
-                  <p className="text-sm">Still to collect</p>
-                  <p className="text-4xl font-extrabold leading-tight">{inr(-diff)}</p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Right: number pad */}
-          <div className="grid grid-cols-3 gap-2">
-            {["7", "8", "9", "4", "5", "6", "1", "2", "3", "00", "0", "back"].map((k) => (
-              <Button
-                key={k}
-                type="button"
-                variant="outline"
-                className="h-12 text-xl font-semibold"
-                aria-label={k === "back" ? "Backspace" : k}
-                onClick={() => pressKey(k)}
-              >
-                {k === "back" ? <Delete className="h-5 w-5" /> : k}
-              </Button>
-            ))}
-          </div>
+      <div className="flex gap-2">
+        <div
+          className={cn(
+            "flex h-12 min-w-0 flex-1 items-center justify-between rounded-xl border bg-muted/40 px-3",
+            received === "" && "text-muted-foreground/50",
+          )}
+          aria-live="polite"
+        >
+          <span className="text-xs font-normal text-muted-foreground">Received</span>
+          <span className="truncate text-2xl font-bold">{received === "" ? "₹0" : inr(Number(received))}</span>
         </div>
+        <Button type="button" variant="outline" className="h-12 w-12 shrink-0 px-0 text-base font-bold" onClick={onClear} aria-label="Clear amount">
+          AC
+        </Button>
+      </div>
 
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox checked={dontAsk} onCheckedChange={(v) => setDontAsk(v === true)} />
-          Don&apos;t ask me again (turn back on with &quot;Ask on Complete&quot;)
-        </label>
+      <div className="grid grid-cols-5 gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="h-8 px-0 text-xs font-semibold" onClick={onExact}>
+          Exact
+        </Button>
+        {QUICK_AMOUNTS.map((a) => (
+          <Button key={a} type="button" variant="outline" size="sm" className="h-8 px-0 text-xs font-semibold" onClick={() => onQuick(a)}>
+            ₹{a}
+          </Button>
+        ))}
+      </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button type="button" variant="outline" className="h-11" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="button" className="h-11" onClick={() => onComplete(dontAsk)}>
-            Complete sale
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div
+        className={cn(
+          "flex min-h-[84px] flex-col items-center justify-center rounded-xl px-3 py-2 text-center",
+          diff === null && "bg-muted text-muted-foreground",
+          diff !== null && diff >= 0 && "bg-green-500/10 text-green-600 dark:text-green-400",
+          diff !== null && diff < 0 && "bg-red-500/10 text-red-600 dark:text-red-400",
+        )}
+      >
+        {diff === null ? (
+          <p className="text-sm">Enter the amount received</p>
+        ) : diff > 0 ? (
+          <>
+            <p className="text-sm">Return to customer</p>
+            <p className="text-4xl font-extrabold leading-tight">{inr(diff)}</p>
+          </>
+        ) : diff === 0 ? (
+          <p className="font-semibold">Exact amount — no change</p>
+        ) : (
+          <>
+            <p className="text-sm">Still to collect</p>
+            <p className="text-4xl font-extrabold leading-tight">{inr(-diff)}</p>
+          </>
+        )}
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-2">
+        {PAY_KEYS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => onKey(k)}
+            className="flex h-full min-h-[36px] w-full touch-manipulation items-center justify-center rounded-xl border bg-background text-3xl font-bold active:bg-accent"
+            aria-label={k === "back" ? "Backspace" : k}
+          >
+            {k === "back" ? <Delete className="h-7 w-7" /> : k}
+          </button>
+        ))}
+      </div>
+
+      <Button type="button" className="h-12 shrink-0 text-base" onClick={onConfirm}>
+        Complete sale
+      </Button>
+    </section>
   );
-}
+});
 
 const GAP = 8; // px between product tiles
 const MIN_TILE = 72; // smallest tile before we fall back to scrolling
@@ -391,7 +394,40 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
   const gridSize = useElementSize(gridEl);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmDone, setConfirmDone] = useState(false);
+  // Payment mode: the keypad column types the amount received instead of product quantities.
+  const [paying, setPaying] = useState(false);
+  const [received, setReceived] = useState("");
+
+  // Today's sales, kept on this device until the day is reset. Its own storage
+  // key, written only when a sale completes, so keypad taps never rewrite it.
+  const histKey = historyKey(tenantId);
+  const [history, setHistory] = useState<Sale[]>(() => loadHistory(histKey));
+  const [storageOk, setStorageOk] = useState<boolean>(() => storageAvailable());
+  const [showHistory, setShowHistory] = useState(false);
+  const [dayDialog, setDayDialog] = useState(false);
+
+  const commitHistory = (next: Sale[]) => {
+    setHistory(next);
+    setStorageOk(saveHistory(histKey, next));
+  };
+
+  // Device-local preference: ask for opening cash / stock when resetting the day.
+  const openKey = `my-store-ask-opening:${tenantId}`;
+  const [askOpening, setAskOpening] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(openKey) !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const updateAskOpening = (value: boolean) => {
+    setAskOpening(value);
+    try {
+      localStorage.setItem(openKey, String(value));
+    } catch {
+      /* ignore — preference just won't persist */
+    }
+  };
 
   // Device-local preference: show the "amount received / change" popup on Complete.
   const askKey = `my-store-ask-complete:${tenantId}`;
@@ -434,6 +470,9 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   const selectProduct = useCallback((productId: string) => {
     replaceNext.current = true;
     setSelectedId(productId);
+    // The customer added another item: go back to selling, dropping the typed amount.
+    setPaying(false);
+    setReceived("");
   }, []);
 
   /**
@@ -498,25 +537,99 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
 
   const cartTotal = lines.reduce((sum, l) => sum + l.total, 0);
 
-  const nextCustomer = () => {
+  const nextCustomer = (receivedAmount: number | null = null) => {
+    if (lines.length) {
+      commitHistory([
+        ...history,
+        {
+          n: session.saleCount + 1,
+          at: new Date().toISOString(),
+          lines: lines.map((l) => ({
+            productId: l.item.productId,
+            name: l.item.name,
+            unit: l.unit,
+            qty: l.qty,
+            price: l.price,
+            total: l.total,
+          })),
+          total: cartTotal,
+          received: receivedAmount,
+        },
+      ]);
+    }
     setSession((s) => ({
       ...s,
       cart: {},
       dayTotal: s.dayTotal + cartTotal,
       saleCount: s.saleCount + (lines.length ? 1 : 0),
     }));
-    setConfirmDone(false);
+    setPaying(false);
+    setReceived("");
   };
 
   const clearSale = () => setSession((s) => ({ ...s, cart: {} }));
   const onCompleteClick = () => {
-    if (askOnComplete) setConfirmDone(true);
-    else nextCustomer();
+    if (askOnComplete) {
+      setReceived("");
+      setPaying(true);
+    } else nextCustomer();
   };
-  const resetDay = () => {
-    setSession(EMPTY);
+  /** Close the current day and open a fresh one. `opening` is null for a calculator-only day. */
+  const applyReset = (opening: Opening | null, dontAskAgain: boolean) => {
+    if (dontAskAgain) updateAskOpening(false);
+    setSession({
+      ...EMPTY,
+      day: {
+        openedAt: new Date().toISOString(),
+        openingCash: opening?.cash ?? null,
+        openingStock: opening?.stock ?? {},
+      },
+    });
+    commitHistory([]);
+    setPaying(false);
+    setReceived("");
+    setDayDialog(false);
     setConfirmReset(false);
   };
+  const resetDay = () => applyReset(null, false);
+
+  const onResetClick = () => {
+    setPaying(false);
+    if (dayHasData(session.day ?? null, history) || askOpening) setDayDialog(true);
+    else setConfirmReset(true); // nothing to review and nothing to ask: just confirm
+  };
+
+  // Payment mode only makes sense while there is something to pay for.
+  const isPaying = paying && lines.length > 0;
+  const receivedAmount = Number(received) > 0 ? Number(received) : null;
+
+  const payKey = useCallback((k: string) => {
+    setReceived((v) => {
+      if (k === "back") return v.slice(0, -1);
+      if (v === "" && (k === "0" || k === "00")) return v; // no leading zeros
+      return v.length + k.length > 7 ? v : v + k; // cap at 9,999,999
+    });
+  }, []);
+
+  // Physical keyboard while taking payment: digits, Backspace, Enter, Escape.
+  useEffect(() => {
+    if (!isPaying || showHistory || dayDialog) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (/^[0-9]$/.test(e.key)) payKey(e.key);
+      else if (e.key === "Backspace") payKey("back");
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        nextCustomer(receivedAmount);
+      } else if (e.key === "Escape") setPaying(false);
+      else return;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaying, showHistory, dayDialog, payKey, cartTotal, lines.length, receivedAmount]);
 
   const activeItem = items.find((i) => i.productId === selectedId) ?? items[0];
   const fit = fitGrid(items.length, gridSize.w, gridSize.h);
@@ -545,13 +658,6 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     );
   }
 
-  // Keep the keypad about three and a quarter product rows tall (but never so short the keys get cramped).
-  const rowH = fit.rows > 0 ? (gridSize.h - (fit.rows - 1) * GAP) / fit.rows : 0;
-  const keypadHeight =
-    !fit.scroll && fit.rows > 3 && rowH > 0
-      ? Math.min(gridSize.h, Math.max(380, Math.round(3.25 * rowH + 3 * GAP)))
-      : undefined;
-
   const activeUnit = activeItem ? selectedUnit(activeItem) : "piece";
   const activeOther: Unit = activeUnit === "crate" ? "piece" : "crate";
 
@@ -564,11 +670,25 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
           <Button asChild variant="outline" size="icon" aria-label="Prices & products">
             <Link href="/my-store/settings"><Settings className="h-4 w-4" /></Link>
           </Button>
+          <Button variant="outline" size="sm" className="h-9" onClick={() => setShowHistory(true)}>
+            <History className="mr-1.5 h-4 w-4" /> History ({history.length})
+          </Button>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
             <Switch checked={askOnComplete} onCheckedChange={updateAsk} />
-            Ask on Complete
+            Take payment amount
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <Switch checked={askOpening} onCheckedChange={updateAskOpening} />
+            Day setup on reset
           </label>
         </div>
+
+        {!storageOk && (
+          <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+            This browser is not letting the page save data, so sales history and today&apos;s totals will be lost if
+            you refresh or close the tab.
+          </p>
+        )}
 
         <div ref={setGridEl} className="relative min-h-0 flex-1">
           <div
@@ -595,31 +715,72 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
         </div>
       </section>
 
-      {/* One keypad for the selected product */}
+      {/* Keypad column: quantity keypad + sale footer, or payment mode */}
       {activeItem && (
-        <div
-          className={cn(
-            "flex w-full flex-col lg:w-[300px] xl:w-[340px] [&>section]:flex-1",
-            keypadHeight && "lg:self-start",
+        <div className="flex w-full flex-col gap-2 lg:w-[300px] xl:w-[340px]">
+          {isPaying ? (
+            <PaymentPanel
+              total={cartTotal}
+              itemCount={lines.length}
+              received={received}
+              onKey={payKey}
+              onQuick={(a) => setReceived(String(a))}
+              onExact={() => setReceived(String(Math.round(cartTotal * 100) / 100))}
+              onClear={() => setReceived("")}
+              onBack={() => setPaying(false)}
+              onConfirm={() => nextCustomer(receivedAmount)}
+            />
+          ) : (
+            <>
+              <div className="flex min-h-[360px] flex-1 flex-col [&>section]:flex-1">
+                <KeypadPanel
+                  item={activeItem}
+                  unit={activeUnit}
+                  qty={session.cart[lineKey(activeItem.productId, activeUnit)] ?? 0}
+                  otherQty={session.cart[lineKey(activeItem.productId, activeOther)] ?? 0}
+                  onKey={pressKey}
+                  onUnit={setUnit}
+                />
+              </div>
+
+              <div className="shrink-0 space-y-2 rounded-2xl border bg-card p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="text-3xl font-bold">{inr(cartTotal)}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-12 w-12 shrink-0 px-0"
+                    disabled={!lines.length}
+                    onClick={clearSale}
+                    aria-label="Reset current sale"
+                    title="Reset current sale"
+                  >
+                    <RotateCcw className="h-5 w-5" />
+                  </Button>
+                  <Button className="h-12 flex-1 text-base" disabled={!lines.length} onClick={onCompleteClick}>
+                    Complete
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Today · {session.saleCount} {session.saleCount === 1 ? "sale" : "sales"}</span>
+                  <span className="font-semibold">{inr(session.dayTotal)}</span>
+                </div>
+              </div>
+            </>
           )}
-          style={keypadHeight ? { height: keypadHeight } : undefined}
-        >
-          <KeypadPanel
-            item={activeItem}
-            unit={activeUnit}
-            qty={session.cart[lineKey(activeItem.productId, activeUnit)] ?? 0}
-            otherQty={session.cart[lineKey(activeItem.productId, activeOther)] ?? 0}
-            onKey={pressKey}
-            onUnit={setUnit}
-          />
         </div>
       )}
 
       {/* Cart panel */}
       <aside className="flex w-full flex-col rounded-2xl border bg-card lg:w-[220px] xl:w-[235px]">
         <div className="flex items-center justify-between gap-1 border-b px-3 py-3">
-          <h2 className="font-semibold">{todayLabel}</h2>
-          <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={() => setConfirmReset(true)}>
+          <div>
+            <h2 className="font-semibold">{todayLabel}</h2>
+            <p className="text-xs text-muted-foreground">Customer #{session.saleCount + 1}</p>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={onResetClick}>
             <CalendarX2 className="mr-1.5 h-4 w-4" /> Reset day
           </Button>
         </div>
@@ -647,41 +808,19 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
           )}
         </div>
 
-        <div className="space-y-3 border-t p-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground">Total</span>
-            <span className="text-3xl font-bold">{inr(cartTotal)}</span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="h-12 w-12 shrink-0 px-0"
-              disabled={!lines.length}
-              onClick={clearSale}
-              aria-label="Reset current sale"
-              title="Reset current sale"
-            >
-              <RotateCcw className="h-5 w-5" />
-            </Button>
-            <Button className="h-12 flex-1 text-base" disabled={!lines.length} onClick={onCompleteClick}>
-              Complete
-            </Button>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Today · {session.saleCount} {session.saleCount === 1 ? "sale" : "sales"}</span>
-            <span className="font-semibold">{inr(session.dayTotal)}</span>
-          </div>
-        </div>
       </aside>
 
-      {confirmDone && (
-        <CompleteSaleDialog
-          total={cartTotal}
-          onCancel={() => setConfirmDone(false)}
-          onComplete={(dontAskAgain) => {
-            if (dontAskAgain) updateAsk(false);
-            nextCustomer();
-          }}
+      {showHistory && <HistoryDialog sales={history} onClose={() => setShowHistory(false)} />}
+
+      {dayDialog && (
+        <CloseDayDialog
+          items={items}
+          day={session.day ?? null}
+          sales={history}
+          cartHasItems={lines.length > 0}
+          askOpening={askOpening}
+          onCancel={() => setDayDialog(false)}
+          onConfirm={applyReset}
         />
       )}
 
