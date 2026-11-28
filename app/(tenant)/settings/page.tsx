@@ -446,7 +446,11 @@ export default function SettingsPage() {
         invoicePrefix,
         invoiceNumberFormat,
         termsAndConditions,
-        dueDays: Math.max(0, Number(invoiceDueDays) || 30),
+        // 0 is valid ("Due on receipt"), so only a blank / non-numeric field falls back to 30.
+        dueDays:
+          invoiceDueDays.trim() !== "" && Number.isFinite(Number(invoiceDueDays))
+            ? Math.max(0, Math.round(Number(invoiceDueDays)))
+            : 30,
       },
       tax: {
         enabled: taxEnabled,
