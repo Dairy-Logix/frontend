@@ -82,6 +82,17 @@ export function printCrossing(): number {
   return spilled;
 }
 
+/** Piece products are counted in boxes on the sheet; loose pieces left over show as "+N pc". */
+function fmtQty(item: CrossingItem, pieces: number): string {
+  if (item.unitType !== "P") return String(pieces);
+  const per = item.piecesPerBox > 0 ? item.piecesPerBox : 1;
+  if (per === 1) return String(pieces);
+  const boxes = Math.floor(pieces / per);
+  const loose = Math.round(pieces - boxes * per);
+  if (loose === 0) return String(boxes);
+  return boxes > 0 ? `${boxes} +${loose}pc` : `${loose}pc`;
+}
+
 function SendTable({ title, items }: { title: string; items: CrossingItem[] }) {
   return (
     <div className="crossing-block">
@@ -93,6 +104,7 @@ function SendTable({ title, items }: { title: string; items: CrossingItem[] }) {
             <th>Product</th>
             <th className="num">Total</th>
             <th className="num">Remain</th>
+            <th className="gap" />
             <th className="num send">Move</th>
             <th className="code">Code</th>
           </tr>
@@ -102,11 +114,12 @@ function SendTable({ title, items }: { title: string; items: CrossingItem[] }) {
             <tr key={item.productId}>
               <td className="tick">☐</td>
               <td>
-                {item.productName} ({item.unitType})
+                {item.productName} ({item.unitType === "P" && item.piecesPerBox > 1 ? "Box" : item.unitType})
               </td>
-              <td className="num">{item.total}</td>
-              <td className="num">{item.remain}</td>
-              <td className="num send">{item.quantity}</td>
+              <td className="num">{fmtQty(item, item.total)}</td>
+              <td className="num">{fmtQty(item, item.remain)}</td>
+              <td className="gap" />
+              <td className="num send">{fmtQty(item, item.quantity)}</td>
               <td className="code">{item.shortName || "–"}</td>
             </tr>
           ))}

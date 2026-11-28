@@ -745,9 +745,18 @@
   border-collapse: collapse;
   table-layout: fixed;
 }
-.crossing-table th:nth-child(n + 3):nth-child(-n + 5),
-.crossing-table td:nth-child(n + 3):nth-child(-n + 5) {
+.crossing-table th.num,
+.crossing-table td.num {
   width: 25mm;
+}
+/* Empty spacer column so Total/Remain are visibly apart from Move: loaders must read Move only. */
+.crossing-table th.gap,
+.crossing-table td.gap {
+  width: 14mm;
+  border-top: 0;
+  border-bottom: 0;
+  background: none;
+  padding: 0;
 }
 /* Short name sits right of Move so loaders can tie each quantity to its product at a glance. */
 .crossing-table th.code,
