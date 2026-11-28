@@ -745,9 +745,17 @@
   border-collapse: collapse;
   table-layout: fixed;
 }
-.crossing-table th:nth-child(n + 3),
-.crossing-table td:nth-child(n + 3) {
+.crossing-table th:nth-child(n + 3):nth-child(-n + 5),
+.crossing-table td:nth-child(n + 3):nth-child(-n + 5) {
   width: 25mm;
+}
+/* Short name sits right of Move so loaders can tie each quantity to its product at a glance. */
+.crossing-table th.code,
+.crossing-table td.code {
+  width: 30mm;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .crossing-table th,
 .crossing-table td {

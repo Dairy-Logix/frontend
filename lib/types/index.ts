@@ -300,6 +300,7 @@ export interface CrossingItem {
   productId: string;
   productName: string;
   productCode: string;
+  shortName: string;
   /** 'P' = ordered in pieces, 'C' = ordered in crates. */
   unitType: 'P' | 'C';
   /** To send to the other truck, in the product's own ordered unit (see unitType). */

@@ -94,6 +94,7 @@ function SendTable({ title, items }: { title: string; items: CrossingItem[] }) {
             <th className="num">Total</th>
             <th className="num">Remain</th>
             <th className="num send">Move</th>
+            <th className="code">Code</th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +107,7 @@ function SendTable({ title, items }: { title: string; items: CrossingItem[] }) {
               <td className="num">{item.total}</td>
               <td className="num">{item.remain}</td>
               <td className="num send">{item.quantity}</td>
+              <td className="code">{item.shortName || "–"}</td>
             </tr>
           ))}
         </tbody>
