@@ -21,6 +21,7 @@ const FEATURE_REQUIRED_PLAN: Record<FeatureKey, "standard" | "premium" | null> =
   advancedAnalytics: "premium",
   printTemplates: "premium",
   myStore: "premium",
+  crossingSheet: "premium",
 };
 
 const FEATURE_LABELS: Record<FeatureKey, string> = {
@@ -35,6 +36,7 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   storeMobileApp: "Store mobile app",
   printTemplates: "Print templates",
   myStore: "My Store",
+  crossingSheet: "Crossing sheet",
 };
 
 interface FeatureLockedCardProps {

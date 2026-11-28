@@ -66,6 +66,7 @@ const FEATURE_LABELS: Record<string, string> = {
   storeMobileApp: "Store Mobile App",
   printTemplates: "Print Templates",
   myStore: "My Store",
+  crossingSheet: "Crossing Sheet",
 };
 
 // Human labels for the numeric limits (keys mirror TenantLimits).

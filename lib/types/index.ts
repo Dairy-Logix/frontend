@@ -162,6 +162,7 @@ export interface SubscriptionFeatures {
   storeMobileApp: boolean;
   printTemplates: boolean;
   myStore: boolean;
+  crossingSheet: boolean;
 }
 
 export interface SubscriptionLimits {
@@ -248,6 +249,7 @@ export interface TenantConfig {
   currencyFormat: string;
   orderPrint?: OrderPrintConfig;
   orderPrintTemplates?: OrderPrintTemplate[];
+  crossingGroups?: CrossingGroup[];
   adminNotifications?: Partial<Record<NotificationEventType, AdminNotificationPref>>;
 }
 
@@ -273,6 +275,60 @@ export interface OrderPrintMargins {
   right: number;
   bottom: number;
   left: number;
+}
+
+// --- Truck crossing ---
+
+export interface CrossingTruck {
+  id: string;
+  name: string;
+  factoryName: string;
+  /** Agencies this truck delivers to. */
+  agencyIds: string[];
+  /** Products this truck loads at its factory. */
+  productIds: string[];
+}
+
+export interface CrossingGroup {
+  id: string;
+  name: string;
+  agencyIds: string[];
+  trucks: CrossingTruck[];
+}
+
+export interface CrossingItem {
+  productId: string;
+  productName: string;
+  productCode: string;
+  /** 'P' = ordered in pieces, 'C' = ordered in crates. */
+  unitType: 'P' | 'C';
+  /** To send to the other truck, in the product's own ordered unit (see unitType). */
+  quantity: number;
+  /** Everything the group ordered of this product (what the loading truck picks up). */
+  total: number;
+  /** What stays on the loading truck after all its sends. */
+  remain: number;
+  byAgency: { agencyId: string; agencyName: string; quantity: number }[];
+}
+
+export interface CrossingTransfer {
+  fromTruckId: string;
+  toTruckId: string;
+  items: CrossingItem[];
+}
+
+export interface CrossingGroupResult {
+  id: string;
+  name: string;
+  trucks: { id: string; name: string; factoryName: string }[];
+  transfers: CrossingTransfer[];
+  unassignedProducts: { productId: string; productName: string; unitType: 'P' | 'C'; quantity: number }[];
+}
+
+export interface CrossingResult {
+  date: string;
+  asOf: string;
+  groups: CrossingGroupResult[];
 }
 
 export type PrintRowHeightMode = 'auto' | 'fill' | 'fixed';
@@ -364,6 +420,7 @@ export interface UpdateSettingsInput {
   currencyFormat?: string;
   orderPrint?: Partial<OrderPrintConfig>;
   orderPrintTemplates?: OrderPrintTemplate[];
+  crossingGroups?: CrossingGroup[];
   adminNotifications?: Partial<Record<NotificationEventType, AdminNotificationPref>>;
 }
 

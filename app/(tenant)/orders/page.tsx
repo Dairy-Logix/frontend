@@ -22,10 +22,16 @@ import {
   ArrowRightLeft,
   Printer,
   ChevronDown,
+  Scissors,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { CrossingPrintSheet, printCrossing } from "@/components/crossing/crossing-print-sheet";
+import { handleApiError } from "@/lib/api/client";
+import { crossingService } from "@/lib/api/services/crossing.service";
+import { useFeature } from "@/lib/hooks/use-feature";
+import type { CrossingResult } from "@/lib/types";
 import { TransferWizard } from "@/components/transfers/transfer-wizard";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { StatCard } from "@/components/shared/stat-card";
@@ -38,6 +44,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { OrderPrintTemplate, Product } from "@/lib/types";
@@ -583,6 +590,51 @@ export default function OrdersPage() {
     setPortalReady(true);
   }, []);
   const printSheetRef = useRef<HTMLDivElement>(null);
+
+  // --- Crossing sheet (Print → Crossing sheet) ---
+  const crossingEnabled = useFeature("crossingSheet");
+  const [crossingData, setCrossingData] = useState<CrossingResult | null>(null);
+  const [crossingLoading, setCrossingLoading] = useState(false);
+
+  async function handlePrintCrossing() {
+    if (crossingLoading) return;
+    setCrossingLoading(true);
+    try {
+      // Always fetched fresh for the selected business day, across ALL agencies
+      // in each crossing group (independent of the agency filter above).
+      const data = await crossingService.getCrossing(selectedDate);
+      if (data.groups.length === 0) {
+        toast.info("Set up crossing groups in Settings → Crossing first.");
+        return;
+      }
+      if (data.groups.every((g) => g.transfers.length === 0)) {
+        toast.info(`Nothing to cross for ${selectedDate}.`);
+        return;
+      }
+      const unassigned = data.groups.flatMap((g) => g.unassignedProducts.map((p) => p.productName));
+      if (unassigned.length > 0) {
+        toast.warning(
+          `Not assigned to any truck, left off the sheet's crossing: ${[...new Set(unassigned)].join(", ")}`,
+        );
+      }
+      setCrossingData(data);
+      // One paint so the sheet renders, one more so layout settles, then print.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const spilled = printCrossing();
+          if (spilled > 0) {
+            toast.info(
+              "Some truck lists are long, so each truck prints on its own page instead of sharing one.",
+            );
+          }
+        }),
+      );
+    } catch (err) {
+      toast.error(handleApiError(err));
+    } finally {
+      setCrossingLoading(false);
+    }
+  }
   const activeTemplate =
     printTemplates.find((t) => t.id === activePrintTemplateId) ?? null;
 
@@ -822,7 +874,7 @@ export default function OrdersPage() {
               </Button>
             )}
             {!isEditMode && (
-              printTemplates.length === 0 ? (
+              printTemplates.length === 0 && !crossingEnabled ? (
                 <Button
                   variant="outline"
                   onClick={() => toast.info("Create a print template in Settings → Print Templates first.")}
@@ -833,8 +885,12 @@ export default function OrdersPage() {
               ) : (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Printer className="h-4 w-4" />
+                    <Button variant="outline" disabled={crossingLoading}>
+                      {crossingLoading ? (
+                        <LoaderIcon className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="h-4 w-4" />
+                      )}
                       Print
                       <ChevronDown className="h-4 w-4" />
                     </Button>
@@ -852,6 +908,16 @@ export default function OrdersPage() {
                         </span>
                       </DropdownMenuItem>
                     ))}
+                    {crossingEnabled && (
+                      <>
+                        {printTemplates.length > 0 && <DropdownMenuSeparator />}
+                        <DropdownMenuItem onSelect={() => void handlePrintCrossing()}>
+                          <Scissors className="h-4 w-4 mr-2 opacity-60" />
+                          <span className="flex-1">Crossing sheet</span>
+                          <span className="text-[10px] text-muted-foreground ml-2 uppercase">P</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )
@@ -1343,6 +1409,9 @@ export default function OrdersPage() {
         </div>,
         document.body
       )}
+
+    {/* Crossing sheet: its own portal, shown only while printing it. */}
+    <CrossingPrintSheet data={crossingData} tenantName={tenantName} ready={portalReady} />
     </>
   );
 }

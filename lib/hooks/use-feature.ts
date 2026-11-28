@@ -39,6 +39,7 @@ export function useTenantFeatures(): SubscriptionFeatures {
     storeMobileApp: false,
     printTemplates: false,
     myStore: false,
+    crossingSheet: false,
   };
 
   if (user?.role === 'super_admin') {
@@ -54,6 +55,7 @@ export function useTenantFeatures(): SubscriptionFeatures {
       storeMobileApp: true,
       printTemplates: true,
       myStore: true,
+      crossingSheet: true,
     };
   }
 

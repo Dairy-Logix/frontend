@@ -22,6 +22,7 @@ const featureLabels: Record<string, string> = {
   storeMobileApp: "Store mobile application",
   printTemplates: "Print templates",
   myStore: "My Store",
+  crossingSheet: "Crossing sheet",
 };
 
 const CORE_FEATURES = [

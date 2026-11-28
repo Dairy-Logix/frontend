@@ -52,6 +52,7 @@ import { handleApiError } from "@/lib/api/client";
 import { uploadService } from "@/lib/api/services/upload.service";
 import { validatePhotoFile } from "@/lib/image";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CrossingSettings } from "@/components/settings/crossing-settings";
 import type {
   OrderPrintTemplate,
   PrintOrientation,
@@ -665,6 +666,10 @@ export default function SettingsPage() {
           <TabsTrigger value="order-print">
             <Printer className="h-4 w-4" />
             Print Templates
+          </TabsTrigger>
+          <TabsTrigger value="crossing">
+            <Truck className="h-4 w-4" />
+            Crossing
           </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4" />
@@ -1527,6 +1532,11 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ===================== NOTIFICATIONS TAB ===================== */}
+        {/* ===================== CROSSING TAB ===================== */}
+        <TabsContent value="crossing">
+          <CrossingSettings />
+        </TabsContent>
+
         <TabsContent value="notifications">
           <motion.div
             initial={{ opacity: 0, y: 10 }}

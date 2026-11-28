@@ -99,6 +99,7 @@ const FEATURE_LABELS: Record<string, string> = {
   storeMobileApp: "Store mobile app",
   printTemplates: "Print templates",
   myStore: "My Store",
+  crossingSheet: "Crossing sheet",
 };
 
 // Features listed in the plan catalog but not yet implemented in the app.

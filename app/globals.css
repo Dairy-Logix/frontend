@@ -625,7 +625,7 @@
      Using display:none (not visibility:hidden) means the chrome takes up no
      printable space — the print sheet is the only thing the print engine
      sees, and it flows naturally across pages. */
-  body > *:not(.print-sheet) {
+  body > *:not(.print-sheet):not(.crossing-sheet) {
     display: none !important;
   }
 
@@ -654,6 +654,190 @@
     backdrop-filter: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+}
+
+/* ==========================================================================
+   Crossing sheet — A4 portrait, one page per group, one block per truck with a
+   dashed cut line between. Hidden on screen; shown only while body carries
+   .printing-crossing (set by printCrossing()), and the order print sheet is
+   hidden at the same time.
+
+   Layout rules live OUTSIDE @media print (they only touch .crossing-sheet,
+   which is display:none on screen) so printCrossing() can measure the sheet
+   off-screen via .crossing-measure. A group whose truck list does not fit its
+   half gets .crossing-spill: one truck per page, flowing onto more pages if
+   needed, so nothing is ever clipped.
+   ========================================================================== */
+.crossing-sheet {
+  display: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  color: #000;
+  background: #fff;
+}
+.crossing-sheet.crossing-measure {
+  display: block;
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 194mm; /* A4 210mm minus 2 x 8mm margin */
+}
+.crossing-sheet * {
+  color: #000;
+}
+.crossing-page {
+  display: flex;
+  flex-direction: column;
+  height: 280mm; /* A4 297mm minus 2 x 8mm margin, with a little slack */
+  page-break-after: always;
+  break-after: page;
+}
+.crossing-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+.crossing-half {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 2mm 1mm;
+}
+.crossing-cut {
+  text-align: center;
+  font-size: 8pt;
+  letter-spacing: 1px;
+  border-top: 1.5px dashed #000;
+  padding-top: 1mm;
+  margin: 1mm 0;
+}
+.crossing-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #000;
+  padding-bottom: 2mm;
+  margin-bottom: 3mm;
+}
+.crossing-truck {
+  font-size: calc(16pt * var(--cx-scale, 1));
+  font-weight: 800;
+}
+.crossing-sub,
+.crossing-meta {
+  font-size: 9pt;
+}
+.crossing-meta {
+  text-align: right;
+}
+.crossing-block {
+  margin-bottom: 3mm;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.crossing-block-title {
+  font-size: 12pt;
+  font-weight: 700;
+  margin-bottom: 1mm;
+}
+.crossing-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.crossing-table th:nth-child(n + 3),
+.crossing-table td:nth-child(n + 3) {
+  width: 25mm;
+}
+.crossing-table th,
+.crossing-table td {
+  border: 1px solid #000;
+  padding: calc(0.7mm * var(--cx-scale, 1)) 1.5mm;
+  line-height: 1;
+  text-align: left;
+  font-size: calc(14pt * var(--cx-scale, 1));
+}
+.crossing-table th {
+  font-size: calc(12pt * var(--cx-scale, 1));
+  font-weight: 800;
+  padding: calc(1.5mm * var(--cx-scale, 1)) 1.5mm;
+}
+.crossing-table th.num,
+.crossing-table td.num {
+  text-align: right;
+}
+/* Numbers are what the loaders read at a glance: big and bold. Send is the
+   figure they act on, so it is the largest and has a heavier left rule. */
+.crossing-table td.num {
+  font-size: calc(17pt * var(--cx-scale, 1));
+  font-weight: 800;
+}
+.crossing-table th.send,
+.crossing-table td.send {
+  border-left-width: 2.5px;
+}
+.crossing-table td.send {
+  font-size: calc(22pt * var(--cx-scale, 1));
+  font-weight: 800;
+}
+.crossing-table th.tick,
+.crossing-table td.tick {
+  width: 8mm;
+  text-align: center;
+}
+.crossing-table thead {
+  display: table-header-group;
+}
+.crossing-table tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.crossing-table tr.total td {
+  font-weight: 700;
+}
+.crossing-empty {
+  font-size: 11pt;
+  padding: 4mm 0;
+}
+.crossing-warn {
+  margin-top: 2mm;
+  font-size: 9pt;
+  font-style: italic;
+}
+
+/* Spill mode: one truck per page, may continue onto further pages. */
+.crossing-page.crossing-spill {
+  display: block;
+  height: auto;
+}
+.crossing-page.crossing-spill .crossing-half {
+  overflow: visible;
+  page-break-after: always;
+  break-after: page;
+}
+.crossing-page.crossing-spill .crossing-half:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+.crossing-page.crossing-spill .crossing-block {
+  page-break-inside: auto;
+  break-inside: auto;
+}
+.crossing-page.crossing-spill .crossing-cut {
+  display: none;
+}
+
+@media print {
+  body.printing-crossing > .print-sheet {
+    display: none !important;
+  }
+  body.printing-crossing > .crossing-sheet {
+    display: block !important;
+  }
+  .crossing-sheet * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
   }
 }
 
