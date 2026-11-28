@@ -616,14 +616,16 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   /** Close the current day and open a fresh one. `opening` is null for a calculator-only day. */
   const applyReset = (opening: Opening | null, dontAskAgain: boolean) => {
     if (dontAskAgain) updateAskOpening(false);
-    setSession({
+    // Keep each product's last-chosen P/C unit: it's a preference, not day data.
+    setSession((s) => ({
       ...EMPTY,
+      units: s.units,
       day: {
         openedAt: new Date().toISOString(),
         openingCash: opening?.cash ?? null,
         openingStock: opening?.stock ?? {},
       },
-    });
+    }));
     commitHistory([]);
     setPaying(false);
     setReceived("");
