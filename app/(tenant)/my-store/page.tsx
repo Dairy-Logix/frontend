@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarX2, Delete, Loader2, RotateCcw, Search, Settings, X } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarX2, Delete, Loader2, RotateCcw, Settings, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -173,7 +172,103 @@ function CompleteSaleDialog({
   );
 }
 
-const ProductCard = memo(function ProductCard({
+const GAP = 8; // px between product tiles
+const MIN_TILE = 72; // smallest tile before we fall back to scrolling
+
+/** Observe an element's content box (re-measures on resize / orientation change). */
+function useElementSize(el: HTMLElement | null) {
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize((prev) => (prev.w === width && prev.h === height ? prev : { w: width, h: height }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el]);
+  return size;
+}
+
+/**
+ * Pick the column/row split that makes every tile as large as possible while
+ * keeping ALL products visible. Falls back to a scrolling grid of minimum-size
+ * tiles only if they can't fit even at MIN_TILE.
+ */
+function fitGrid(n: number, w: number, h: number) {
+  if (n === 0 || w === 0 || h === 0) return { cols: Math.max(1, Math.min(n, 4)), rows: 1, scroll: false };
+  let best = { cols: 1, rows: n, size: 0 };
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const size = Math.min((w - (cols - 1) * GAP) / cols, (h - (rows - 1) * GAP) / rows);
+    if (size > best.size) best = { cols, rows, size };
+  }
+  if (best.size >= MIN_TILE) return { cols: best.cols, rows: best.rows, scroll: false };
+  const cols = Math.max(1, Math.floor((w + GAP) / (MIN_TILE + GAP)));
+  return { cols, rows: Math.ceil(n / cols), scroll: true };
+}
+
+const ProductTile = memo(function ProductTile({
+  item,
+  selected,
+  crateQty,
+  pieceQty,
+  onSelect,
+}: {
+  item: MyStoreItem;
+  selected: boolean;
+  crateQty: number;
+  pieceQty: number;
+  onSelect: (productId: string) => void;
+}) {
+  const badge = [crateQty > 0 ? `${crateQty}C` : "", pieceQty > 0 ? `${pieceQty}P` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.productId)}
+      aria-pressed={selected}
+      className={cn(
+        "relative touch-manipulation select-none overflow-hidden rounded-xl border-2 bg-muted text-left transition-shadow",
+        selected ? "border-primary ring-2 ring-primary/60" : "border-border",
+      )}
+    >
+      {item.photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.photoUrl}
+          alt=""
+          draggable={false}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <span className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-muted-foreground/40">
+          {item.name[0]}
+        </span>
+      )}
+      {badge && (
+        <span className="absolute right-1 top-1 rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold leading-none text-primary-foreground shadow">
+          {badge}
+        </span>
+      )}
+      <span
+        className={cn(
+          "absolute inset-x-0 bottom-0 line-clamp-2 px-1.5 py-1 text-center text-xs font-semibold leading-tight",
+          selected ? "bg-primary text-primary-foreground" : "bg-background/85",
+        )}
+      >
+        {item.name}
+      </span>
+    </button>
+  );
+});
+
+const KEYPAD_KEYS = ["7", "8", "9", "4", "5", "6", "1", "2", "3"];
+
+const KeypadPanel = memo(function KeypadPanel({
   item,
   unit,
   qty,
@@ -190,86 +285,77 @@ const ProductCard = memo(function ProductCard({
 }) {
   const otherUnit: Unit = unit === "crate" ? "piece" : "crate";
   const price = unitPrice(item, unit);
-  const keys = ["7", "8", "9", "4", "5", "6", "1", "2", "3", unit === "crate" ? "half" : "clear", "0", "back"];
+  const keys = [...KEYPAD_KEYS, unit === "crate" ? "half" : "clear", "0", "back"];
   return (
-  <div
-    className="select-none space-y-1.5 rounded-xl border bg-card p-2 shadow-sm"
-  >
-    {/* Name + P / C switch */}
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{item.name}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {inr(price)} / {unit}
-          {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
-        </p>
+    <section className="flex min-h-[360px] select-none flex-col gap-2 overflow-hidden rounded-2xl border bg-card p-3">
+      {/* Selected product + P / C switch */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-base font-bold">{item.name}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {inr(price)} / {unit}
+            {unit === "crate" && item.piecesPerCrate > 1 ? ` (${item.piecesPerCrate} pcs)` : ""}
+          </p>
+        </div>
+        {canCrate(item) && (
+          <div className="flex shrink-0 overflow-hidden rounded-md border text-sm font-bold">
+            {(["piece", "crate"] as Unit[]).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => onUnit(item.productId, u)}
+                className={cn(
+                  "h-9 w-9 touch-manipulation transition-colors",
+                  unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
+                aria-label={u === "piece" ? "Sell by piece" : "Sell by crate"}
+                aria-pressed={unit === u}
+              >
+                {u === "piece" ? "P" : "C"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      {canCrate(item) && (
-        <div className="flex shrink-0 overflow-hidden rounded-md border text-xs font-bold">
-          {(["piece", "crate"] as Unit[]).map((u) => (
+
+      {/* Quantity — its own box, separate from the keypad */}
+      <div className="flex h-20 shrink-0 items-center justify-between rounded-xl border bg-muted/40 px-3">
+        <span className="text-sm text-muted-foreground">
+          {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
+        </span>
+        <span className={cn("text-6xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
+          {qty}
+        </span>
+      </div>
+
+      {/* Keypad — the product photo shows behind the keys only */}
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-muted">
+        {item.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.photoUrl}
+            alt=""
+            draggable={false}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
+          />
+        )}
+        <div className="relative grid h-full grid-cols-3 grid-rows-4 gap-2 p-1.5">
+          {keys.map((k) => (
             <button
-              key={u}
+              key={k}
               type="button"
-              onClick={() => onUnit(item.productId, u)}
-              className={cn(
-                "h-7 w-7 touch-manipulation transition-colors",
-                unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-              )}
-              aria-label={u === "piece" ? "Sell by piece" : "Sell by crate"}
-              aria-pressed={unit === u}
+              onClick={() => onKey(item.productId, unit, k)}
+              className="flex h-full min-h-[36px] w-full touch-manipulation items-center justify-center rounded-xl border bg-background/75 text-3xl font-bold active:bg-accent"
+              aria-label={
+                k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
+              }
             >
-              {u === "piece" ? "P" : "C"}
+              {k === "back" ? <Delete className="h-7 w-7" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-7 w-7" /> : k}
             </button>
           ))}
         </div>
-      )}
-    </div>
-
-    {/* Quantity display */}
-    <div
-      className={cn(
-        "flex h-[72px] items-center justify-between rounded-lg border px-2.5",
-        qty > 0 ? "bg-primary/10" : "bg-muted/40",
-      )}
-    >
-      <span className="text-xs text-muted-foreground">
-        {otherQty > 0 ? `+${otherQty} ${otherUnit === "crate" ? "C" : "P"}` : qty > 0 ? inr(qty * price) : ""}
-      </span>
-      <span className={cn("text-6xl font-extrabold leading-none", qty === 0 && "text-muted-foreground/40")}>
-        {qty}
-      </span>
-    </div>
-
-    {/* Keypad */}
-    <div className="relative w-full overflow-hidden rounded-xl bg-muted">
-      {item.photoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.photoUrl}
-          alt=""
-          draggable={false}
-  loading="lazy"
-  decoding="async"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40"
-        />
-      )}
-      <div className="relative grid grid-cols-3 gap-1 p-1">
-      {keys.map((k) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => onKey(item.productId, unit, k)}
-          className="flex aspect-[3/2] w-full touch-manipulation items-center justify-center rounded-lg border bg-background/75 text-2xl font-bold active:bg-accent"
-          aria-label={
-            k === "back" ? "Backspace" : k === "half" ? "Toggle half crate" : k === "clear" ? "Clear" : k
-          }
-        >
-          {k === "back" ? <Delete className="h-6 w-6" /> : k === "half" ? ".5" : k === "clear" ? <X className="h-6 w-6" /> : k}
-        </button>
-      ))}
       </div>
-    </div>
-  </div>
+    </section>
   );
 });
 
@@ -299,7 +385,11 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   const { data: items = [], isLoading } = useMyStoreItems();
 
   const [session, setSession] = useState<Session>(() => loadSession(storageKey));
-  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // After selecting a product (or switching P/C) the first digit replaces the old quantity.
+  const replaceNext = useRef(true);
+  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
+  const gridSize = useElementSize(gridEl);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDone, setConfirmDone] = useState(false);
 
@@ -336,18 +426,25 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
   const selectedUnit = (item: MyStoreItem): Unit =>
     canCrate(item) && session.units[item.productId] !== "piece" ? "crate" : "piece";
 
-  const setUnit = useCallback(
-    (productId: string, unit: Unit) =>
-      setSession((s) => ({ ...s, units: { ...s.units, [productId]: unit } })),
-    [],
-  );
+  const setUnit = useCallback((productId: string, unit: Unit) => {
+    replaceNext.current = true;
+    setSession((s) => ({ ...s, units: { ...s.units, [productId]: unit } }));
+  }, []);
+
+  const selectProduct = useCallback((productId: string) => {
+    replaceNext.current = true;
+    setSelectedId(productId);
+  }, []);
 
   /**
-   * Keypad entry for one product line. Digits append (max 3 digits), "back"
-   * deletes the last digit (or the ".5"), "clear" zeroes it, and "half"
-   * (crate only) toggles an extra half crate.
+   * Keypad entry for the selected product. The first digit after selecting a
+   * product replaces its old quantity; after that digits append (max 3).
+   * "back" deletes the last digit (or the ".5"), "clear" zeroes it, and
+   * "half" (crate only) toggles an extra half crate.
    */
   const pressKey = useCallback((productId: string, unit: Unit, key: string) => {
+    const fresh = replaceNext.current;
+    replaceNext.current = false;
     setSession((s) => {
       const lk = lineKey(productId, unit);
       const current = s.cart[lk] ?? 0;
@@ -360,9 +457,10 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
         if (current % 1 === 0.5) next = Math.floor(current);
         else next = str.length > 1 ? Number(str.slice(0, -1)) : 0;
       } else {
+        const base = fresh ? "" : str;
         // Digit: ignore once a ".5" is present or 3 digits are entered.
-        if (str.includes(".") || str.length >= 3) return s;
-        next = Number(str + key);
+        if (base.includes(".") || base.length >= 3) return s;
+        next = Number(base + key);
       }
       const cart = { ...s.cart };
       if (next <= 0) delete cart[lk];
@@ -420,13 +518,8 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     setConfirmReset(false);
   };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (i) => i.name.toLowerCase().includes(q) || (i.shortName ?? "").toLowerCase().includes(q),
-    );
-  }, [items, search]);
+  const activeItem = items.find((i) => i.productId === selectedId) ?? items[0];
+  const fit = fitGrid(items.length, gridSize.w, gridSize.h);
 
   if (isLoading) {
     return (
@@ -452,21 +545,22 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     );
   }
 
+  // Keep the keypad about three and a quarter product rows tall (but never so short the keys get cramped).
+  const rowH = fit.rows > 0 ? (gridSize.h - (fit.rows - 1) * GAP) / fit.rows : 0;
+  const keypadHeight =
+    !fit.scroll && fit.rows > 3 && rowH > 0
+      ? Math.min(gridSize.h, Math.max(380, Math.round(3.25 * rowH + 3 * GAP)))
+      : undefined;
+
+  const activeUnit = activeItem ? selectedUnit(activeItem) : "piece";
+  const activeOther: Unit = activeUnit === "crate" ? "piece" : "crate";
+
   return (
-    <div className="flex h-[calc(100vh-8rem)] min-h-[560px] flex-col gap-4 lg:flex-row">
-      {/* Product grid */}
-      <section className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex h-[calc(100vh-8rem)] min-h-[560px] flex-col gap-3 lg:flex-row">
+      {/* Products — all visible, no scrolling */}
+      <section className="flex min-h-[280px] min-w-0 flex-1 flex-col gap-2 lg:min-h-0">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="mr-auto text-2xl font-semibold">My Store</h1>
-          <div className="relative w-full sm:w-56">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products"
-              className="pl-8"
-            />
-          </div>
           <Button asChild variant="outline" size="icon" aria-label="Prices & products">
             <Link href="/my-store/settings"><Settings className="h-4 w-4" /></Link>
           </Button>
@@ -476,27 +570,50 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
           </label>
         </div>
 
-        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto pb-2 md:grid-cols-3 lg:grid-cols-5">
-          {filtered.map((item) => {
-            const unit = selectedUnit(item);
-            const other: Unit = unit === "crate" ? "piece" : "crate";
-            return (
-              <ProductCard
+        <div ref={setGridEl} className="relative min-h-0 flex-1">
+          <div
+            className={cn("absolute inset-0 grid", fit.scroll && "overflow-y-auto")}
+            style={{
+              gap: GAP,
+              gridTemplateColumns: `repeat(${fit.cols}, minmax(0, 1fr))`,
+              ...(fit.scroll
+                ? { gridAutoRows: MIN_TILE + 16 }
+                : { gridTemplateRows: `repeat(${fit.rows}, minmax(0, 1fr))` }),
+            }}
+          >
+            {items.map((item) => (
+              <ProductTile
                 key={item.productId}
                 item={item}
-                unit={unit}
-                qty={session.cart[lineKey(item.productId, unit)] ?? 0}
-                otherQty={session.cart[lineKey(item.productId, other)] ?? 0}
-                onKey={pressKey}
-                onUnit={setUnit}
+                selected={activeItem?.productId === item.productId}
+                crateQty={session.cart[lineKey(item.productId, "crate")] ?? 0}
+                pieceQty={session.cart[lineKey(item.productId, "piece")] ?? 0}
+                onSelect={selectProduct}
               />
-            );
-          })}
-          {filtered.length === 0 && (
-            <p className="col-span-full py-10 text-center text-muted-foreground">No products match.</p>
-          )}
+            ))}
+          </div>
         </div>
       </section>
+
+      {/* One keypad for the selected product */}
+      {activeItem && (
+        <div
+          className={cn(
+            "flex w-full flex-col lg:w-[300px] xl:w-[340px] [&>section]:flex-1",
+            keypadHeight && "lg:self-start",
+          )}
+          style={keypadHeight ? { height: keypadHeight } : undefined}
+        >
+          <KeypadPanel
+            item={activeItem}
+            unit={activeUnit}
+            qty={session.cart[lineKey(activeItem.productId, activeUnit)] ?? 0}
+            otherQty={session.cart[lineKey(activeItem.productId, activeOther)] ?? 0}
+            onKey={pressKey}
+            onUnit={setUnit}
+          />
+        </div>
+      )}
 
       {/* Cart panel */}
       <aside className="flex w-full flex-col rounded-2xl border bg-card lg:w-[220px] xl:w-[235px]">
@@ -510,7 +627,7 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
         <div className="min-h-[120px] flex-1 divide-y overflow-y-auto">
           {lines.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
-              Tap a product to add it.
+              Select a product and type a quantity.
             </p>
           ) : (
             lines.map((l) => (
