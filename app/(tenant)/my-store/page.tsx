@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CalendarX2, Delete, History, Loader2, RotateCcw, Settings, X } from "lucide-react";
+import { ArrowLeft, CalendarX2, Delete, History, Loader2, RotateCcw, Settings } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -17,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { CartRow } from "./cart-row";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useMyStoreItems } from "@/lib/hooks/use-my-store";
 import type { MyStoreItem } from "@/lib/api/services/my-store.service";
@@ -43,6 +45,8 @@ interface Session {
   saleCount: number;
   /** Optional start-of-day figures (opening cash / stock); absent = calculator-only day. */
   day?: DayInfo | null;
+  /** Cart lines already handed to the customer (visual checklist only). */
+  picked?: Record<string, true>;
 }
 
 const EMPTY: Session = { cart: {}, units: {}, dayTotal: 0, saleCount: 0 };
@@ -504,16 +508,47 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
       const cart = { ...s.cart };
       if (next <= 0) delete cart[lk];
       else cart[lk] = next;
-      return { ...s, cart };
+      let picked = s.picked;
+      if (picked?.[lk] && next !== current) {
+        picked = { ...picked };
+        delete picked[lk];
+      }
+      return { ...s, cart, picked };
     });
   }, []);
 
-  const removeLine = (key: string) =>
+  const togglePicked = (key: string) =>
+    setSession((s) => {
+      const picked = { ...(s.picked ?? {}) };
+      if (picked[key]) delete picked[key];
+      else picked[key] = true;
+      return { ...s, picked };
+    });
+
+  const removeLine = (key: string, label: string) => {
+    const qty = session.cart[key];
+    const wasPicked = !!session.picked?.[key];
     setSession((s) => {
       const cart = { ...s.cart };
       delete cart[key];
-      return { ...s, cart };
+      const picked = { ...(s.picked ?? {}) };
+      delete picked[key];
+      return { ...s, cart, picked };
     });
+    if (!qty) return;
+    toast(`Removed ${label}`, {
+      duration: 4000,
+      action: {
+        label: "Undo",
+        onClick: () =>
+          setSession((s) => ({
+            ...s,
+            cart: { ...s.cart, [key]: qty },
+            picked: wasPicked ? { ...(s.picked ?? {}), [key]: true } : s.picked,
+          })),
+      },
+    });
+  };
 
   const lines = useMemo(() => {
     const out: { key: string; item: MyStoreItem; unit: Unit; qty: number; price: number; total: number }[] = [];
@@ -534,6 +569,9 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     month: "short",
     year: "numeric",
   });
+
+  const pickedCount = lines.filter((l) => session.picked?.[l.key]).length;
+  const allGiven = lines.length > 0 && pickedCount === lines.length;
 
   const cartTotal = lines.reduce((sum, l) => sum + l.total, 0);
 
@@ -560,6 +598,7 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     setSession((s) => ({
       ...s,
       cart: {},
+      picked: {},
       dayTotal: s.dayTotal + cartTotal,
       saleCount: s.saleCount + (lines.length ? 1 : 0),
     }));
@@ -567,7 +606,7 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
     setReceived("");
   };
 
-  const clearSale = () => setSession((s) => ({ ...s, cart: {} }));
+  const clearSale = () => setSession((s) => ({ ...s, cart: {}, picked: {} }));
   const onCompleteClick = () => {
     if (askOnComplete) {
       setReceived("");
@@ -778,7 +817,10 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
         <div className="flex items-center justify-between gap-1 border-b px-3 py-3">
           <div>
             <h2 className="font-semibold">{todayLabel}</h2>
-            <p className="text-xs text-muted-foreground">Customer #{session.saleCount + 1}</p>
+            <p className={cn("text-xs text-muted-foreground", allGiven && "font-medium text-green-600 dark:text-green-400")}>
+              Customer #{session.saleCount + 1}
+              {lines.length > 0 && (allGiven ? " · All given" : ` · ${pickedCount} of ${lines.length} given`)}
+            </p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={onResetClick}>
             <CalendarX2 className="mr-1.5 h-4 w-4" /> Reset day
@@ -792,7 +834,12 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
             </p>
           ) : (
             lines.map((l) => (
-              <div key={l.key} className="flex items-center gap-2 px-3 py-2.5">
+              <CartRow
+                key={l.key}
+                picked={!!session.picked?.[l.key]}
+                onToggle={() => togglePicked(l.key)}
+                onRemove={() => removeLine(l.key, l.item.name)}
+              >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{l.item.name}</p>
                   <p className="text-xs text-muted-foreground">
@@ -800,10 +847,7 @@ function MyStoreSales({ tenantId }: { tenantId: string }) {
                   </p>
                 </div>
                 <p className="text-right text-sm font-semibold">{inr(l.total)}</p>
-                <button type="button" onClick={() => removeLine(l.key)} className="text-muted-foreground hover:text-destructive" aria-label="Remove line">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              </CartRow>
             ))
           )}
         </div>

@@ -5,7 +5,6 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { OpeningWheel, type StockInput } from "./opening-wheel";
 import type { MyStoreItem } from "@/lib/api/services/my-store.service";
 
 /**
@@ -337,8 +337,6 @@ export function HistoryDialog({
 
 // ---------- close day -> start new day ----------
 
-type StockInput = { c: string; p: string };
-
 const wholeNumber = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
 
 export function CloseDayDialog({
@@ -383,9 +381,6 @@ export function CloseDayDialog({
     return out;
   });
 
-  const setField = (productId: string, field: "c" | "p", value: string) =>
-    setStock((s) => ({ ...s, [productId]: { ...(s[productId] ?? { c: "", p: "" }), [field]: value } }));
-
   function start() {
     const stockOut: Record<string, Stock> = {};
     for (const [productId, v] of Object.entries(stock)) {
@@ -400,7 +395,7 @@ export function CloseDayDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className={cn("max-h-[94vh] overflow-y-auto", step === "open" ? "sm:max-w-4xl" : "sm:max-w-2xl")}>
         {step === "close" ? (
           <>
             <DialogHeader>
@@ -452,59 +447,7 @@ export function CloseDayDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="opening-cash">
-                Opening cash (₹)
-              </label>
-              <Input
-                id="opening-cash"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="e.g. 10000"
-                value={cash}
-                onChange={(e) => setCash(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Opening stock</p>
-              <div className="overflow-hidden rounded-xl border">
-                <div className="max-h-[40vh] divide-y overflow-y-auto">
-                  {items.map((item) => (
-                    <div key={item.productId} className="flex items-center gap-2 px-3 py-2">
-                      <span className="min-w-0 flex-1 truncate text-sm">{item.name}</span>
-                      {crateCapable(item) && (
-                        <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                          C
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            min={0}
-                            className="h-9 w-20"
-                            value={stock[item.productId]?.c ?? ""}
-                            onChange={(e) => setField(item.productId, "c", e.target.value)}
-                            aria-label={`${item.name} crates`}
-                          />
-                        </label>
-                      )}
-                      <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                        P
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          className="h-9 w-20"
-                          value={stock[item.productId]?.p ?? ""}
-                          onChange={(e) => setField(item.productId, "p", e.target.value)}
-                          aria-label={`${item.name} pieces`}
-                        />
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <OpeningWheel items={items} stock={stock} setStock={setStock} cash={cash} setCash={setCash} />
 
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox checked={dontAsk} onCheckedChange={(v) => setDontAsk(v === true)} />
